@@ -1,0 +1,81 @@
+#  Copyright (C) 2002 Regents of the University of Michigan, 
+#  portions used with permission 
+#  For more information, see http://csem.engin.umich.edu/tools/swmf
+
+##########################################################################
+How to create input magnetogram files for the SWMF from a
+raw magnetogram fits file:
+
+These are the steps for creating a magnetogram file for SWMF from 
+any raw magnetogram fits file.
+
+The steps below require IDL or python (includling astropy)
+to be installed on your machine.
+
+1. If the SWMF is already installed and compiled, skip to step 2. Otherwise,
+   in the main SWMF path, type:
+
+    ./Config.pl -install
+    make
+
+   To test if the codes work try:
+
+   cd util/DATAREAD/srcMagnetogram
+   make test_harmonics
+   make test_fdips
+
+   The resulting test_harmonics.diff and test_fdips.diff files should be empty.
+
+2. In the directory SWMF_path/util/DATAREAD/srcMagnetogram
+   compile the HARMONICS.exe and/or FDIPS.exe executables:
+
+	make HARMONICS
+        make FDIPS
+
+3. Convert the raw magnetogram file from FITS to ASCII format. 
+   There are two ways to do this:
+
+3a. Run the python script 
+
+   ./remap_magnetogram.py your_magnetogram_file.fits output_file.dat
+
+3b. Use IDL to convert. Rename your magnetogram file and run the scripts
+
+   cp your_magnetoram_file.fits fitsfile.fits
+   idl run_fits_to_ascii.pro
+
+   The idl routine generates four files:
+
+	fitsfile.dat - obsolete ASCII file that was used by 
+                       HARMONICS.exe and FDIPS.exe 
+	fitsfile.H - the header of the original fits file with information 
+                     about the magnetogram source.
+	fitsfile_tec.dat - a Tecplot file to display the original magnetogram.
+
+        fitsfile_idl.out - the new ASCII file format to be used by 
+                           HARMONICS.exe or FDIPS.exe
+
+4. Create and edit the input file HARMONICS.in and/or FDIPS.in:
+
+   cp HARMONICS.in.orig HARMONICS.in
+   emacs HARMONICS.in
+
+   cp FDIPIS.in.orig FDIPS.in
+   emacs FDIPS.in
+
+   The original input files contain the documentation about all options.
+
+5. Run the executables HARMONICS.exe and/or FDIPS.exe
+
+   ./HARMONICS.exe
+
+   mpirun -np 4 ./FDIPS.exe
+
+6. Combine the FDIPS output files (1 per processor) into a single file 
+   with the redistribute.pl script, for example
+
+   ./redistribute.pl fdips_field_np010202.out fdips.out
+
+7. Move the output file to the location where it is expected by the
+   #MAGNETOGRAM  and/or #READPOTENTIALFIELD commands in the PARAM.in file.
+

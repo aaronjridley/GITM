@@ -1,0 +1,100 @@
+
+
+CRASH_v2dot3:
+
+CRASH changes:
+	Generalized MHD to RZ geometry. Added IsRzGeometry variable.
+	Added #BIERMANNBATTERY command to switch on Biermann battery term
+		without Hall MHD.
+	Added resistivity calculation for non-ideal EOS. 
+	Do not use div B control in 1D.
+
+	Moved laser package from the SWMF into BATSRUS. Fixed several bugs.
+	Added #LASERPULSE, #LASERBEAMS, #LASERBEAM commands into PARAM.XML
+		(similar commands were in the user module).
+	Added 'elaser' plot function into BATSRUS (was in user module).
+
+	Added #MINIMUMPRESSURE command to put a lower floor on pressure.
+
+	Improved accuracy of face gradient calculation (3rd order ghost cells)
+		and generalized to 1D and 2D. Used by flux limiters, 
+		and resistivity.
+
+	EOS table sizes were modified to accomodate pure hydro runs
+	with extremely cold plastic. This has small effects on all CRASH
+	runs using tables.
+
+	Added #RHOINSIDE command into user section of ModUserCrash to set
+		density inside tube.
+	Added #MAXRESISTIVITY command into user section of ModUserCrash to set
+		maximum resistivity (to allow larger explicit time steps).
+
+	Generalized BATL to work for Tecplot output files (in 3D).
+	Check ghost cell settings in BATL_size.
+	BATL can now message pass scalars (will be useful for laser package).
+	BATL can now find neighboring cells in the tree (will be useful for
+		laser package).
+
+	Added test_opac target into util/CRASH/Makefile and a new executable.
+	Added CONVERT_ARTEP tartget.
+
+	Use separate default temperature ranges for EOS and opacity tables.
+	Switched off optimization of ModFermiGas for all compilers.
+	Avoid compiler bug in ModEos.f90.
+
+
+CRASHTEST:
+	Added Mhd/Biermann
+	Added Mhd/Resistivity
+	Added test_tube_2d_mhd into FullSystem/Version2/
+	updated reference solutions in FullSystem/Version1
+	updated reference solutions in FullSystem/Version2
+	updated reference solutions in IdealGas/Graydiffusion
+	updated reference solution for lighfront test in Radiation/Graydiffusion
+	updated reference solution for lighfront test in Radiation/Multigroup
+
+	plot 'zavg' in FullSystem/Version2/test_tube_multigroupcond
+
+
+IDL plotting:
+	Added log-linear and log-log plotmodes in IDL marcros.
+	Allow overplot and noaxis options for 1D plots.
+	Bug fix in rel_error for 2D problems.
+
+SWMF changes:
+	Added DEMTDIR (Differential Emmission Measure library for solar corona)
+	Changed magnetometer output.
+	Added #CPCPBOUNDARY, #GEOMAGINDICES commands.
+	Added #RESISTIVITYREGION command to limit resistivity to a region.
+	Added #LDEM commands (was in user module).
+	Modified #IMCOUPLING command.
+	Fixed arbitrarily truncated command names:
+		#ACTIVEREGIONHEATING, #LONGSCALEHEATING, #RADIATIVECOOLING.
+	Removed obsolete #HEATFLUX command.
+	Order of variables fixed in anisotropic pressure equation modules.
+	Fixed current calculations at resolution changes and near bodies. 
+		Effects many tests calculating Dst, inflowing or outflowing 
+		currents, etc.
+	Fixed magnetometer test so the grid fits into 1 processor.
+	Updated Mars multifluid code and test.
+	Fixed CON_geopack bug and extended year range to 2015.
+	Improved ModReadParam for use with FDIPS code.
+	Improved CheckDataName.pl
+	Allow SWMF_data to be in local SWMF directory.
+	Concatenate IE magnetometer output.
+	Accomodate absoft compiler??
+	ModBatlInterface now sets iBlock_A and iProc_A
+	Added Climit option for the "old" Roe solver
+	Bug fix for restart files with face B and/or implicit old
+	Some changes for satellite mapping for CRCM and RBE
+	Fixed solar wind electron pressure defaults
+	Added new features into IH user file (boundary conditions for tests).
+	Added new things into ScHeat and ScWaves user modules.
+	Added new things into Waves user module.
+	Added parallel potential field solver FDIPS and corresponding test.
+	Improved serial potential field solver source code.
+	Fixed bug in NOMPI/src/Makefile dependencis.
+
+	BATL can now handle unused cells for AMR.
+	BATL has now interpolate_grid function to interpolate on AMR grid.
+	BATL can message pass using "min" or "max" in the restriction step.

@@ -1,0 +1,2 @@
+1
+	${COMPILE.f90} ${Cflag0} ModFermiGas.f90

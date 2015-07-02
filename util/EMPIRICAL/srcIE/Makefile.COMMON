@@ -1,0 +1,45 @@
+
+MODULES = \
+        ModKind.o\
+	ModIndicesInterfaces.o\
+	ModIndices.o\
+	ModExtras.o
+
+
+OBJECTS = \
+        read_NGDC_indices.o\
+	insert_into_indices_array.o\
+	IO_set_inputs.o\
+	IO_library.o\
+	geopack.o
+
+STANDALONE = main.o
+
+.SUFFIXES:
+.SUFFIXES: .f .f90 .o
+
+.f90.o:
+	${FTN} ${Cflag1} $<
+
+.f.o:
+	${FTN} ${Cflag1} $<
+
+LIB:    libindices.a
+	@echo libindices.a has been brought up to date.
+
+libindices.a:      ${MF} ${MODULES} ${OBJECTS}
+	@(\
+          if [ "${OS}" = "Darwin" ]; then \
+            echo " ar -r  libindices.a ${MODULES} ${OBJECTS}";\
+                   ar -r  libindices.a ${MODULES} ${OBJECTS} ;\
+            exit;\
+          fi;\
+          echo " ar -rs libindices.a ${MODULES} ${OBJECTS}";\
+                 ar -rs libindices.a ${MODULES} ${OBJECTS} ;\
+        )
+
+standalone:	libindices.a ${STANDALONE}
+	${FTN} -o test.exe ${STANDALONE} ../src/Time_Routines.o -lindices -L./
+
+clean:
+	/bin/rm -f *.o *.mod *.a *.exe

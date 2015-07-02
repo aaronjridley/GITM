@@ -1,0 +1,18 @@
+! This command reads the new fileformat with coordinates and header
+! Default reads fitsfile.dat in the old fileformat
+#MAGNETOGRAMFILE
+dipole11uniform.out		NameFileIn
+3500.0				BrMax
+
+! Default output file name is harmonics.dat
+#OUTPUT
+harmonics11uniform.dat		NameFileOut
+
+! Default is the number of latitudes in the magnetogram but at most
+! MaxHarmonics = 180 (see ModMagHarmonics.f90)
+#HARMONICS
+10				nHarmonics
+
+! Default is true
+#CHEBYSHEV
+F				UseChebyshevNode

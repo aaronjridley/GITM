@@ -1,0 +1,199 @@
+
+    The Energy Deposition of a spectrum may be generated for an ISOTROPIC
+distribution with VERTICAL FIELD LINES by linking the routines in file 
+R_elec_ed_lup_subs.f to your FORTRAN program.  These routines have an 
+include file called R_elec_ed_lup_subs.inc which defines three parameters 
+which are useful in setting up to use these routines.  These parameters 
+are called ENERGY_LEVELS, ALTITUDES, and SPECTRA_LEVELS.  The first two 
+parameters (ENERGY_LEVELS and ALTITUDES) are the sizes of the pre-computed 
+energy deposition profiles.  The parameter SPECTRA_LEVELS should be changed 
+by the user to reflect the size of the energy grid desired.  The remaining 
+file used is the data file.  This data file contains an ASCII representation 
+of each individual altitude profile.
+
+     The user should note there within the subroutine package, there is a 
+BLOCK DATA statement.  The BLOCK DATA is to initialize elements of an internal 
+named COMMON block for the energy deposition look-up tables.  This BLOCK DATA 
+statement may need to be modified to fit within the users code scheme.
+
+     The package is used by initializing the look-up tables, which places the
+profiles in memory.  This is done with the routine:
+      INTEGER*4 IERR
+      INTEGER*4 R_LOAD_EDEP_LOOKUP
+      IERR = R_LOAD_EDEP_LOOKUP ()
+A returned value of +1 means that the routine succeed and the profiles were loaded
+and stored in memory correctly.  Successive calls to the routine
+      INTEGER*4 FUNIT,EUNIT,PUNIT
+      REAL*4    FLUXMAT(SPECTRA_LEVELS)
+      REAL*4    ENRGMAT(SPECTRA_LEVELS)
+      REAL*4    PROFMAT(ALTITUDES)
+      CALL R_ELEC_EDEP (FLUXMAT,FUNIT,ENRGMAT,EUNIT,PROFMAT,PUNIT)
+produce an energy deposition profile in array PROFMAT given the spectrum described
+by the array FLUXMAT and ENRGMAT...where -
+      FLUXMAT(SPECTRA_LEVELS) is the energy of each spectral point,
+      FUNIT is a number describing the unit of the input flux,
+      ENRGMAT(SPECTRA_LEVELS) is the flux at each energy,
+      EUNIT is a number describing the unit of the input energy,
+      PROFMAT(ALTITUDES) is the intensity value on the altitude grid,
+      PUNIT is a number describing the unit of the output profile.
+The possibilities are:
+      FUNIT = 1 = #/(km**2-s-eV)
+              2 = #/(km**2-s-keV)
+              3 = #/(km**2-s-MeV)
+              4 = #/(km**2-s-Joule)
+              5 = #/(km**2-s-erg)
+              6 = #/(m**2-s-eV)
+              7 = #/(m**2-s-keV)
+              8 = #/(m**2-s-MeV)
+              9 = #/(m**2-s-Joule)
+              10 = #/(m**2-s-erg)
+              11 = #/(cm**2-s-eV)
+              12 = #/(cm**2-s-keV)
+              13 = #/(cm**2-s-MeV)
+              14 = #/(cm**2-s-Joule)
+              15 = #/(cm**2-s-erg)
+              16 = #/(km**2-s-sr-erg)
+              17 = #/(km**2-s-sr-Joule)
+              18 = #/(km**2-s-sr-MeV)
+              19 = #/(km**2-s-sr-keV)
+              20 = #/(km**2-s-sr-eV)
+              21 = #/(m**2-s-sr-erg)
+              22 = #/(m**2-s-sr-Joule)
+              23 = #/(m**2-s-sr-MeV)
+              24 = #/(m**2-s-sr-keV)
+              25 = #/(m**2-s-sr-eV)
+              26 = #/(cm**2-s-sr-erg)
+              27 = #/(cm**2-s-sr-Joule)
+              28 = #/(cm**2-s-sr-MeV)
+              29 = #/(cm**2-s-sr-keV)
+              30 = #/(cm**2-s-sr-eV)
+      EUNIT = 1 = erg
+              2 = Joule
+              3 = eV
+              4 = keV
+              5 = MeV
+      PUNIT = 1 = Ionizations/(km**3-s)
+              2 = eV/(km**3-s)
+              3 = keV/(km**3-s)
+              4 = MeV/(km**3-s)
+              5 = Joule/(km**3-s)
+              6 = erg/(km**3-s)
+              7 = Ionizations/(m**3-s)
+              8 = eV/(m**3-s)
+              9 = keV/(m**3-s)
+              10 = MeV/(m**3-s)
+              11 = Joule/(m**3-s)
+              12 = erg/(m**3-s)
+              13 = Ionizations/(cm**3-s)
+              14 = eV/(cm**3-s)
+              15 = keV/(cm**3-s)
+              16 = MeV/(cm**3-s)
+              17 = Joule/(cm**3-s)
+              18 = erg/(cm**3-s)
+    
+There are several routines in the package which may be helpful.  Here are
+some brief descriptions.  A more detailed explanation my be acquired by
+examining the commented source code.
+
+Initialize memory:
+      BLOCK DATA
+
+Load in and expand energy deposition tables
+      INTEGER*4 IERR
+      INTEGER*4 R_LOAD_EDEP_LOOKUP
+      IERR = R_LOAD_EDEP_LOOKUP ()
+
+Find the index nearest the altitude
+      INTEGER*4 ALT_INDEX
+      INTEGER*4 R_EDEP_ALT_INDEX
+      REAL*4    GALT
+      INTEGER*4 UNIT
+      ALT_INDEX = R_EDEP_ALT_INDEX (GALT,UNIT)
+           where -
+                   GALT is the requested altitude
+                   UNIT is the unit of the request
+                       1 = cm
+                       2 = m
+                       3 = km
+                       4 = mbar
+
+Find the index nearest the energy
+      INTEGER*4 ENG_INDEX
+      INTEGER*4 R_EDEP_ENG_INDEX
+      REAL*4    GALT
+      INTEGER*4 UNIT
+      ENG_INDEX = R_EDEP_ENG_INDEX (GENG,UNIT)
+           where -
+                   GENG is the requested energy
+                   UNIT is the unit of the request
+                       1 = erg
+                       2 = Joule
+                       3 = eV
+                       4 = keV
+                       5 = MeV
+
+Find the altitde at the requested index
+      REAL*4    ALT
+      REAL*4    R_EDEP_ALT_VALUE
+      INTEGER*4 ALT_INDEX
+      INTEGER*4 UNIT
+      ALT = R_EDEP_ALT_VALUE (ALT_INDEX,UNIT)
+           where -
+                   ALT_INDEX is the requested altitude index
+                   UNIT is the unit of the altitude requested
+                       1 = cm
+                       2 = m
+                       3 = km
+                       4 = mbar
+
+Find the energy at the requested index
+      REAL*4    ENG
+      REAL*4    R_EDEP_ENG_VALUE
+      INTEGER*4 ENG_INDEX
+      INTEGER*4 UNIT
+      ENG = R_EDEP_ENG_VALUE (ENG_INDEX,UNIT)
+           where -
+                   ENG_INDEX is the requested energy index
+                   UNIT is the unit of the energy requested
+                       1 = erg
+                       2 = Joule
+                       3 = eV
+                       4 = keV
+                       5 = MeV
+
+Find the energy deposition profile for a spectrum
+      INTEGER*4 FUNIT
+      INTEGER*4 EUNIT
+      INTEGER*4 PUNIT
+      REAL*4    FLUXMAT(SPECTRA_LEVELS)
+      REAL*4    ENRGMAT(SPECTRA_LEVELS)
+      REAL*4    PROFMAT(SPECTRA_LEVELS)
+      CALL R_ELEC_EDEP (FLUXMAT,FUNIT,ENRGMAT,EUNIT,PROFMAT,PUNIT)
+
+Interpolate logrithimically (log-log)
+      REAL*4 X,X2,X1,Y,Y2,Y1
+      REAL*4 R_LOG_INTERP
+      Y = R_LOG_INTERP (X,X2,X1,Y2,Y1)
+
+Interpolate semilogrithimically (log-linear)
+      REAL*4 X,X2,X1,Y,Y2,Y1
+      REAL*4 R_SEMILOG_INTERP
+      Y = R_SEMILOG_INTERP (X,X2,X1,Y2,Y1)
+
+Interpolate semilinearly (linear-log)
+      REAL*4 X,X2,X1,Y,Y2,Y1
+      REAL*4 R_SEMILINEAR_INTERP
+      Y = R_SEMILINEAR_INTERP (X,X2,X1,Y2,Y1)
+
+Interpolate linearly (linear-linear)
+      REAL*4 X,X2,X1,Y,Y2,Y1
+      REAL*4 R_LINEAR_INTERP
+      Y = R_LINEAR_INTERP (X,X2,X1,Y2,Y1)
+
+Determine the energy width
+      REAL*4    EMAT(SPECTRA_LEVELS)
+      REAL*4    DEMAT(SPECTRA_LEVELS)
+      CALL R_FIND_DE (EMAT,DEMAT)
+
+Pressure is related to altitude with the 1976 US Standard Atmosphere.  All of
+the energy deposition profiles were generated using this atmosphere.

@@ -1,0 +1,4 @@
+# The NOMPI library cannot be compiled with all debugging options because it
+# uses variable type casting. Also a lot
+$Compiler eq "f95" and $Debug eq "yes"
+	${COMPILE.f90} ${SEARCH} -c -O0 -gline -w ${PRECISION} NOMPI.f90
