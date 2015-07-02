@@ -1,0 +1,8 @@
+$OS eq "Linux" and $Compiler eq "f95"
+	${COMPILE.f90} ${Cflag1} calc_chemistry.f90
+
+$OS eq "Darwin" and $Compiler eq "f95"
+	${COMPILE.f90} ${Cflag1} calc_chemistry.f90
+	${COMPILE.f90} ${Cflag0} calc_electrodynamics.f90
+	${COMPILE.f77} ${Cflag1} -132 apex.f 
+	${COMPILE.f90} ${Cflag2} calc_sources.f90
