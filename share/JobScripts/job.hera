@@ -1,0 +1,19 @@
+#!/bin/csh
+# Usage: msub job.hera
+
+#MSUB -l nodes=16
+#MSUB -l partition=hera
+#MSUB -l walltime=8:00:00
+#MSUB -q pbatch
+#MSUB -V
+#MSUB -o /g/g99/toth2/CRASH/run_test/runlog
+
+# replace in the following ignore by lscratchb, lscratchc, or lscratchd if
+# the job is running on one of the scratch disks /p/lscratchb (c or d)
+#MSUB -l gres=ignore
+
+date
+cd /g/g99/toth2/CRASH/run_test
+
+# Number of cores = 16 times the number of nodes
+srun -n256 CRASH.exe

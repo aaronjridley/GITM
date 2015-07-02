@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# There are three queues on grendel: q1, q2, q3. 
+# The maximum number of nodes (2 CPU/node) is 20 for each queue.
+
+#PBS -l nodes=15
+#PBS -q q2
+#PBS -S /bin/sh
+#PBS -N SWMF.exe
+
+# cd into the current directory, which should be the run directory
+cd $PBS_O_WORKDIR
+
+# save node list
+cat `echo ${PBS_NODEFILE}` > list_of_nodes
+
+# run (note that number of PE-s is twice the number of nodes defined above)
+/usr/local/ompi/bin/mpirun -np 30 SWMF.exe > runlog_`date +%y%m%d%H%M`
+
+# /usr/local/mpich/bin/mpirun -np 30 SWMF.exe

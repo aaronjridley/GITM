@@ -1,0 +1,22 @@
+#STATEDEFINITION
+     rho       p                StringStateVar
+6    		                nMaterialState
+Xe   0.0065    0.00012000	Name State
+Be1  6.5e-6    1.7491328e-06    Name State 
+Be2  1.85      0.49783012       Name State
+Pl   1.43      0.35375000	Name State
+Au  20.00      0.24625032	Name State
+Ay   1.13      0.41057944	Name State
+
+#STATEINTERFACE
+10				nSegment
+Be1 Be2  5.0  0.0   5.0 50.0	State1 State2 x1 y1 x2 y2
+Be2 Xe  10.0  0.0  10.0 30.0	State1 State2 x1 y1 x2 y2
+Be2 Au  10.0 30.0  10.0 50.0	State1 State2 x1 y1 x2 y2
+Au  Xe  10.0 30.0  15.0 30.0	State1 State2 x1 y1 x2 y2
+Au  Ay  15.0 30.0  15.0 50.0	State1 State2 x1 y1 x2 y2
+Ay  Xe  15.0 30.0  35.0 20.0	State1 State2 x1 y1 x2 y2
+Ay  Pl  35.0 20.0  35.0 23.0	State1 State2 x1 y1 x2 y2
+Ay  Pl  35.0 23.0  50.0 23.0	State1 State2 x1 y1 x2 y2
+Ay  Pl  50.0 23.0  50.0 50.0	State1 State2 x1 y1 x2 y2
+Pl  Xe  35.0 20.0 100.0 20.0	State1 State2 x1 y1 x2 y2

@@ -1,0 +1,39 @@
+#!/bin/sh
+#PBS -V
+#PBS -N SWMF
+#PBS -l pmem=500mb
+#PBS -l walltime=2:00:00
+
+# Use showq or resinfo.pl to see the availability of resources.
+# Use diagnose -a crash_flux to see number of cores, users, limits.
+# Note: resinfo.pl does not work for flux queues!
+#
+# showq -w acct=ridley             ;      resinfo.pl -n ridley
+# showq -w acct=crash_flux         ;      diagnose -a crash_flux
+# showq -w acct=liemohn_flux       ;      diagnose -a liemohn_flux
+# showq -w acct=engin_flux         ;      diagnose -a engin_flux
+
+# Put #PBS in front of one of the following queues that you have access to
+#PBS -A ridley       -q cac   -l qos=cac  # 192 cores, 12 cores/node
+#    -A liemohn_flux -q flux  -l qos=flux # 120 cores, 12-16 cores/node
+#    -A crash_flux   -q flux  -l qos=flux # 360 cores, 12-16 cores/node
+#    -A engin_flux   -q flux  -l qos=flux # 100 cores, 12-16 cores/node, free
+
+# Adjust number number of procs (multiples of 8 or 12 depending on queue)
+# or set number of nodes with correct value of process-per-node (ppn).
+#PBS -l procs=96
+#    -l nodes=8:ppn=12
+#    -l nodes=12:ppn=8
+
+# cd to job submission directory
+cd $PBS_O_WORKDIR
+
+# get queue status
+qstat -u $USER -n
+
+# look at what else is running
+resinfo.pl -n ridley
+
+# run job
+mpirun ./SWMF.exe > runlog_`date +%y%m%d%H%M`
+

@@ -1,0 +1,20 @@
+#!/bin/csh
+
+# specify project number, if necessary
+###PBS -A ...
+
+#PBS -V
+#PBS -N test
+#PBS -j oe
+
+# for development queue
+###PBS -q debug
+
+# The number of cores (=size) should be a multiple of 16
+#PBS -l walltime=0:30:00,size=16
+#PBS -l gres=widow2%widow3
+
+cd $PBS_O_WORKDIR
+date
+
+aprun -n $PBS_NNODES ./BATSRUS.exe

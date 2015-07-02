@@ -1,0 +1,11 @@
+ray_init done, iProc,nProc=   0   1
+ Sending from iProc= 0 iStart= 110 120 130 140 to jProc= 0 XyzEnd= 210. 220. 230. Length=   0. IsParallel, DoneRay= T F
+ Sending from iProc= 0 iStart= 110 120 130 140 to jProc= 0 XyzEnd= 210. 220. 230. Length=   1. IsParallel, DoneRay= F F
+iProc,jProc,Send_P(jProc)= 0 0 101   2 110. 120. 130. 140.   0. 210. 220. 230.   0.   1.   0. 110. 120. 130. 140.   0. 210. 220. 230.   1.  -1.   0.
+ray_put done
+ ray_exchange done, DoneAll= F
+iProc  0 received iStart= 110 120 130 140 iProcStart= 0 XyzEnd= 210. 220. 230. Length=   1. Isparallel,DoneRay= F F
+iProc  0 received iStart= 110 120 130 140 iProcStart= 0 XyzEnd= 210. 220. 230. Length=   0. Isparallel,DoneRay= T F
+ray_get done
+ray_exchange repeated, DoneAll=T
+ray_clean done

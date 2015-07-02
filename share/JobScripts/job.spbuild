@@ -1,0 +1,19 @@
+#!/bin/sh
+#@input=/dev/null
+#@output=/nfs/amr/data2/ridley/SP2/SP2.out
+#@error=/nfs/amr/data2/ridley/SP2/SP2.error
+#@initialdir=/nfs/amr/data2/ridley/SP2/
+#@notify_user=ridley@umich.edu
+#@notification=complete
+#@class=normal
+#@group=non-contrib
+#@requirements=(Arch=="R6000")&&(OpSys == "AIX43")&&(Adapter == "hps_user") 
+#@preferences = (Adapter == "hps_user") 
+#@min_processors=16
+#@max_processors=16
+#@job_type=PARALLEL
+#@queue
+echo "Testing"
+cd /nfs/amr/data2/ridley/SP2
+/nfs/amr/data2/ridley/SP2/swmf/bin/SMWF.exe -ilevel 2 -procs 16 -euilib us
+

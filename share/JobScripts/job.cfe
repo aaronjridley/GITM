@@ -1,0 +1,57 @@
+#!/bin/csh
+
+# Job script for Columbia machine at NASA Ames
+
+# This file must be customized and run from the run directory! For example
+#
+#   cd run
+#   qsub job.cfe
+#
+# To avoid having too many output files run
+#
+#    PostProc.pl -g -r=360 >& PostProc.log &
+#
+# on the head node (post-processes every 10 minutes).
+#
+#PBS -N SWMF
+
+# ncpus should be a multiple of 4, mpiprocs=ncpus, and ompthreads=1.
+# set the number of CPU-s by changing select: nProc = select*ncpus
+#PBS -l select=8:ncpus=16:mpiprocs=16:ompthreads=1
+#PBS -l walltime=8:00:00
+#PBS -j oe
+#PBS -q normal
+
+# Specify group if necessary
+### PBS -W group_list=...
+
+# cd into the run directory
+cd $PBS_O_WORKDIR
+
+# These settings were found useful for large runs 
+setenv MPI_MSGS_PER_HOST 100000
+setenv MPI_MSGS_PER_PROC 100000
+setenv MPI_MSGS_MAX      100000
+
+# run SWMF (the number of processors is already specified above)
+# the date/time stamp for runlog is only necessary for automated resubmission
+mpiexec SWMF.exe > runlog_`date +%y%m%d%H%M`
+
+exit
+
+# To use automated resubmission remove the 'exit' command above
+# Use the #CPUTIMEMAX and #CHECKSTOP commands in PARAM.in
+# so the code stops before the wall clock time is exceeded.
+
+# Do not continue unless the job finished successfully
+if(! -f SWMF.SUCCESS) exit
+
+# Link latest restart files
+./Restart.pl
+
+# Provide a PARAM.in.restart file if you wish and uncomment these lines:
+# if(! -f PARAM.in.start) cp PARAM.in PARAM.in.start
+# if(-f PARAM.in.restart) cp PARAM.in.restart PARAM.in
+
+# Check final time/iteration and resubmit if not done (modify as needed!)
+if(! -d RESTART_t008.00h) qsub job.cfe

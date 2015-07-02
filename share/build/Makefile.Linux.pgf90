@@ -1,0 +1,164 @@
+#  Copyright (C) 2002 Regents of the University of Michigan,
+#  portions used with permission 
+#  For more information, see http://csem.engin.umich.edu/tools/swmf
+#BOP
+#!ROUTINE: share/build/Makefile.Linux.pgf90 - one of the original files for Makefile.conf
+#!DESCRIPTION:
+# This Makefile is copied from share/build/ into the Makefile.conf in the 
+# main directory during installation or reinstallation. 
+# Makefile.conf contains the operating system and compiler specific 
+# part of the SWMF Makefiles. Makefile.conf should be included into
+# all makefiles which compile Fortran code so that the compiler options 
+# are consistent for all object files and libraries.
+# It also defines an OS and COMPILER specific clean target.
+#
+# This particular makefile is for the Linux operating system with the 
+# PGF90 compiler, but its documentation is relevant for all makefiles 
+# in share/build. The name of the makefile is 
+#\begin{verbatim}
+# Makefile.${OS}.${COMPILER}
+#\end{verbatim}
+# where OS contains the operatings system (e.g. Linux) 
+# and COMPILER contains the name of the F90 compiler (e.g. pgf90).
+# The whole Makefile.Linux.pgf90 is included into the manual, 
+# so that all the definitions and compilation rules are shown. 
+# These definitions and rules must be provided by all makefiles in
+# the share/build directory.
+#EOP
+#BOC
+SHELL=/bin/sh
+
+# Fortran language related part of Makefile.conf: Makefile.Linux.pgf90
+#
+#	Space Weather Modeling Framework (SWMF) 
+#	Portland Group Fortran 90 (pgf90) compiler
+#
+
+#
+# The F77 compiler
+#
+COMPILE.f77     = ${CUSTOMPATH_F}pgf90
+
+#
+# The F90 compiler
+#
+COMPILE.f90     = ${CUSTOMPATH_F}pgf90
+
+#
+# The compiler used for linking the executables
+#
+LINK.f90	= ${CUSTOMPATH_MPI}mpif90
+
+# 
+# The archive program to build lib*.a libraries
+#
+AR = ar -rs
+
+#
+# The compiler flags for double precision and single precision
+#
+SINGLEPREC =
+DOUBLEPREC = -r8
+PRECISION  = ${DOUBLEPREC}
+
+#
+# The library to be linked for compilation with MPI
+# This is often included into the mpif90 linker so it can be empty string,
+# If the linker is not mpif90, the MPILIB = -lmpi definition usually works.
+#
+MPILIB = 
+
+#
+# This is required for compilation with the NOMPI library. 
+# It should be commented out and it is platform independent.
+#
+#MPILIB = -L${LIBDIR} -lNOMPI
+
+#
+# This is the search path for used modules
+#
+# INCL_EXTRA can be defined to add more search directories.
+SEARCH = -module ${INCLDIR} ${INCL_EXTRA}
+
+#
+# Flags used for debugging. 
+#
+DEBUGFLAG = -C -g -Ktrap=fp
+DEBUG     = 
+
+#
+# Flags for 5 optimization levels: 0 to 4. 
+# The compiler does not have to have all of these.
+#
+
+OPT0 = -O0
+OPT1 = -O1
+OPT2 = -O2
+OPT3 = -O3
+OPT4 = -O4
+
+# Flags that are always need for compilation:
+
+CFLAG = ${SEARCH} -c ${DEBUG}
+
+Cflag0  = ${CFLAG} ${PRECISION} ${OPT0} 
+Cflag1  = ${CFLAG} ${PRECISION} ${OPT1}
+Cflag2  = ${CFLAG} ${PRECISION} ${OPT2}
+Cflag3  = ${CFLAG} ${PRECISION} ${OPT3}
+Cflag4  = ${CFLAG} ${PRECISION} ${OPT4}
+
+#
+# RCM compilation flags are provided for the IM/RCM code.
+# Usually this is a low level optimization and variables
+# should be static (typically the -save option)
+#
+# To allow RCM to compile as double precision, add PRECISION flag
+CFLAGS = ${CFLAG} -Msave
+
+#
+# The linker flags. Lflag1 is for parallel code with the (NO)MPI library.
+# Lflag2 is for non-parallel code. Put here extra flags for the linking phase.
+#
+Lflag1  = ${PRECISION} ${MPILIB} ${DEBUG}
+Lflag2  = ${PRECISION} ${DEBUG}
+
+#
+# BLAS and LAPACK libraries
+# BATSRUS contains its own BLAS and LAPACK libraries in lapack.o and blas.o
+# but it may perform better with an OS specific version.
+#
+LBLAS =
+BLAS  = lapack.o blas.o
+
+
+#
+#       General rules for compilation. Select the optimization level which is robust and fast.
+#
+
+.SUFFIXES:
+.SUFFIXES: .f90 .F90 .f .for .ftn .o
+
+.f90.o:
+	${COMPILE.f90} ${Cflag4} $<
+
+.F90.o:
+	${COMPILE.f90} -DsysLinux -DcompPGF90 ${Cflag4} $<
+
+.f.o:
+	${COMPILE.f77} ${Cflag4} -Mextend $<
+
+.for.o:
+	${COMPILE.f77} ${Cflag4} -Mextend $<
+
+.ftn.o:
+	${COMPILE.f77} ${Cflag4} -Mextend $<
+
+#
+# The clean target removes all temporary files created during normal editing, compilation, running,
+# production of documentation, etc. Put here all extensions relevant for the OS and COMPILER.
+#
+clean:	
+	rm -f *~ core *.o *.mod fort.* a.out *.exe *.a *.so *.protex
+
+#EOC
+# keep this line

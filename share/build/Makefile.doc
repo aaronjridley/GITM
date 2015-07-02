@@ -1,0 +1,46 @@
+#  Copyright (C) 2002 Regents of the University of Michigan,
+#  portions used with permission 
+#  For more information, see http://csem.engin.umich.edu/tools/swmf
+#BOP
+#!ROUTINE: share/build/Makefile.doc - rules for Tex, XML, Protex, dvi, ps, pdf
+#!DESCRIPTION:
+# This Makefile defines the rules for producing documentation 
+# from Latex files, PARAM.XML files and Protex documented source code.
+# This file can be included into the Makefile that produces the documentation.
+#EOP
+#BOC
+# Rules for files with standard extensions
+
+.SUFFIXES: .f90 .F90 .pl .protex .tex .dvi .ps .pdf .html .XML .xmltex
+
+.XML.xmltex:
+	${SCRIPTDIR}/XmlToTex.pl $*.XML > $*.xmltex
+
+.f90.protex:
+	${SCRIPTDIR}/protex.pl -b -n -f $*.f90 > $*.protex
+
+.F90.protex:
+	${SCRIPTDIR}/protex.pl -b -n -f $*.F90 > $*.protex
+
+.pl.protex:
+	${SCRIPTDIR}/protex.pl -b -n -f -S $*.pl > $*.protex
+
+.tex.dvi:
+	touch $*.ind $*.idx
+	latex $<
+	makeindex $*.idx
+	latex $<
+	makeindex $*.idx
+	latex $<
+	rm -f $*.ind $*.idx $*.ilg
+
+.dvi.ps: 
+	dvips -t letter -o $*.ps $<
+
+.ps.pdf:
+	ps2pdf $*.ps ../$*.pdf
+
+# Note: the .tex.html rule needs a lot of customization 
+#       so it should be defined in the Makefile using this one.
+
+#EOC

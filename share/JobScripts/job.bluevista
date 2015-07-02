@@ -1,0 +1,22 @@
+#!/bin/csh
+#
+# LSF batch script to run an SPMD/MPI code
+#
+#BSUB -a 'poe'                       # select the mpich-gm elim
+#BSUB -P 54042108
+#BSUB -x                                # exlusive use of node (not_shared)
+#BSUB -n 4                              # number of total tasks
+#BSUB -R "span[ptile=1]"                # run 1 task per node
+#BSUB -o mpilsf.out                     # output filename (%J to add job id)
+#BSUB -e mpilsf.err                     # error filename
+#BSUB -J GITM.test                      # job name
+#BSUB -q premium                        # queue 30 min
+#BSUB -W 04:00
+
+# Run this executable in SPMD mode:
+# Fortran example
+# mpif90 -Mextend -o mpif mpi.f
+mpirun.lsf ./GITM.exe 
+# ./GITM.exe 
+
+#rm mpif

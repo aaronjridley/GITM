@@ -1,0 +1,18 @@
+#!/bin/csh
+
+# Usage:  bsub < job.modi
+
+#BSUB -W 5:00      # Wall-clock time limit: hr:mn
+#BSUB -M 5G        # Peak memory use limit: M=megabytes, G=gigabytes
+#BSUB -n 64        # Number of threads
+#BSUB -o myjob.log # filename for STDOUT and STDERR
+#BSUB -N           # Notify by E-mail after completion
+#BSUB -J myjob     # Job name
+
+setenv MP_SET_NUMTHREADS $BSUB_NUMTHREADS # Set number of threads
+
+cd $HOME/swmf/run                         # Use home directory with links
+
+chmod u+x SWMF.exe                        # Make sure it's executable
+
+mpirun -np $BSUB_NUMTHREADS SWMF.exe      # run job

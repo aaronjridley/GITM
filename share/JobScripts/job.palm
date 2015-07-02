@@ -1,0 +1,22 @@
+#!/bin/csh
+
+# This file must be customized and run from the run directory! For example
+#
+#   cd run
+#   qsub job.palm
+#
+#PBS -N TestSWMF
+#PBS -l ncpus=32
+#PBS -l walltime=1:00:00
+#PBS -j oe
+#PBS -q debug
+
+# cd into the run directory
+cd $PBS_O_WORKDIR
+
+# load the appropriate Fortran compiler version
+source ${MODULESHOME}/init/csh
+module load intel-comp.9.0.024
+
+# run SWMF ith the same number of CPU-s as defined above in -l ncpus=...
+mpirun -np 32 SWMF.exe

@@ -1,0 +1,54 @@
+testing check_dir
+check directory "."
+check_dir returned successfully
+check directory "xxx/"
+ERROR: check_dir ERROR: Cannot find/write into directory xxx/
+Do not actually stop in the test
+testing make_dir
+make directory "xxx/"
+Making directory again (should produce "File exists" error)
+ 0
+
+testing fix_dir_name
+fixed empty string=
+original    string=GM/BATSRUS/data
+fixed first string=GM/BATSRUS/data/
+fixed again string=GM/BATSRUS/data/
+
+testing split_string
+String=  a(3)  bb(04:06) c,ddd ee,ff gg(8:12:2)
+with space separator split to  5 parts:
+a(3)
+bb(04:06)
+c,ddd
+ee,ff
+gg(8:12:2)
+with "," separator split to  3 parts:
+a(3)  bb(04:06) c
+ddd ee
+ff gg(8:12:2)
+with ") " separator split to  3 parts:
+a(3)
+bb(04:06)
+c,ddd ee,ff gg(8:12:2)
+with UseArraySyntax split to 11 parts:
+a1
+a2
+a3
+bb04
+bb05
+bb06
+c,ddd
+ee,ff
+gg08
+gg10
+gg12
+
+testing join_string
+joined string=a1 a2 a3 bb04 bb05 bb06 c,ddd ee,ff gg08 gg10 gg12
+joined string=a1; a2; a3; bb04
+
+testing upper_case and lower_case
+mixed case string=abCD 123:
+upper case string=ABCD 123:
+lower case string=abcd 123:

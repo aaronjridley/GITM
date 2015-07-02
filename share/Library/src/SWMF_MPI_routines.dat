@@ -1,0 +1,43 @@
+# List of all MPI routines used by SWMF and its components
+# For each routine provide the data types and the maximum
+# number of dimensions with a comma separated list.
+# r - real, i - integer, l - logical, s - string
+# 0 - scalar, 1 - 1 dim array, 2 - 2 dim array ... 7
+
+MPI_ALLGATHER i2,r4,l1
+MPI_ALLGATHERV i2,r4,l2
+MPI_ALLREDUCE i2,r4,l1
+MPI_GATHER i2,r4,l1,s1
+MPI_GATHERV i2,r4,l1
+MPI_REDUCE i2,r4,l1
+MPI_IRECV i2,r4,l2
+MPI_ISEND i2,r4,l2
+MPI_IBSEND 
+MPI_IRSEND
+MPI_ISSEND
+MPI_RECV i2,r4,l1,s1
+MPI_SEND i2,r4,s1
+MPI_BSEND
+MPI_RSEND i2,r5,l2
+MPI_SSEND
+MPI_COMM_RANK
+MPI_COMM_SIZE
+MPI_BARRIER
+MPI_BCAST i2,r5,s1,l1
+MPI_COMM_CREATE
+MPI_COMM_FREE
+MPI_COMM_GROUP
+MPI_FINALIZE
+MPI_GROUP_FREE
+MPI_GROUP_INCL
+MPI_GROUP_RANGE_INCL
+MPI_GROUP_RANK
+MPI_GROUP_SIZE
+MPI_GROUP_TRANSLATE_RANKS
+MPI_GROUP_UNION
+MPI_INIT
+MPI_WAIT
+MPI_WAITALL
+MPI_ABORT
+MPI_FILE_READ i1,r1
+MPI_FILE_WRITE i1,r1

@@ -1,0 +1,6 @@
+SunEMBDistance=  0.9832916444, should be 0.98329
+Solar rotation axis vector calculated as GeiHgi_DD(:,3)  1.22323699E-01 -4.23069578E-01  8.97802342E-01
+The vector calculated in terms of RightAss=286.13,Declin=63.87  1.22353493E-01 -4.23072084E-01  8.97797101E-01
+SunEMBDistance=  1.0167090201, should be 1.01671
+Solar rotation axis vector calculated as GeiHgi_DD(:,3)  1.22323699E-01 -4.23068558E-01  8.97802823E-01
+The vector calculated in terms of RightAss=286.13,Declin=63.87  1.22353493E-01 -4.23072084E-01  8.97797101E-01

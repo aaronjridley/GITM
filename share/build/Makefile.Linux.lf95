@@ -1,0 +1,86 @@
+#  Copyright (C) 2002 Regents of the University of Michigan,
+#  portions used with permission 
+#  For more information, see http://csem.engin.umich.edu/tools/swmf
+
+SHELL=/bin/sh
+
+# Fortran language related part of Makefile.conf: Makefile.Linux.lf95
+#	Space Weather Modeling Framework (SWMF) 
+#	Lahey f95 Fortran Compiler
+#
+
+COMPILE.f77     = ${CUSTOMPATH_F}lf95
+COMPILE.f90     = ${CUSTOMPATH_F}lf95
+LINK.f90	= ${CUSTOMPATH_MPI}mpif90
+AR = ar -rs
+
+SINGLEPREC =
+DOUBLEPREC = --dbl
+PRECISION  = ${DOUBLEPREC}
+
+MPILIB = 
+#MPILIB = -L${LIBDIR} -lNOMPI
+
+# Define where modules are stored and add it to the search path
+# INCL_EXTRA can be defined to add more search directories.
+SEARCH = -M ${INCLDIR} ${INCL_EXTRA}
+
+DEBUGFLAG = -C -gline
+DEBUG     = 
+
+OPT0 = -O
+OPT1 = -O
+OPT2 = -O
+OPT3 = -O
+OPT4 = -O
+
+CFLAG = ${SEARCH} -c ${DEBUG}
+
+Cflag0  = ${CFLAG} ${PRECISION} ${OPT0}
+Cflag1  = ${CFLAG} ${PRECISION} ${OPT1}
+Cflag2  = ${CFLAG} ${PRECISION} ${OPT2}
+Cflag3  = ${CFLAG} ${PRECISION} ${OPT3}
+Cflag4  = ${CFLAG} ${PRECISION} ${OPT4}
+Cflag4NoP = ${CFLAG} ${OPT4}
+
+# RCM compilation flags
+# To allow RCM to compile as double precision, add PRECISION flag
+CFLAGS = ${CFLAG} -O --sav
+
+# Add '-Bstatic' to link flags if segmentation fault occurs immediately
+
+Lflag1  = ${PRECISION} ${MPILIB} ${DEBUG}
+Lflag2  = ${PRECISION} ${DEBUG}
+
+# BLAS and LAPACK libraries
+LBLAS =
+BLAS  = lapack.o blas.o
+
+
+#
+#       General rules
+#
+
+.SUFFIXES:
+.SUFFIXES: .f90 .F90 .f .for .ftn .o
+
+.f90.o:
+	${COMPILE.f90} ${Cflag3} $<
+
+.F90.o:
+	${COMPILE.f90} -DsysLinux -Dcomplf95 ${Cflag3} $<
+
+.f.o:
+	${COMPILE.f77} ${Cflag3} -132 $<
+
+.for.o:
+	${COMPILE.f77} ${Cflag3} -132 $<
+
+.ftn.o:
+	${COMPILE.f77} ${Cflag3} -132 $<
+
+clean:	
+	rm -f *~ core *.o *.mod fort.* a.out *.exe *.a *.so *.protex
+
+
+# keep this line

@@ -1,0 +1,169 @@
+#!/bin/csh
+#  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
+#  For more information, see http://csem.engin.umich.edu/tools/swmf
+# CompareDirs: Compare files in two different directories
+#
+#BOP
+#!ROUTINE: CompareDirs - compare two directory trees and display differences
+#!DESCRIPTION:
+# Compare two directory trees recursively: show 
+# files and directories that occur in one of the trees only,
+# and check if files are different or not if both directories contain them.
+#\begin{verbatim}
+# Usage: CompareDirs dir1 dir2 [V0] [X]
+#\end{verbatim}
+# The two directory trees are starting at 'dir1' and 'dir2'.
+# If V0 is present, the output is made less verbose.
+# If X is present than the xdiff program is called to compare 
+# different files. Note that xdiff is not installed everywhere.
+#
+# Note: both directories must be 'below' the directory from which
+# the CompareDirs script is run.
+#
+#!REVISION HISTORY:
+# 05/11/2001 D. DeZeeuw - initial version
+#EOP
+set Home = `pwd`
+set Verbose=1
+if ( "$3" == "v0" || "$3" == "V0") then
+  set Verbose=0
+endif
+if ( $Verbose != 0 ) then
+  echo ' '
+  echo '/=================================================================\'
+  echo '|'
+  echo '| Comparing files in directory1: '$1
+  echo '|                and directory2: '$2
+  echo '|'
+  echo ' '
+endif
+set line = `/bin/ls -l $Home/$1 | tail -1 | colrm 6`
+if ( "$line" != "total") then
+  if ( $Verbose != 0 ) echo 'Files in both directories:' $1 and $2
+  if ( $Verbose != 0 ) echo '/-- date1 ---\  /-- date2 ---\  /-- diff --\ /-- file'
+  cd $1
+  foreach i (*)
+    if (!(-l $Home/$1/$i) && !(-d $Home/$1/$i)) then
+      if (  -e $Home/$2/$i) then
+        set Diff = `diff $Home/$1/$i $Home/$2/$i | head -1`
+        set date1 = `/bin/ls -l $Home/$1/$i | colrm 1 42 | colrm 13`
+        set date2 = `/bin/ls -l $Home/$2/$i | colrm 1 42 | colrm 13`
+        if (  "$Diff" == "" ) then
+          if ( $Verbose != 0 ) echo ' '$date1 \\t $date2 \\t 'NO ' \\t '     '$i
+        endif
+        if (!( "$Diff" == "" )) then
+          if ( $Verbose != 0 ) echo ' '$date1 \\t $date2 \\t 'YES' \\t '     '$i
+          if (!( $Verbose != 0 )) echo ' DIFF'\\t $1/$i \\t
+        endif
+      endif
+    endif
+  end
+endif
+cd $Home
+if ( $Verbose != 0 ) echo ' '
+#
+# List extras in directory1
+#
+set line = `/bin/ls -l $Home/$1 | tail -1 | colrm 6`
+if ( "$line" == "total") then
+  if ( $Verbose != 0 ) echo 'Empty directory:' $1
+endif
+if ( "$line" != "total") then
+  if ( $Verbose != 0 ) echo 'Links, directories, and unique files in directory1: '$1
+  if ( $Verbose != 0 ) echo '       /-- date  ---\     /-- file'
+  cd $1
+  foreach i (*)
+    if (  -l $i) then
+        set date1 = `/bin/ls -l $Home/$1/$i | colrm 1 42 | colrm 13`
+        if ( $Verbose != 0 ) echo ' Link: ' $date1 \\t `/bin/ls -l $i | colrm 1 55`
+    endif
+  end
+  foreach i (*)
+    if (  -d $i) then
+        if ( $Verbose != 0 ) echo ' Dir: ' \\t\\t\\t '  '$i
+    endif
+  end
+  foreach i (*)
+    if (!(-l $i) && !(-d $i)) then
+      if (!(-e $Home/$2/$i)) then
+        set date1 = `/bin/ls -l $Home/$1/$i | colrm 1 42 | colrm 13`
+        if ( $Verbose != 0 ) echo ' File: ' $date1 \\t '  '$i
+        if (!( $Verbose != 0 )) echo ' NEW'\\t $Home/$1/$i
+      endif
+    endif
+  end
+endif
+cd $Home
+if ( $Verbose != 0 ) echo ' '
+#
+# List extras in directory2
+#
+set line = `/bin/ls -l $Home/$2 | tail -1 | colrm 6`
+if ( "$line" == "total") then
+  if ( $Verbose != 0 ) echo 'Empty directory:' $2
+endif
+if ( "$line" != "total") then
+  if ( $Verbose != 0 ) echo 'Links, directories, and unique files in directory2: '$2
+  if ( $Verbose != 0 ) echo '       /-- date  ---\     /-- file'
+  cd $2
+  foreach i (*)
+    if (  -l $i) then
+        set date2 = `/bin/ls -l $Home/$2/$i | colrm 1 42 | colrm 13`
+        if ( $Verbose != 0 ) echo ' Link: ' $date2 \\t `/bin/ls -l $i | colrm 1 55`
+    endif
+  end
+  foreach i (*)
+    if (  -d $i) then
+        if ( $Verbose != 0 ) echo ' Dir: ' \\t\\t\\t '  '$i
+    endif
+  end
+  foreach i (*)
+    if (!(-l $i) && !(-d $i)) then
+      if (!(-e $Home/$1/$i)) then
+        set date2 = `/bin/ls -l $Home/$2/$i | colrm 1 42 | colrm 13`
+        if ( $Verbose != 0 ) echo ' File: ' $date2 \\t '  '$i
+        if (!( $Verbose != 0 )) echo ' NEW'\\t $Home/$2/$i
+      endif
+    endif
+  end
+endif
+cd $Home
+if ( $Verbose != 0 ) echo ' '
+#
+# Use xdiff to display differences
+#
+cd $Home
+if ( "$3" == "x" || "$3" == "X" || "$4" == "x" || "$4" == "X") then
+  set line = `/bin/ls -l $Home/$1 | tail -1 | colrm 6`
+  if ( "$line" != "total") then
+    cd $1
+    foreach i (*)
+      if (!(-l $Home/$1/$i) && !(-d $Home/$1/$i)) then
+        if (  -e $Home/$2/$i) then
+          set Diff = `diff $Home/$1/$i $Home/$2/$i | head -1`
+          if (!( "$Diff" == "" )) then
+            tkdiff $Home/$1/$i $Home/$2/$i 
+          endif
+        endif
+      endif
+    end
+  endif
+endif
+cd $Home
+#
+# Subdirectory comparisons
+#
+set line = `/bin/ls -l $Home/$1 | tail -1 | colrm 6`
+if ( "$line" != "total") then
+  cd $1
+  foreach i (*)
+    if ((-d $Home/$1/$i) && !($i == "CVS")) then
+      if (  -d $Home/$2/$i) then
+        cd $Home
+        CompareDirs $1/$i $2/$i $3 $4
+      endif
+    endif
+  end
+endif
+cd $Home
+if ( $Verbose != 0 ) echo ' '

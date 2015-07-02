@@ -1,0 +1,61 @@
+#!/bin/csh
+
+# This file must be customized and run from the run directory! For example
+#
+#   cd run
+#   qsub job.schirrafe01
+#
+# To avoid having too many output files run
+#
+#    PostProc.pl -g -r=360 >& PostProc.log &
+#
+# on the head node (post-processes every 10 minutes).
+#
+
+# ncpus should be a multiple of 4, mpiprocs=ncpus, and ompthreads=1.
+# set the number of CPU-s by changing select: nProc = select*ncpus
+#PBS -lselect=8:ncpus=16:mpiprocs=16
+#PBS -lplace=scatter
+#PBS -lplace=excl
+#PBS -l walltime=8:00:00
+#PBS -N SWMF.exe
+#PBS -j oe
+#PBS -q workq
+
+# The following environment variables are set as default
+# for PBS jobs on NAS Schirra cluster:
+# setenv MP_EUILIB us         (or export MP_EUILIB=us)
+# setenv MP_SHARED_MEMORY yes (or export MP_SHARED_MEMORY=yes)
+# setenv MEMORY_AFFINITY MCM  (or export MEMORY_AFFINITY=MCM)
+# For more information on these variables, see man poe
+
+# cd into the run directory
+cd $PBS_O_WORKDIR
+
+setenv MEMORY_AFFINITY MCM
+setenv TARGET_CPU_LIST -1
+
+# run SWMF (the number of processors is already specified above)
+# the date/time stamp for runlog is only necessary for automated resubmission
+/usr/bin/time -p poe ~ghosh/bin/launch.x SWMF.exe > runlog_`date +%y%m%d%H%M`
+#mpiexec SWMF.exe > runlog_`date +%y%m%d%H%M`
+
+exit
+
+
+# To use automated resubmission remove the 'exit' command above
+# Use the #CPUTIMEMAX and #CHECKSTOP commands in PARAM.in
+# so the code stops before the wall clock time is exceeded.
+
+# Do not continue unless the job finished successfully
+if(! -f SWMF.SUCCESS) exit
+
+# Link latest restart files
+./Restart.pl
+
+# Provide a PARAM.in.restart file if you wish and uncomment these lines:
+# if(! -f PARAM.in.start) cp PARAM.in PARAM.in.start
+# if(-f PARAM.in.restart) cp PARAM.in.restart PARAM.in
+
+# Check final time/iteration and resubmit if not done (modify as needed!)
+if(! -d RESTART_t008.00h) qsub job.cfe2

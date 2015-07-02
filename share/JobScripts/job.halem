@@ -1,0 +1,4 @@
+#!/bin/sh
+# EXAMPLE for batch job script on Halem.
+cd ${HOME}/SWMF/run
+bsub -P hp600 -q general -n 4 -o rj_SWMF_%J  prun ../bin/SWMF.exe

@@ -1,0 +1,92 @@
+#  Copyright (C) 2002 Regents of the University of Michigan,
+#  portions used with permission 
+#  For more information, see http://csem.engin.umich.edu/tools/swmf
+
+SHELL=/bin/sh
+
+# Fortran language related part of Makefile.conf: Makefile.Darwin.gfortran
+#
+#	Space Weather Modeling Framework (SWMF) 
+#	GNU gfortran (gfortran) Fortran 90/95 Compiler
+#
+
+COMPILE.f77     = ${CUSTOMPATH_F}gfortran
+COMPILE.f90     = ${CUSTOMPATH_F}gfortran
+LINK.f90	= ${CUSTOMPATH_MPI}mpif90
+AR = ar -rs
+
+SINGLEPREC = -frecord-marker=4
+DOUBLEPREC = -frecord-marker=4 -fdefault-real-8 -fdefault-double-8
+PRECISION  = ${DOUBLEPREC}
+
+MPILIB = 
+#MPILIB = -L${LIBDIR} -lNOMPI
+
+# Define where modules are stored and add it to the search path
+# INCL_EXTRA can be defined to add more search directories.
+SEARCH = -J${INCLDIR} ${INCL_EXTRA}
+
+DEBUGFLAG = -C -g -fbacktrace -ffpe-trap=invalid,zero,overflow -fcheck=all
+DEBUG     = 
+
+## To profile the code with shark and view source code, set the DEBUG command below.
+#DEBUG     = -gstabs+
+
+OPT0 = -O0
+OPT1 = -O1
+OPT2 = -O2
+OPT3 = -O3
+OPT4 = -O4
+
+CFLAG = ${SEARCH} -c -w ${DEBUG}
+
+Cflag0  = ${CFLAG} ${PRECISION} ${OPT0}
+Cflag1  = ${CFLAG} ${PRECISION} ${OPT1}
+Cflag2  = ${CFLAG} ${PRECISION} ${OPT2}
+Cflag3  = ${CFLAG} ${PRECISION} ${OPT3}
+Cflag4  = ${CFLAG} ${PRECISION} ${OPT4}
+
+# Some codes only compile with the "-save" and single precision.
+# To compile with double precision, add PRECISION flag
+CFLAGS = ${CFLAG} -fno-automatic
+
+# Link with or without the MPI library
+Lflag1  = ${PRECISION} ${MPILIB} ${DEBUG}
+Lflag2  = ${PRECISION} ${DEBUG}
+
+# BLAS and LAPACK libraries
+LBLAS =
+BLAS  = lapack.o blas.o
+
+
+#
+#       General rules
+#
+
+.SUFFIXES:
+.SUFFIXES: .f90 .F90 .f .for .ftn .o
+
+.f90.o:
+	${COMPILE.f90} ${Cflag3} $<
+
+.F90.o:
+	cpp -C -P -DsysDarwin -DcompGFORTRAN -lang-c $*.F90 | grep -v '^#' > $*.f95
+	${COMPILE.f90} -o $*.o ${Cflag3} $*.f95
+	rm -f $*.f95
+
+.f.o:
+	${COMPILE.f77} ${Cflag3} -ffixed-line-length-132 $<
+
+.for.o:
+	${COMPILE.f77} ${Cflag3} -ffixed-line-length-132 $<
+
+.ftn.o:
+	${COMPILE.f77} ${Cflag3} -ffixed-line-length-132 $<
+
+clean:	
+	rm -f *~ core *.o *.mod fort.* a.out *.exe *.a *.so *.protex
+
+
+# keep this line
+
+

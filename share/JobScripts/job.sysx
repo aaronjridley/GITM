@@ -1,0 +1,70 @@
+## For system X on VT
+#!/bin/bash
+
+## The time limit for the job.  If it runs over this it will be killed.
+## -lwalltime=02:03:04 specifies that the job will run for a maximum
+## of 2 hours, 3 minutes, and 4 seconds.
+#PBS -lwalltime=08:00:00
+
+
+## The number of nodes that your job will use.  If you need to only use
+## one CPU per node specify only one "processors per node", "ppn=1".
+#PBS -lnodes=32:ppn=2
+
+
+## The group and queue that the job will be run in.  These are used to
+## determine relative priority.  Run "groups" and select the group other
+## than "staff" that your userid is a member of.  The group_list variable
+## will only work with one group in the list.  Do not change the queue
+## specified "-q production_q" unless directed to do so by support
+## personnel.
+#PBS -W group_list=tcf_user
+#PBS -q production_q
+
+
+## The "bank account", or "hat" as we call it that your cpu hours will
+## be billed to.  You must be a member of this hat, and there must be
+## enough credits in the hat to cover a walltime * # CPUs run.
+## 32 nodes requested for a walltime of 1 hour would require 64 node
+## hours in the hat defined below in order to run.  The same amount of
+## time would be required if -lnodes=22:ppn=1 as nodes may not be used
+## by more than one job at a time.
+## The command "mybalance" will list the Hats available to you and
+## the hours available in them.
+#PBS -A engr1033
+
+##Added by Xia
+#PBS -N SAW020418
+#PBS -M xcai@vt.edu
+#PBS -m abe
+
+NUM_NODES=`/bin/cat $PBS_NODEFILE | /usr/bin/wc -l | /usr/bin/sed "s/ //g"`
+
+## Change directory to the directory qsub was run from
+cd $PBS_O_WORKDIR
+
+export PATH=/nfs/software/bin:$PATH
+
+
+/bin/echo starting
+/bin/date
+/bin/echo
+## This will run your executable and redirect STDOUT and STDERR to a file
+## named "job-output-$PBS_JOBID" in the same directory that the qsub
+## command was run from.
+##
+## Your executable name MUST have a path name!  Most likely you want
+## ./YOUR_EXECUTABLE_NAME_GOES_HERE
+jmdrun -printhostname \
+  -np 64 \
+  -hostfile $PBS_NODEFILE \
+  ./SWMF.exe > runlog_`date +%y%m%d%H%M`
+
+./Restart.pl
+
+/bin/echo
+/bin/date
+/bin/echo ending
+
+exit;
+

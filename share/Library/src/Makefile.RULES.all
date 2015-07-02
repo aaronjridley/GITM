@@ -1,0 +1,32 @@
+# Compiling lapack.f and/or blas.f with -O2 causes run time error. 
+# Both -O4 and -O1 seem to work.
+$OS eq "Darwin" and $Compiler eq "f95"
+	${COMPILE.f77} ${Cflag4} -132 lapack.f
+	${COMPILE.f77} ${Cflag4} -132 blas.f
+	${COMPILE.f90} ${Cflag3} ModNumConst.f90
+
+# ModBlasLapack compiles with auto double off only
+$Compiler eq "xlf90" 
+	${COMPILE.f90} ${Cflag4NoP} ${SuffixMapf90} ModBlasLapack.f90
+
+$Compiler eq "lf95" or $Compiler eq "mpxlf90"
+	${COMPILE.f90} ${Cflag4NoP} ModBlasLapack.f90
+
+# Avoids segmentation error with Cray ftn
+$Compiler eq "crayftn"
+	${COMPILE.f90} ${Cflag1} ModPlotFile.f90
+
+# With NAG f95 ModMpiInterface compiles with -dusty only because
+# the same MPI routines are called with different argument types
+$Compiler eq "f95" or $Compiler eq "nagfor"
+	${COMPILE.f90} ${Cflag0} -dusty ModMpiInterfaces.f90
+
+# Use LINK.f90 (usually mpif90) so the mpif.h header file can be included
+1
+	${LINK.f90} ${Cflag0} ModMpiOrig.f90
+
+# Special rule to compile HDF5 code
+$Hdf5 eq "yes"
+	h5pfc ${Cflag2} ModHdf5Utils.f90
+
+# Note: the PGF90 12.9 compiler fails if ModPlotFile is compiled with -fast
