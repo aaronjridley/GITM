@@ -1,0 +1,37 @@
+.r thermo_mksave
+
+.r thermo_batch
+t021221_000500.3DALL.save
+4
+n
+temp_high.ps
+1
+51
+0.0
+0.0
+y
+-1
+
+.r thermo_batch
+t021221_000500.3DALL.save
+4
+n
+temp_low.ps
+1
+10
+0.0
+0.0
+y
+-1
+
+.r thermo_batch
+t021221_000500.3DALL.save
+19
+y
+e.ps
+2
+11
+0.0
+0.0
+n
+
