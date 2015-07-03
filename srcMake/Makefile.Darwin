@@ -1,0 +1,18 @@
+
+F77         = mpif77
+F90         = mpif90
+
+F90         = mpif90
+
+MPI_INC     = mpif90.h
+
+OSFLAGS     = -w -dusty
+
+OSDEBUG     = -C -gline
+#OSDEBUG     = 
+
+OFLAGMIN    = -O0
+OFLAGMID    = -O1
+OFLAGMAX    = -O3
+
+AR          = ar -rs 

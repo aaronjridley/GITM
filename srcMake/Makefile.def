@@ -1,0 +1,17 @@
+# Local Makefile.def
+
+localdefault: help # default target
+
+DIR     = ${UADIR}
+
+SCRIPTDIR = ${UADIR}/share/Scripts
+LIBDIR    = ${UADIR}/src
+RUNDIR    = ${UADIR}/run
+BINDIR    = ${UADIR}/src
+INCLDIR   = ${UADIR}/share/include
+SHAREDIR  = ${UADIR}/share/Library/src
+NOMPIDIR  = ${UADIR}/util/NOMPI/src
+EMPIRICALIEDIR     = ${UADIR}/util/EMPIRICAL/srcIE
+EMPIRICALUADIR     = ${UADIR}/util/EMPIRICAL/srcUA
+DATAREADINDICESDIR = ${UADIR}/util/DATAREAD/srcIndices
+
