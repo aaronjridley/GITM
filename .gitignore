@@ -10,12 +10,9 @@ src/GITM.exe
 src/Makefile.DEPEND
 src/Makefile.RULES
 src/ModChemistry.f90
-src/ModEUV.f90
-src/ModGITM.f90
 src/ModPlanet.f90
 src/ModRates.f90
 src/ModSize.f90
-src/ModSources.f90
 src/PostProcess.exe
 src/aurora.f90
 src/calc_chemistry.f90
