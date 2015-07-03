@@ -89,13 +89,11 @@ rundir:
 		ln -s ${BINDIR}/pGITM .; \
 		ln -s ${UADIR}/srcData/* DataIn; rm -f DataIn/CVS; \
 		ln -s ${UADIR}/data/* DataIn;    rm -f DataIn/CVS
-	@(if [ "$(STANDALONE)" != "NO" ]; then \
-		cd ${RUNDIR} ; \
+	cd ${RUNDIR} ; \
 		ln -s ${BINDIR}/GITM.exe . ; \
 		cp UA/DataIn/UAM.in . ; \
 		touch core ; chmod 444 core ; \
-		ln -s UA/* .; \
-	fi);
+		ln -s UA/* .
 
 
 TESTDIR = run_test
