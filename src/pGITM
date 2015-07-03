@@ -1,0 +1,18 @@
+#!/bin/csh
+
+cd data
+
+foreach file (*.header)
+
+    setenv base `basename $file .header`
+    echo $base
+    pwd
+    echo $base | `pwd`/../../PostGITM.exe
+
+    if (-e ${base}.bin) rm -f ${base}.b[0-9][0-9][0-9][0-9] 
+    if (-e ${base}.bin) rm -f ${file}
+    if (-e ${base}.bin) rm -f ${base}.sat
+
+end
+
+cd ..
