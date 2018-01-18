@@ -1,0 +1,32 @@
+.r thermo_plotsat
+1DALL
+15
+n
+120.0
+350.0
+y
+y
+
+
+
+
+
+
+$mv test.ps v15.1d.ps
+
+.r thermo_plotsat
+1DALL
+25
+n
+120.0
+350.0
+y
+y
+
+
+
+
+
+
+
+$mv test.ps v25.1d.ps
