@@ -10,11 +10,12 @@
 ! In particular independently developped components can use the 
 ! io\_unit\_new() function to obtain an unused IO unit for extended use.
 ! 
-! The unit number in UNITTMP\_ is a safe unit number to open and close a file 
-! if no other file is opened between the open and close and all programs
-! use ModIoUnit to obtain unit numbers.
+! The unit number in UnitTmp\_ and UnitTmp2\_ are safe unit numbers 
+! to open and close one or two files if no other file is opened between 
+! the open and close and all programs use ModIoUnit to obtain unit numbers.
 !
-! Standard output has unit number STDOUT\_=6. This constant is easier to read.
+! Standard output has unit number StdIn\_=5. This constant is easier to read.
+! Standard output has unit number StdOut\_=6. This constant is easier to read.
 !
 ! The io\_unit\_clean subroutine closes all open IO units and deletes the
 ! empty files.
@@ -38,18 +39,19 @@ module ModIoUnit
 
   !PUBLIC DATA MEMBERS:
 
-  public :: UNITTMP_       ! For open read/write close without intervening open
-  public :: STDOUT_        ! Fortran unit number for standard output
+  integer, parameter, public :: StdIn_   = 5  ! Standard input
+  integer, parameter, public :: StdOut_  = 6  ! Standard output
 
-  integer, parameter :: STDOUT_       = 6     ! Standard output
-  integer, parameter :: UNITTMP_      = 9     ! Temporary unit number
+  ! For open read/write close without intervening open
+  integer, parameter, public :: UnitTmp_  = 9  ! 1st Temporary unit number
+  integer, parameter, public :: UnitTmp2_ = 8  ! 2nd Temporary unit number
 
   !LOCAL VARIABLES:
 
   integer, parameter :: MinUnitNumber = 20    ! Smallest allowed unit number
   integer, parameter :: MaxUnitNumber = 1000  ! Largest allowed unit number
 
-  integer :: iUnitMax = UNITTMP_              ! The largest unit number used
+  integer :: iUnitMax = UnitTmp_              ! The largest unit number used
 
   !REVISION HISTORY:
   ! 01Aug03  Gabor Toth <gtoth@umich.edu> - initial prototype/prolog/code

@@ -87,7 +87,7 @@ Module ModPlanetConst
   integer,parameter :: Comet1P_              = 100
   integer,parameter :: Borrelly_             = 101
   integer,parameter :: Comet19P_             = 101
-  integer,parameter :: ChuryumovGerasimenko_ = 102
+  integer,parameter :: CometCG_              = 102
   integer,parameter :: Comet67P_             = 102
   integer,parameter :: HaleBopp_             = 103 
 
@@ -312,6 +312,16 @@ contains
      rOrbitPlanet_I(Halley_)              = cAU      ! [ m]
      OrbitalPeriodPlanet_I(Halley_)       = 1.0      ! [ s]
      RotationPeriodPlanet_I(Halley_)      = 1.0      ! [ s]
+
+     NamePlanet_I(CometCG_)='CometCG'
+     rPlanet_I(CometCG_) = 1.0E3
+     mPlanet_I(CometCG_) =1.0
+     rOrbitPlanet_I(CometCG_) =cAU
+     OrbitalPeriodPlanet_I(CometCG_) =1.0
+     RotationPeriodPlanet_I(CometCG_)=1.0
+
+
+
 
      !\
      ! No Planet (0)

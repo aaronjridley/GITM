@@ -923,8 +923,8 @@ contains
     ! Limit is set to this fraction of the largest argument
     real, parameter :: Ratio = 1e-8
 
-    integer :: i, n, iError
-    real :: Limit, Maximum, MaximumAll, a 
+    integer :: i, n, iError, nProc
+    real :: Limit, Maximum, a 
     real :: Part_I(nPart), SumPart_I(nPart), SumAllPart_I(nPart)
     !---------------------------------------------------------------
     n = size(a_I)
@@ -938,9 +938,9 @@ contains
        end do
        if(present(iComm))then
           if(iComm /= MPI_COMM_SELF)then
-             call MPI_allreduce(Maximum, MaximumAll, 1, MPI_REAL, MPI_MAX, &
-                  iComm, iError)
-             Maximum = MaximumAll
+             call MPI_COMM_SIZE(iComm, nProc, iError)
+             if(nProc>1)call MPI_allreduce( &
+               MPI_IN_PLACE, Maximum, 1, MPI_REAL, MPI_MAX, iComm, iError)
           end if
        endif
        ! Formulate an integer power of 2 near Ratio*Maximum
@@ -2187,7 +2187,7 @@ contains
 
     ! Postprocessing: x = P_R.x where P_R = I, U^{-1}, U^{-1}L^{-1} for 
     ! left, symmetric and right preconditioning, respectively
-    call precond_right_multiblock(Param, &
+    if(Param%DoPrecond) call precond_right_multiblock(Param, &
          nVar, nDim, nI, nJ, nK, nBlock, Jac_VVCIB, x_I)
 
     if(DoTest)write(*,*)NameSub,&

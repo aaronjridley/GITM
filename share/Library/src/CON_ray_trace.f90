@@ -1,4 +1,5 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
+!  Copyright (C) 2002 Regents of the University of Michigan, 
+!  portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 !BOP
 !MODULE: CON_ray_trace - trace field and stream lines in parallel
@@ -294,8 +295,6 @@ contains
     ! empty then DoneAll is set to .true.
     !EOP
 
-    logical :: DoneLocal
-
     integer, parameter :: iTag = 1
     integer :: jProc, iRay, nRayRecv
 
@@ -379,11 +378,9 @@ contains
        Send_P(jProc) % nRay = 0
     end do
 
-    ! Check if there is more work to do on this PE
-    DoneLocal = DoneMe .and. (Recv % nRay == 0)
-
     ! Check if all PE-s are done
-    call MPI_allreduce(DoneLocal, DoneAll, 1, MPI_LOGICAL, MPI_LAND, &
+    DoneAll = DoneMe .and. (Recv % nRay == 0)
+    call MPI_allreduce(MPI_IN_PLACE, DoneAll, 1, MPI_LOGICAL, MPI_LAND, &
          iComm, iError)
 
   end subroutine ray_exchange

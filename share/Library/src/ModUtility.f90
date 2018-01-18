@@ -25,13 +25,20 @@ module ModUtilities
   public:: make_dir
   public:: check_dir
   public:: fix_dir_name
+  public:: open_file
+  public:: close_file
+  public:: remove_file
+  public:: touch_file
   public:: flush_unit
   public:: split_string
   public:: join_string
   public:: upper_case
   public:: lower_case
+  public:: string_to_char_array
+  public:: char_array_to_string
   public:: sleep
   public:: check_allocate
+  public:: greatest_common_divisor
   public:: test_mod_utility
 
   logical, public :: DoFlush = .true.
@@ -121,8 +128,9 @@ contains
        k = index(NameDir(i:l), '/')
        if(k > 1) j = i + k - 1
 
-       ! Create (sub)directory
-       iError = make_dir_c(NameDir(1:j)//C_NULL_CHAR, iPermission, iErrorNumber)
+       ! Create (sub)directory. This line should NOT be broken so that
+       ! target LIB_NO_C works!
+       iError = make_dir_c(NameDir(1:j)//C_NULL_CHAR,iPermission,iErrorNumber)
 
        ! Check for errors
        if(iError /= 0)then
@@ -132,7 +140,8 @@ contains
              RETURN
           else
              write(*,*) NameSub,' iError, iErrorNumber=', iError, iErrorNumber 
-             call CON_stop(NameSub//' failed to open directory '//trim(NameDir))
+             call CON_stop(NameSub// &
+                  ' failed to open directory '//trim(NameDir))
           end if
        end if
 
@@ -170,32 +179,10 @@ contains
     ! other PE thinks that the directory does not exist.
     !EOP
 
-    integer, parameter :: MaxDir=100, lNameDir=100
-    integer, save :: nDir=0
-
-    character(len=lNameDir), save :: NameDir_I(MaxDir)
-    integer :: iDir, iError
+    integer:: iError
 
     character(len=*), parameter :: NameSub='check_dir'
     !--------------------------------------------------------------------------
-    ! Only directory names shorter than lNameDir can be stored
-    if(len_trim(NameDir) <= lNameDir) then
-       ! Check if this directory has been checked already
-       do iDir=1,nDir
-          if(NameDir_I(iDir)==NameDir) RETURN
-       end do
-
-       ! Increase counter for different directory names
-       nDir=nDir+1
-
-       ! Store new name if possible. 
-       if(nDir <= MaxDir) NameDir_I(nDir)=NameDir
-
-       ! If not, warn once, and keep checking...
-       if(nDir == MaxDir+1) write(*,'(a)')NameSub // &
-            ' SWMF_WARNING: too many different directories!'
-    end if
-
     ! Try to open a file in this directory
     open(UNITTMP_, file=trim(NameDir)//'.test', status='unknown', &
          iostat = iError)
@@ -237,6 +224,174 @@ contains
     NameDir(i+1:i+1) = '/'
 
   end subroutine fix_dir_name
+
+  !============================================================================
+  subroutine open_file(iUnitIn, File, Form, Status, Position, Access, Recl, &
+       iComm, NameCaller)
+
+    use ModIoUnit, ONLY: UNITTMP_
+
+    ! Interface for the Fortran open statement with error checking.
+    ! If an error occurs, the code stops and writes out the unit number,
+    ! the error code and the name of the file. 
+    ! If NameCaller is present, it is also shown.
+    ! If no unit number is passed, open UnitTmp_.
+    ! Default format is 'formatted' as in the open statement.
+    ! Default status is 'replace' (not unknown) as it is well defined.
+    ! Default position is 'rewind' (not asis) as it is well defined.
+    ! Default access is 'sequential' as in the open statement.
+    ! There is no default record length Recl.
+    ! If the MPI communicator iComm is present together with Recl,
+    ! the file will be opened with status='replace' on processor 0,
+    ! and with status='old' on other processors with an MPI_barrier
+    ! in between.
+
+    integer, optional, intent(in):: iUnitIn
+    character(len=*), optional, intent(in):: File
+    character(len=*), optional, intent(in):: Form
+    character(len=*), optional, intent(in):: Status
+    character(len=*), optional, intent(in):: Position
+    character(len=*), optional, intent(in):: Access
+    integer,          optional, intent(in):: Recl
+    integer,          optional, intent(in):: iComm
+    character(len=*), optional, intent(in):: NameCaller
+
+    character(len=20):: TypeForm, TypeStatus, TypePosition, TypeAccess
+
+    integer:: iUnit
+    integer:: iError, iProc, nProc
+
+    character(len=*), parameter:: NameSub = 'open_file'
+    !----------------------------------------------------------------------
+    iUnit = UnitTmp_
+    if(present(iUnitIn)) iUnit = iUnitIn
+
+    TypeForm = 'formatted'
+    if(present(Form)) TypeForm = Form
+
+    TypeStatus = 'replace'
+    if(present(Status)) TypeStatus = Status
+
+    TypePosition = 'rewind'
+    if(present(Position)) TypePosition = Position
+
+    TypeAccess = 'sequential'
+    if(present(Access)) TypeAccess = Access
+
+    if(present(Recl))then
+       if(present(iComm))then
+          ! Get iProc and nProc
+          call MPI_comm_size(iComm, nProc, iError)
+          call MPI_comm_rank(iComm, iProc, iError)
+          ! Open file with status "replace" on processor 0
+          if(iProc == 0) &
+               open(iUnit, FILE=File, FORM=TypeForm, STATUS='replace', &
+               ACCESS=TypeAccess, RECL=Recl, IOSTAT=iError)
+          if(nProc > 1)then
+             ! Check if open worked on processor 0
+             if(iProc == 0 .and. iError /= 0)then
+                write(*,*) NameSub,' iUnit, iError=', iUnit, iError
+                if(present(NameCaller)) write(*,*) 'NameCaller=', NameCaller
+                call CON_stop(NameSub// &
+                     ' processor 0 could not open file='//trim(File))
+             end if
+             ! Make sure all processors wait until proc 0 has opened file
+             call MPI_barrier(iComm, iError)
+             ! Other processors open with status "old"
+             if(iProc > 0) &
+                  open(iUnit, FILE=File, FORM=TypeForm, STATUS='old', &
+                  ACCESS=TypeAccess, RECL=Recl, IOSTAT=iError)
+          end if
+       else
+          open(iUnit, FILE=File, FORM=TypeForm, STATUS=TypeStatus, &
+               ACCESS=TypeAccess, RECL=Recl, IOSTAT=iError)
+       end if
+    else
+       open(iUnit, FILE=File, FORM=TypeForm, STATUS=TypeStatus, &
+            POSITION=TypePosition, ACCESS=TypeAccess, IOSTAT=iError)
+    end if
+
+    if(iError /= 0)then
+       write(*,*) NameSub,' iUnit, iError=', iUnit, iError
+       if(present(NameCaller)) write(*,*) 'NameCaller=', NameCaller
+       call CON_stop(NameSub//' could not open file='//trim(File))
+    end if
+
+  end subroutine open_file
+
+  !========================================================================
+  subroutine close_file(iUnitIn, Status, NameCaller)
+
+    use ModIoUnit, ONLY: UNITTMP_
+
+    ! Interface for the Fortran close statement with error checking
+    ! If an error occurs, the code stops and writes out the unit number,
+    ! the error code and the name of the file. 
+    ! If NameCaller is present, it is also shown.
+    ! If no unit number is passed, close UnitTmp_
+
+    integer, optional, intent(in):: iUnitIn
+    character(len=*), optional, intent(in):: Status
+    character(len=*), optional, intent(in):: NameCaller
+
+    integer:: iUnit
+    integer:: iError
+
+    character(len=*), parameter:: NameSub = 'close_file'
+    !----------------------------------------------------------------------
+    iUnit = UnitTmp_
+    if(present(iUnitIn)) iUnit = iUnitIn
+
+    if(present(Status))then
+       close(iUnit, STATUS=Status, IOSTAT=iError)
+    else
+       close(iUnit, IOSTAT=iError)
+    end if
+
+    if(iError /= 0)then
+       write(*,*) NameSub,' iUnit, iError=', iUnit, iError
+       if(present(NameCaller)) write(*,*) 'NameCaller=', NameCaller
+       call CON_stop(NameSub//' could not close unit')
+    end if
+
+  end subroutine close_file
+
+  !============================================================================
+  subroutine remove_file(NameFile, NameCaller)
+
+    ! Remove file NameFile if it exists
+    ! Pass NameCaller to open_file and close_file in case of errors
+
+
+    character(len=*), intent(in):: NameFile
+    character(len=*), optional, intent(in):: NameCaller
+
+    logical:: IsFound
+    !-------------------------------------------------------------------------
+
+    inquire(FILE=NameFile, EXIST=IsFound)
+    if(.not.IsFound) RETURN
+
+    call open_file(FILE=NameFile, NameCaller=NameCaller)
+    call close_file(STATUS='DELETE', NameCaller=NameCaller)
+
+  end subroutine remove_file
+
+  !============================================================================
+  subroutine touch_file(NameFile, NameCaller)
+
+    ! Create file NameFile if it does not exist
+    ! Pass NameCaller to open_file and close_file in case of errors
+
+
+    character(len=*), intent(in):: NameFile
+    character(len=*), optional, intent(in):: NameCaller
+    !-------------------------------------------------------------------------
+
+    call open_file(FILE=NameFile, NameCaller=NameCaller)
+    call close_file(NameCaller=NameCaller)
+
+  end subroutine touch_file
 
   !BOP ========================================================================
   !ROUTINE: flush_unit - flush output
@@ -547,6 +702,56 @@ contains
   end subroutine lower_case
 
   !BOP ========================================================================
+  !ROUTINE:  string_to_char_array - convert string to C-style char array
+  !INTERFACE:
+  subroutine string_to_char_array(String, String_I)
+
+    use iso_c_binding, ONLY: c_null_char
+
+    !DESCRIPTION:
+    ! Convert Fortran string into a C-style character array
+    ! Ignore trailing spaces.
+    ! Add null character to the end. Return length if needed.
+    !EOP
+
+    character(len=*),  intent(in) :: String
+    character,         intent(out):: String_I(*)
+
+    integer:: i, n
+    !-------------------------------------------------------------------------
+    n = len_trim(String)
+    do i = 1, n
+       String_I(i) = String(i:i)
+    end do
+    String_I(n+1) = c_null_char
+
+  end subroutine string_to_char_array
+
+  !BOP ========================================================================
+  !ROUTINE:  char_array_to_string - convert C-style char array into a string
+  !INTERFACE:
+  subroutine char_array_to_string(String_I, String)
+
+    use iso_c_binding, only: c_null_char
+
+    !DESCRIPTION:
+    ! Convert C-style character array into a Fortran string.
+    !EOP
+
+    character,         intent(in) :: String_I(*)
+    character(len=*),  intent(out):: String
+
+    integer:: i
+    !-------------------------------------------------------------------------
+    String = ' '
+    do i = 1, len(String)
+       if(String_I(i) == c_null_char) EXIT
+       String(i:i) = String_I(i)
+    end do
+    
+  end subroutine char_array_to_string
+
+  !BOP ========================================================================
   !ROUTINE: sleep - sleep a given number of seconds
   !INTERFACE:
   subroutine sleep(DtCpu)
@@ -586,17 +791,36 @@ contains
   end subroutine check_allocate
 
   !============================================================================
+  recursive function greatest_common_divisor(i, j) result(kGCD)
+    ! Calculate the greatest common divisor of i and j
+    ! with Euclid's algorithm
+
+    integer, intent(in):: i, j
+    integer:: kGCD
+    !-------------------------------------------------------------------------
+    if(j == 0)then
+       kGCD = i
+    else
+       kGCD = greatest_common_divisor(j, mod(i, j))
+    end if
+
+  end function greatest_common_divisor
+  !============================================================================
   subroutine test_mod_utility
+
+    use ModIoUnit, ONLY: UnitTmp_
+    use iso_c_binding, ONLY: c_null_char
 
     ! Test split_string, read a string containing separators 
     ! then print substrings
     ! Do this multiple times with various settings
    
     character(len=500):: String
+    character:: StringC_I(501)
     integer, parameter :: MaxString = 20
     integer :: nString
-    character(len=30) :: String_I(MaxString)  
-    integer :: iString
+    character(len=30) :: String_I(MaxString)
+    integer :: iString, l
     integer:: iError
 
     character(len=*), parameter :: NameSub = 'test_mod_utility'
@@ -612,9 +836,32 @@ contains
     write(*,'(a)') 'make directory "xxx/"'
     call make_dir('xxx')
     call check_dir('xxx/')
-    write(*,'(a)') 'Making directory again (should produce "File exists" error)'
+    write(*,'(a)') 'make xxx/ directory again (should not produce an error)'
     call make_dir('xxx', iErrorOut=iError)
     write(*,*) iError
+
+    write(*,'(a)') 'testing open_file and close_file'
+
+    ! Use defaults
+    call open_file(FILE='xxx/testfile.dat')
+    write(UnitTmp_,'(a)') 'Some text'
+    call close_file
+    ! Create an error message by passing incorrect filename
+    ! Since the error code varies by compiler, this is commented out
+    !call open_file(FILE='xxx/testfile.bad', STATUS='old', &
+    !     NameCaller=NameSub)
+
+    ! Use all arguments
+    call open_file(UnitTmp_, FILE='xxx/testfile.dat', FORM='formatted', &
+         STATUS='old', POSITION='append', NameCaller=NameSub)
+    write(UnitTmp_,'(a)') 'More text'
+    call close_file(UnitTmp_, STATUS='delete', NameCaller=NameSub)
+
+    write(*,'(a)') 'testing touch_file and remove_file'
+    call touch_file('xxx/touched', NameCaller=NameSub)
+    call touch_file('xxx/touched', NameCaller=NameSub)
+    call remove_file('xxx/touched', NameCaller=NameSub)
+    call remove_file('xxx/touched', NameCaller=NameSub)
 
     write(*,'(/,a)') 'testing fix_dir_name'
     String = ' '
@@ -670,6 +917,36 @@ contains
     call lower_case(String)
     write(*,'(a)') 'lower case string='//trim(String)
 
+    write(*,'(/,a)') 'testing string_to_char_array'
+    String = "it's a string"
+    call string_to_char_array(String, StringC_I)
+    l = len_trim(String)
+    write(*,'(a,100a1)')'C character array: ', StringC_I(1:l)
+    if(StringC_I(l+1) /= c_null_char) &
+         write(*,*)'Error: null terminator is missing'
+    
+    write(*,'(/,a)') 'testing char_array_to_string'
+    call char_array_to_string(StringC_I, String)
+    write(*,'(a,a)')    'Fortran string   : ', trim(String)
+    if(String /= "it's a string") &
+         write(*,*)'Error: incorrect conversion to Fortran String'
+
+    write(*,'(/,a)') 'testing greatest_common_divisor'
+    l = greatest_common_divisor(36, 26)
+    if(l /= 2) &
+         write(*,*)'Error: greatest_common_divisor(36,26)=', l,' should be 2'
+
+    l = greatest_common_divisor(26, 36)
+    if(l /= 2) &
+         write(*,*)'Error: greatest_common_divisor(26,36)=', l,' should be 2'
+
+    l = greatest_common_divisor(36, 12)
+    if(l /= 12) &
+         write(*,*)'Error: greatest_common_divisor(36,12)=', l,' should be 12'
+
+    l = greatest_common_divisor(12, 36)
+    if(l /= 12) &
+         write(*,*)'Error: greatest_common_divisor(12,36)=', l,' should be 12'
 
   end subroutine test_mod_utility
 

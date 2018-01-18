@@ -1005,7 +1005,7 @@ module ModMpiTemplate  ! These two lines are here so that
      subroutine mpi_reduce(sendbuf, recvbuf, count, datatype, op, &
           root, comm, ierror) 
        <type>, intent(in) :: sendbuf(dim1)
-       <type>, intent(out) :: recvbuf(dim1)
+       <type>, intent(inout) :: recvbuf(dim1)
        integer, intent(in) :: count
        integer, intent(in) :: datatype
        integer, intent(in) :: op
@@ -1038,21 +1038,21 @@ module ModMpiTemplate  ! These two lines are here so that
 
      subroutine mpi_scatter(sendbuf, sendcount, sendtype,         &
           recvbuf, recvcount, recvtype, root, comm, ierror) 
-       <type>, intent(in) :: sendbuf(dim1)
-       <type>, intent(out) :: recvbuf(dim2)
+       <type>, intent(in)  :: sendbuf(dim2)
+       <type>, intent(out) :: recvbuf(dim1)
        integer, intent(in) :: sendcount
        integer, intent(in) :: sendtype
        integer, intent(in) :: recvcount
        integer, intent(in) :: recvtype
        integer, intent(in) :: root
        integer, intent(in) :: comm
-       integer, intent(out) :: ierror
+       integer, intent(out):: ierror
      end subroutine mpi_scatter
 
      subroutine mpi_scatterv(sendbuf, sendcounts, displs,         &
           sendtype, recvbuf, recvcount, recvtype, root, comm, ierror) 
-       <type>, intent(in) :: sendbuf(dim1)
-       <type>, intent(out) :: recvbuf(dim2)
+       <type>, intent(in)  :: sendbuf(dim1)
+       <type>, intent(out) :: recvbuf(dim1)
        integer, intent(in) :: sendcounts(:)
        integer, intent(in) :: displs(:)
        integer, intent(in) :: sendtype
@@ -1060,7 +1060,7 @@ module ModMpiTemplate  ! These two lines are here so that
        integer, intent(in) :: recvtype
        integer, intent(in) :: root
        integer, intent(in) :: comm
-       integer, intent(out) :: ierror
+       integer, intent(out):: ierror
      end subroutine mpi_scatterv
 
      subroutine mpi_pack(inbuf, incount, datatype, outbuf, outsize, &

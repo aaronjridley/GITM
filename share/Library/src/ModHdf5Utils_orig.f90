@@ -148,6 +148,16 @@ module ModHdf5Utils
 
 contains 
   !===========================================================================
+  subroutine stop_hdf5(String)
+    character(len=*), intent(in):: String
+    integer:: iError, nError
+
+    write(*,*)'ERROR in ModHdf5Utils: ', String
+    call MPI_abort(MPI_COMM_WORLD, nError, iError)
+    stop
+
+  end subroutine stop_hdf5
+  !===========================================================================
   subroutine save_hdf5_file(FileName,TypePosition, TypeStatus, StringHeader,&
             nStep, NumberOfBlocksUsed, Time, nDimOut, nParam, nVar,&
             n_D, NameVar, NameUnits, MinimumBlockIjk, XYZMinMax, PlotVarBlk,&
@@ -202,7 +212,7 @@ contains
     call open_hdf5_file(FileID, fileName, iCommOpen)
     if(FileID == -1) then
        write (*,*)  "Error: unable to initialize file"
-       call CON_stop("unable to initialize hdf5 file")
+       call stop_hdf5("unable to initialize hdf5 file")
     end if
 
     xMin = 0; yMin = 0; zMin = 0
@@ -387,9 +397,10 @@ contains
   subroutine open_hdf5_file(FileID, Filename, iComm)
 
     character (len=80), intent(in) :: Filename
-    integer :: iErrorHdf, AccessTemplate
+    integer :: iErrorHdf
+    integer (HID_T) :: AccessTemplate
     integer, optional, intent(in) :: iComm
-    integer, intent(inout) :: FileID
+    integer (HID_T), intent(inout) :: FileID
     integer :: iHdfMajor, iHdfMinor, iHdfRelease
 
     call h5open_f(iErrorHdf)                    
@@ -432,7 +443,7 @@ contains
          access_prp = AccessTemplate)
     CALL h5pclose_f(AccessTemplate, iErrorHdf)
     if (iErrorHdf == -1) &
-         call CON_stop(&
+         call stop_hdf5(&
          "iErrorHdf in subroutine hdf5_init_file. Error marker 1")
 
     if (iErrorHdf == -1) FileID = -1
@@ -531,7 +542,7 @@ contains
     call h5pcreate_f(H5P_DATASET_XFER_F, PropertyListID, iErrorHdf)
 
     if (iErrorHdf == -1) &
-         call CON_stop("iErrorHdf in subroutine write_hdf5_data. Error marker 1")
+         call stop_hdf5("iErrorHdf in subroutine write_hdf5_data. Error marker 1")
 
     if (DoCollectiveWrite) &
        call h5pset_dxpl_mpio_f(PropertyListID, H5FD_MPIO_COLLECTIVE_F, iErrorHdf)
@@ -602,25 +613,25 @@ contains
                 mem_space_id = MemorySpaceId, file_space_id = DataSpaceId,&
                 xfer_prp = PropertyListID)
                 if (iErrorHdf == -1) &
-                    call CON_stop("iErrorHdf in subroutine write_hdf5_data. Error marker 6")
+                    call stop_hdf5("iErrorHdf in subroutine write_hdf5_data. Error marker 6")
        else if (present(Rank2RealData)) then
            call h5dwrite_f(DatasetID, DataType, Rank2RealData, nCount, iErrorHdf, &
                 mem_space_id = MemorySpaceId, file_space_id = DataSpaceId,&
                 xfer_prp = PropertyListID)
                 if (iErrorHdf == -1) &
-                    call CON_stop("iErrorHdf in subroutine write_hdf5_data. Error marker 7")
+                    call stop_hdf5("iErrorHdf in subroutine write_hdf5_data. Error marker 7")
        else if (present(Rank3RealData)) then
            call h5dwrite_f(DatasetID, DataType, Rank3RealData, nCount, iErrorHdf, &
                 mem_space_id = MemorySpaceId, file_space_id = DataSpaceId,&
                 xfer_prp = PropertyListID)
                 if (iErrorHdf == -1) &
-                    call CON_stop("iErrorHdf in subroutine write_hdf5_data. Error marker 8")
+                    call stop_hdf5("iErrorHdf in subroutine write_hdf5_data. Error marker 8")
        else if (present(Rank4RealData)) then
            call h5dwrite_f(DatasetID, DataType, Rank4RealData, nCount, iErrorHdf, &
                 mem_space_id = MemorySpaceId, file_space_id = DataSpaceId,&
                 xfer_prp = PropertyListID)
                 if (iErrorHdf == -1) &
-                    call CON_stop("iErrorHdf in subroutine write_hdf5_data. Error marker 9")
+                    call stop_hdf5("iErrorHdf in subroutine write_hdf5_data. Error marker 9")
         end if
     else if(DataType == H5T_NATIVE_INTEGER) then
        if (present(Rank1IntegerData)) then
@@ -628,32 +639,32 @@ contains
                 mem_space_id = MemorySpaceId, file_space_id = DataSpaceId,&
                 xfer_prp = PropertyListID)
                 if (iErrorHdf == -1) &
-                    call CON_stop("iErrorHdf in subroutine write_hdf5_data. Error marker 10")
+                    call stop_hdf5("iErrorHdf in subroutine write_hdf5_data. Error marker 10")
        else if (present(Rank2IntegerData)) then
            call h5dwrite_f(DatasetID, DataType, Rank2IntegerData, nCount, iErrorHdf, &
                 mem_space_id = MemorySpaceId, file_space_id = DataSpaceId,&
                 xfer_prp = PropertyListID)
                 if (iErrorHdf == -1) &
-                    call CON_stop("iErrorHdf in subroutine write_hdf5_data. Error marker 11")
+                    call stop_hdf5("iErrorHdf in subroutine write_hdf5_data. Error marker 11")
        else if (present(Rank3IntegerData)) then
            call h5dwrite_f(DatasetID, DataType, Rank3IntegerData, nCount, iErrorHdf, &
                 mem_space_id = MemorySpaceId, file_space_id = DataSpaceId,&
                 xfer_prp = PropertyListID)
                 if (iErrorHdf == -1) &
-                    call CON_stop("iErrorHdf in subroutine write_hdf5_data. Error marker 12")
+                    call stop_hdf5("iErrorHdf in subroutine write_hdf5_data. Error marker 12")
        else if (present(Rank4IntegerData)) then
            call h5dwrite_f(DatasetID, DataType, Rank4IntegerData, nCount, iErrorHdf, &
                 mem_space_id = MemorySpaceId, file_space_id = DataSpaceId,&
                 xfer_prp = PropertyListID)
                 if (iErrorHdf == -1) &
-                    call CON_stop("iErrorHdf in subroutine write_hdf5_data. Error marker 13")
+                    call stop_hdf5("iErrorHdf in subroutine write_hdf5_data. Error marker 13")
         end if
     else 
            call h5dwrite_f(DatasetID, DataType, CharacterData, nCount, iErrorHdf, &
                 mem_space_id = MemorySpaceId, file_space_id = DataSpaceId,&
                 xfer_prp = PropertyListID)
                 if (iErrorHdf == -1) &
-                    call CON_stop("iErrorHdf in subroutine write_hdf5_data. Error marker 14")
+                    call stop_hdf5("iErrorHdf in subroutine write_hdf5_data. Error marker 14")
             call h5tclose_f(DataType,iErrorHdf)
     end if
     call h5sclose_f(MemorySpaceId,iErrorHdf)
