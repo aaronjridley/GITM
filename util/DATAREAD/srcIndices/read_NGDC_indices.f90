@@ -6,14 +6,14 @@ subroutine read_NGDC_Indices(iOutputError)
 
   use ModKind
   use ModIndices
-  use CON_geopack, ONLY: CON_recalc, GsmGse_DD, JulianDay
+  use CON_geopack, ONLY: geopack_recalc, GsmGse_DD
   use ModTimeConvert, ONLY: time_real_to_int
   implicit none
 
   integer, intent(out) :: iOutputError
 
   integer :: ierror, i, j, npts, npts_hpi, k
-  integer :: input_coor_system, iday 
+  integer :: input_coor_system
   logical :: done
 
   ! One line of input
@@ -189,9 +189,7 @@ subroutine read_NGDC_Indices(iOutputError)
 
         time_now = IndexTimes_TV(i,imf_bx_)
         call time_real_to_int(time_now, itime)
-
-        iday = JulianDay(itime(1),itime(2),itime(3))
-        call CON_recalc(itime(1),iday,itime(4),itime(5),itime(6),0)
+        call geopack_recalc(itime)
 
         ! Convert from GSE to GSM
         Indices_TV(i,imf_bx_:imf_bz_) = &
