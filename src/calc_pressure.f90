@@ -55,7 +55,7 @@ subroutine calc_pressure
 
   do iBlock = 1, nBlocks
 
-     do iAlt = 0, nAlts+1
+     do iAlt = -1, nAlts+2
      
         cp(:,:,iAlt,iBlock) = 0.0
         Gamma(:,:,iAlt,iBlock) = 0.0  

@@ -1,5 +1,3 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
 !\
 ! ------------------------------------------------------------
 ! set_boundary
@@ -11,13 +9,13 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
   ! Fill in ghost cells at the top and bottom
 
   use ModSizeGitm, only: nAlts
-  use ModPlanet, only: nSpecies, nIonsAdvect, Mass, nIons, IsEarth,iN2_,iNO_
+  use ModPlanet, only: nSpecies, nIonsAdvect, Mass, nIons, &
+                       IsEarth, iN2_,iNO_, iN4S_, iO_
   use ModGITM, only: TempUnit, iEast_, iNorth_, iUp_
   use ModInputs
   use ModConstants
   use ModTime, only: UTime, iJulianDay,currenttime
-  use ModVertical, only:  Lat, Lon, Gravity_G, Altitude_G, dAlt_F, InvRadialDistance_C, &
-                         MeanMajorMass_1d, Coriolis, Centrifugal,dAltdLon_1D,dAltDLat_1D
+  use ModVertical, only: Lat, Lon, Gravity_G, Altitude_G, dAlt_F
   use ModIndicesInterfaces, only: get_HPI
 
   use EUA_ModMsis90, ONLY: meter6
@@ -38,13 +36,9 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
   logical :: IsFirstTime = .true., UseMsisBCs = .false.
   real    :: HP
   integer :: ierror
-  real :: EffectiveGravity(-1:nAlts+2)
-  real    :: InvAtmScaleHeight
-  real :: LowerBoundaryFlux, LowerBoundaryVelocity
-  real :: UpperBoundaryFlux, UpperBoundaryVelocity
+
   integer, dimension(25) :: sw
-  real :: MeanGravity, MeanMass, MeanTemp
-  real :: RadDist(-1:nAlts+2)
+
   !-----------------------------------------------------------
   ! Bottom
   !-----------------------------------------------------------
@@ -76,79 +70,64 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
 
   endif
 
-  do iAlt = -1, nAlts+2
+  ! Let the winds blow !!!!
+  Vel_GD(-1:0,iEast_)  = 0.0
+  Vel_GD(-1:0,iNorth_) = 0.0
 
-         EffectiveGravity(iAlt) = Gravity_G(iAlt) + &
-                  (Vel_GD(iAlt,iNorth_)**2.0 + Vel_GD(iAlt,iEast_)**2.0)&
-                  *InvRadialDistance_C(iAlt) + &
-                  Centrifugal/InvRadialDistance_C(iAlt) + Coriolis*Vel_GD(iAlt,iEast_)
+  Vel_GD(-1:0,iUp_)    = 0.0
+  VertVel(-1:0,:)      = 0.0
+  IVel(-1:0,iUp_)      = 0.0
 
-
-  enddo 
-
-
-   do iSpecies = 1, nSpecies
-
-                       MeanMass =  0.5*( MeanMajorMass_1d(-1) + MeanMajorMass_1d(0))
-                       MeanTemp =  0.5*( Temp(-1) + Temp(0) )
-                    MeanGravity = -0.5*( EffectiveGravity(-1) + EffectiveGravity(0)) 
-
-                    InvAtmScaleHeight =  MeanGravity * MeanMass / &
-                                      (MeanTemp*Boltzmanns_Constant)
-
-                    LogNS(-1,iSpecies) = &
-                         LogNS( 0,iSpecies) + &
-                       (InvAtmScaleHeight)*(dAlt_F(-1))
-
-
-   enddo 
-
-   Vel_GD(-1:0,iEast_)  = 0.0
-   Vel_GD(-1:0,iNorth_) = 0.0
-   Vel_GD(-1:0,iUp_)    = 0.0
-
-  if (UseTopography) then
-    Vel_GD(0,iEast_) = Vel_GD(1,iEast_)
-    Vel_GD(0,iNorth_) = Vel_GD(1,iNorth_)
-
-    Vel_GD(-1:0,iUp_) = Vel_GD(0,iNorth_)*dAltdLat_1d + &
-      Vel_GD(0,iEast_) * dAltdLon_1D
-  endif
-
-
-
-   VertVel(-1:0,:)      = 0.0
-   IVel(-1:0,iUp_)      = 0.0
-
-!    do iSpecies = 1, nSpecies
-!          LowerBoundaryVelocity = VertVel(1,iSpecies)
-!          LowerBoundaryFlux = LowerBoundaryVelocity*exp(LogNS(1,iSpecies))
-!          VertVel( 0 ,iSpecies) = LowerBoundaryFlux*( (RadDist(1)/RadDist( 0))**2.0)/(exp(LogNS(  0,iSpecies)))
-!          VertVel(-1 ,iSpecies) = LowerBoundaryFlux*( (RadDist(1)/RadDist(-1))**2.0)/(exp(LogNS( -1,iSpecies)))
-!    enddo 
-   
-
-  do iSpecies=1,nIonsAdvect - 1
+  do iSpecies=1,nIonsAdvect
      dn = (LogINS(2,iSpecies) - LogINS(1,iSpecies))
+     
      LogINS(0,iSpecies) = LogINS(1,iSpecies) - dn
      LogINS(-1,iSpecies) = LogINS(0,iSpecies) - dn
   enddo
+
+  ! Lower boundary for NO on Earth
+
+!  if (nSpecies == iN4S_) then
+     dn = (LogNS(2,iN4S_) - LogNS(1,iN4S_))
+     if (dn >= 0) then
+        LogNS(0,iN4S_) = LogNS(1,iN4S_) - dn
+        LogNS(-1,iN4S_) = LogNS(0,iN4S_) - dn
+     else
+        LogNS(0,iN4S_) = LogNS(1,iN4S_) + dn
+        LogNS(-1,iN4S_) = LogNS(0,iN4S_) + dn
+     endif
+!  endif
 !
-!
-!  ! Let the winds blow !!!!
-!  Vel_GD(-1:0,iEast_)  = 0.0
-!  Vel_GD(-1:0,iNorth_) = 0.0
-!
-!  Vel_GD(-1:0,iUp_)    = 0.0
-!  VertVel(-1:0,:)      = 0.0
-!  IVel(-1:0,iUp_)      = 0.0
-!
-!  do iSpecies=1,nIonsAdvect
-!     dn = (LogINS(2,iSpecies) - LogINS(1,iSpecies))
-!     
-!     LogINS(0,iSpecies) = LogINS(1,iSpecies) - dn
-!     LogINS(-1,iSpecies) = LogINS(0,iSpecies) - dn
-!  enddo
+  ! Lower boundary for O on Mars
+!  if (nSpecies == iO_) then
+
+     dn = (LogNS(2,iO_) - LogNS(1,iO_))
+     if (dn >= 0) then
+        LogNS(0,iO_) = LogNS(1,iO_) - dn
+        LogNS(-1,iO_) = LogNS(0,iO_) - dn
+     else
+        LogNS(0,iO_) = LogNS(1,iO_) + dn
+        LogNS(-1,iO_) = LogNS(0,iO_) + dn
+     endif
+!  endif
+
+  if(VertVel(1,iN4S_) .gt. 0.0 )then
+  ! Don't allow upwelling of N4S
+    VertVel( 0,iN4S_) = -1.0*VertVel(1,iN4S_)
+    VertVel(-1,iN4S_) = -1.0*VertVel(2,iN4S_)
+  else
+    VertVel( 0,iN4S_) =  1.0*VertVel(1,iN4S_)
+    VertVel(-1,iN4S_) =  1.0*VertVel(1,iN4S_)
+  endif 
+
+  if(VertVel(1,iO_) .gt. 0.0 )then
+  ! Don't allow upwelling of N4S
+    VertVel( 0,iO_) = -1.0*VertVel(1,iO_)
+    VertVel(-1,iO_) = -1.0*VertVel(2,iO_)
+  else
+    VertVel( 0,iO_) =  1.0*VertVel(1,iO_)
+    VertVel(-1,iO_) =  1.0*VertVel(1,iO_)
+  endif 
 !
 !  ! Lower boundary for NO on Earth
 !  if (nSpecies == iNO_) then
@@ -229,13 +208,13 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
              Mass(iSpecies) / (Temp(iAlt)*Boltzmanns_Constant)
         LogNS(iAlt,iSpecies) = &
              LogNS(iAlt-1,iSpecies) - dAlt_F(iAlt)*InvScaleHeightS
-!        if (LogNS(nAlts+1,iSpecies) > 75.0 .or. &
-!             LogNS(nAlts+2,iSpecies) > 75.0) then
-!           write(*,*) "======> bcs : ", iSpecies, 1.0e-3/InvScaleHeightS, &
-!                Gravity_G(nAlts), Mass(iSpecies), Temp(nAlts), &
-!                LogNS(nAlts,iSpecies), LogNS(nAlts+1,iSpecies), &
-!                dAlt_F(nAlts), LogNS(nAlts+2,iSpecies)
-!        endif
+        if (LogNS(nAlts+1,iSpecies) > 75.0 .or. &
+             LogNS(nAlts+2,iSpecies) > 75.0) then
+           write(*,*) "======> bcs : ", iSpecies, 1.0e-3/InvScaleHeightS, &
+                Gravity_G(nAlts), Mass(iSpecies), Temp(nAlts), &
+                LogNS(nAlts,iSpecies), LogNS(nAlts+1,iSpecies), &
+                dAlt_F(nAlts), LogNS(nAlts+2,iSpecies)
+        endif
      enddo
   enddo
 

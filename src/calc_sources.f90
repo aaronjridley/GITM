@@ -17,29 +17,47 @@ subroutine calc_GITM_sources(iBlock)
   real :: tmp2(nLons, nLats, 0:nAlts+1)
   real :: tmp3(nLons, nLats, 0:nAlts+1)
   real :: RhoI(nLons, nLats, nAlts)
+  real :: Rho110(nLons, nLats, 0:nAlts+1)
   real :: ScaleHeight(-1:nLons+2, -1:nLats+2, -1:nAlts+2)
-
-  real :: nVel(1:nAlts, nSpecies)
-  real :: NF_Eddy(1:nAlts), NF_NDen(1:nAlts), NF_Temp(1:nAlts)
-  real :: NF_NDenS(1:nAlts,1:nSpecies), NF_EddyRatio(1:nAlts,1:nSpecies)
-  real :: NF_Gravity(1:nAlts)
-  real :: NF_GradLogCon(1:nAlts,1:nSpecies)
   real :: Prandtl(nLons,nLats,0:nalts+1)
 
-! Potential Temperature
-! Used in New Eddy Conduction Calculations:  Bell 1-15-2009
-  real :: Theta(nLons, nLats, -1:nAlts+2)
-  real :: GammaScale(nLons, nLats, -1:nAlts+2)
-  real :: P0(nLons, nLats, -1:nAlts+2)
+  ! JMB Update 07/13/2017
+  ! Updated Conduction Routines Require intermediate
+  ! Steps outlined in Harwood et al. [2016]
+  ! Oscillation-free method for semi-linear diffusion equations
+  ! digitalcommons.georgefox.edu  
 
-!! Eddy Velocity Terms
-  real :: ConS(nLons,nLats,-1:nAlts+2,1:nSpecies)
-  real :: LogConS(nLons,nLats,-1:nAlts+2,1:nSpecies)
-  real :: GradLogConS(nLons,nLats,1:nAlts,1:nSpecies)
+  ! Temperature variables
+  real :: TemperatureStage1(1:nLons,1:nLats,-1:nAlts+2)
+  real :: TemperatureH(1:nLons,1:nLats,-1:nAlts+2)
+  real :: TemperatureF(1:nLons,1:nLats,-1:nAlts+2)
 
+  ! Vertical Viscosity Variables
+  real :: VerticalVelocityStage0(1:nLons,1:nLats,-1:nAlts+2,1:nSpecies)
+  real :: VerticalVelocityStage1(1:nLons,1:nLats,-1:nAlts+2,1:nSpecies)
+  real :: VerticalVelocityH(1:nLons,1:nLats,-1:nAlts+2,1:nSpecies)
+  real :: VerticalVelocityF(1:nLons,1:nLats,-1:nAlts+2,1:nSpecies)
 
-! Temporary
-  real :: EddyCoefRatio(nLons, nLats, 1:nAlts,nSpecies)
+  ! Bulk Viscosity Variables
+  real :: VelocityStage0(1:nLons,1:nLats,-1:nAlts+2)
+  real :: VelocityStage1(1:nLons,1:nLats,-1:nAlts+2,1:3)
+  real :: VelocityH(1:nLons,1:nLats,-1:nAlts+2,1:3)
+  real :: VelocityF(1:nLons,1:nLats,-1:nAlts+2,1:3)
+
+  ! Sub-timestep used in the multi-step conduction
+  real :: DtCSLocal
+  ! Species-Specific Boundary Condition Settings
+  logical ::VertVelNeuBCS(1:nSpecies)   ! Set to true if you want Neumann BCs
+  ! NeuBCS used for Conduction and Bulk Winds
+  logical ::NeuBCS                      ! Set to true if you want Neumann BCs
+
+  ! Note:  NeuBCs is a setting for Neumann Boundary Conditions.
+  ! If you are not specifying a Jeans Escape at the top, then
+  ! NeuBCS = .true.
+  ! 
+  ! If you are setting a Jeans escape (i.e. for H, H2, or He)
+  ! then NeuBCS MUST BE SET TO FALSE FOR THAT SPECIES
+  ! Otherwise, you will not get the escape that you want!
 
   call report("calc_GITM_sources",1)
 
@@ -47,85 +65,47 @@ subroutine calc_GITM_sources(iBlock)
   ! ion-neutral collision frequency, lambdas for ion drag, etc.
 
   if (iDebugLevel > 4) write(*,*) "=====> going into calc_rates", iproc
+  ! JMB: 07/13/2017
+  ! Initialize our 2nd Order Multi-Stage Variables
+  TemperatureStage1(1:nLons,1:nLats,-1:nAlts+2) = &
+       Temperature(1:nLons,1:nLats,-1:nAlts+2,iBlock)
+  TemperatureH(1:nLons,1:nLats,-1:nAlts+2) = &
+       Temperature(1:nLons,1:nLats,-1:nAlts+2,iBlock)
+  TemperatureF(1:nLons,1:nLats,-1:nAlts+2) = &
+       Temperature(1:nLons,1:nLats,-1:nAlts+2,iBlock)
+
+  VerticalVelocityStage1(1:nLons,1:nLats,-1:nAlts+2,1:nSpecies) = &
+       VerticalVelocity(1:nLons,1:nLats,-1:nAlts+2,1:nSpecies,iBlock)
+  VerticalVelocityH(1:nLons,1:nLats,-1:nAlts+2,1:nSpecies) = &
+       VerticalVelocity(1:nLons,1:nLats,-1:nAlts+2,1:nSpecies,iBlock)
+  VerticalVelocityF(1:nLons,1:nLats,-1:nAlts+2,1:nSpecies) = &
+       VerticalVelocity(1:nLons,1:nLats,-1:nAlts+2,1:nSpecies,iBlock)
+
+  VelocityStage1(1:nLons,1:nLats,-1:nAlts+2,1:3) = &
+       Velocity(1:nLons,1:nLats,-1:nAlts+2,1:3,iBlock)
+  VelocityH(1:nLons,1:nLats,-1:nAlts+2,1:3) = &
+       Velocity(1:nLons,1:nLats,-1:nAlts+2,1:3,iBlock)
+  VelocityF(1:nLons,1:nLats,-1:nAlts+2,1:3) = &
+       Velocity(1:nLons,1:nLats,-1:nAlts+2,1:3,iBlock)
+
+  ! Note, this assumes that all species need Neumann Upper boundary
+  ! conditions.  If you specify escape rates in set_vertical_bcs.f90
+  ! such as Jeans Escape, then set VertVelNeuBCs(iH_ or iH2_) = .false.
+  ! This will allow you to specify escape rates at the top.
+  VertVelNeuBCS(1:nSpecies) = .true. 
 
   ChemicalHeatingRate = 0.0
+  ChemicalHeatingRateIon = 0.0
+  ChemicalHeatingRateEle = 0.0
+
   ChemicalHeatingSpecies = 0.0
+
   call calc_eddy_diffusion_coefficient(iBlock)  
   call calc_rates(iBlock)
   call calc_collisions(iBlock)
 
   RhoI = IDensityS(1:nLons,1:nLats,1:nAlts,ie_,iBlock) * &
        MeanIonMass(1:nLons,1:nLats,1:nAlts)
-
-  !\
-  ! ---------------------------------------------------------------
-  ! These terms are for Vertical Neutral Wind drag
-  ! ---------------------------------------------------------------
-  !/
-
-  if (UseNeutralFriction .and. .not.UseNeutralFrictionInSolver) then
-
-!     if (UseBoquehoAndBlelly) then
-!
-     do iLat = 1, nLats
-        do iLon = 1, nLons
-           do iAlt = 1, nAlts
-              do iSpecies = 1, nSpecies
-
-                 GradLogConS(iLon,iLat,iAlt,iSpecies) = &
-                      -1.0*Gravity_GB(iLon,iLat,iAlt,iBlock)*&
-                      (1.0 -  (MeanMajorMass(iLon,iLat,iAlt)/Mass(iSpecies)) )
-
-              enddo
-           enddo
-        enddo
-     enddo
-     
-     do iLat = 1, nLats
-        do iLon = 1, nLons
-
-           do iAlt = 1, nAlts
-              NF_NDen(iAlt) = NDensity(iLon,iLat,iAlt,iBlock)
-              NF_Temp(iAlt) = Temperature(iLon,iLat,iAlt,iBlock)*TempUnit(iLon,iLat,iAlt)
-              NF_Eddy(iAlt) = KappaEddyDiffusion(iLon,iLat,iAlt,iBlock)
-              NF_Gravity(iAlt) = Gravity_GB(iLon,iLat,iAlt,iBlock)
-
-              do iSpecies = 1, nSpecies
-                 nVel(iAlt,iSpecies) = VerticalVelocity(iLon,iLat,iAlt,iSpecies,iBlock)
-                 NF_NDenS(iAlt,iSpecies) = NDensityS(iLon,iLat,iAlt,iSpecies,iBlock)
-                 NF_EddyRatio(iAlt,iSpecies) = 0.0
-                 NF_GradLogCon(iAlt,iSpecies) = GradLogConS(iLon,iLat,iAlt,iSpecies)
-              enddo !iSpecies = 1, nSpecies
-             
-           enddo !iAlt = 1, nAlts
-
-           call calc_neutral_friction(nVel(1:nAlts,1:nSpecies), &
-                                      NF_Eddy(1:nAlts), &
-                                      NF_NDen(1:nAlts), &
-                                      NF_NDenS(1:nAlts,1:nSpecies), &
-                                      NF_GradLogCon(1:nAlts,1:nSpecies), &
-                                      NF_EddyRatio(1:nAlts,1:nSpecies), &
-                                      NF_Temp(1:nAlts), NF_Gravity(1:nAlts) )
-
-           do iAlt = 1, nAlts
-              NeutralFriction(iLon, iLat, iAlt, 1:nSpecies) = 0.0
-              VerticalVelocity(iLon,iLat,iAlt,1:nSpecies,iBlock) = nVel(iAlt,1:nSpecies)
-
-           enddo
-
-        enddo
-     enddo
-
-  else
-
-     NeutralFriction = 0.0
-
-  endif
-!     write(*,*) '==========> Now Exiting Neutral Friction Calculation!!'
-
-  !\
-  ! Gravity is a source term which is calculated in initialize.f90
-  !/
 
   !\
   ! ---------------------------------------------------------------
@@ -138,6 +118,7 @@ subroutine calc_GITM_sources(iBlock)
   !/
 
   if (iDebugLevel > 4) write(*,*) "=====> solar heating", iproc
+  if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
 
   if (UseSolarHeating .or. UseIonChemistry) then
 
@@ -145,7 +126,6 @@ subroutine calc_GITM_sources(iBlock)
      ! euv, such as solar zenith angles, and local time.
 
      call calc_physics(iBlock)
-
      call euv_ionization_heat(iBlock)
 
   endif
@@ -156,128 +136,81 @@ subroutine calc_GITM_sources(iBlock)
   RadCooling = 0.0
   call calc_planet_sources(iBlock)
 
-  ! The auroral heating is specified below, after the aurora is described
-  ! in get_potential
-
-
   !\
   ! Conduction ----------------------------------------------------
   !/
 
   if (iDebugLevel > 4) write(*,*) "=====> conduction", iproc
+  if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
 
+  Rho110 = Rho(1:nLons, 1:nLats,0:nAlts+1, iBlock)
+  
   if(UseConduction)then
 
-     tmp2 = Rho(1:nLons, 1:nLats,0:nAlts+1, iBlock) * &
-          cp(1:nLons, 1:nLats,0:nAlts+1, iBlock)
-     
-     Prandtl = 0.0
-  
-     call calc_conduction(iBlock, &
+     ! Note: Neumann = .true. is needed if you want 
+     ! the gradient to be zero at the top.
+
+     NeuBCS = .true.  ! Use Neumann Boundary Conditions
+
+     tmp2 = Rho110 * cp(1:nLons, 1:nLats,0:nAlts+1, iBlock)
+
+     if (UseTurbulentCond) then
+        Prandtl = &
+             KappaEddyDiffusion(1:nLons, 1:nLats,0:nAlts+1, iBlock) * &
+                            Rho110 * &
+                             Cp(1:nLons, 1:nLats,0:nAlts+1, iBlock)
+     else 
+        Prandtl = 0.0
+     endif
+
+     DtCSLocal = Dt/2.0
+     call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
           Temperature(1:nLons, 1:nLats,-1:nAlts+2, iBlock) * &
-          TempUnit(1:nLons, 1:nLats,-1:nAlts+2), &
-          KappaTemp(1:nLons, 1:nLats,0:nAlts+1, iBlock), &
-          tmp2, &
-          MoleConduction)
-     
-      Conduction = MoleConduction/TempUnit(1:nLons, 1:nLats,1:nAlts) 
+             TempUnit(1:nLons, 1:nLats,-1:nAlts+2), &
+            KappaTemp(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
+              Prandtl(1:nLons, 1:nLats, 0:nAlts+1), &
+                 tmp2(1:nLons, 1:nLats, 0:nAlts+1), &
+       MoleConduction(1:nLons, 1:nLats, 0:nAlts+1))
 
-      if (UseTurbulentCond) then
+     TemperatureStage1(1:nLons,1:nLats,0:nAlts+1) = &
+           Temperature(1:nLons,1:nLats,0:nAlts+1,iBlock) + &
+        MoleConduction(1:nLons,1:nLats,0:nAlts+1)/&
+              TempUnit(1:nLons,1:nLats,0:nAlts+1)
 
-         if (UseUpdatedTurbulentCond) then
+     DtCSLocal = Dt/2.0
+     call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
+          TemperatureStage1(1:nLons,1:nLats,-1:nAlts+2) * &
+                   TempUnit(1:nLons,1:nLats,-1:nAlts+2), &
+                  KappaTemp(1:nLons,1:nLats,0:nAlts+1,iBlock) + &
+                    Prandtl(1:nLons,1:nLats,0:nAlts+1), &
+                       tmp2(1:nLons,1:nLats,0:nAlts+1), &
+             MoleConduction(1:nLons,1:nLats,0:nAlts+1))
 
-            do iAlt = -1,nAlts+2
-               P0(1:nLons,1:nLats,iAlt) = Pressure(1:nLons,1:nLats,0,iBlock)
-            enddo
+     TemperatureH(1:nLons,1:nLats, 0:nAlts+1) = &
+          TemperatureStage1(1:nLons,1:nLats,0:nAlts+1) + &
+             MoleConduction(1:nLons,1:nLats,0:nAlts+1)/&
+                   TempUnit(1:nLons,1:nLats,0:nAlts+1)
 
-!! Set the Exponent for the Potential Temperature as (Gamma - 1/Gamma)
-!! Must span the range from -1 to nAlts + 2  (same as Theta)
+     ! Full Time Step Update
+     DtCSLocal = Dt
+     call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
+          Temperature(1:nLons, 1:nLats,-1:nAlts+2, iBlock) * &
+             TempUnit(1:nLons, 1:nLats,-1:nAlts+2), &
+            KappaTemp(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
+              Prandtl(1:nLons, 1:nLats, 0:nAlts+1 ), &
+                 tmp2(1:nLons, 1:nLats, 0:nAlts+1 ), &
+       MoleConduction(1:nLons, 1:nLats, 0:nAlts+1))
 
-            do iLon = 1, nLons
-               do iLat = 1, nLats
-                  do iAlt = 1,nAlts
-                     GammaScale(iLon,iLat,iAlt) = &
-                          (Gamma(iLon,iLat,iAlt,iBlock)-1.0) / &
-                          Gamma(iLon,iLat,iAlt,iBlock)
-                  enddo
-               enddo
-            enddo
+     TemperatureF(1:nLons,1:nLats, 0:nAlts+1) = &
+          Temperature(1:nLons,1:nLats, 0:nAlts+1,iBlock) + &
+       MoleConduction(1:nLons,1:nLats, 0:nAlts+1) / &
+             TempUnit(1:nLons,1:nLats, 0:nAlts+1)
 
-            do iAlt = -1,0
-               GammaScale(1:nLons,1:nLats,iAlt) = &
-                    GammaScale(1:nLons,1:nLats,1) 
-            enddo
-
-            do iAlt = nAlts,nAlts+2
-               GammaScale(1:nLons,1:nLats,iAlt) = &
-                    GammaScale(1:nLons,1:nLats,nAlts) 
-            enddo
-
-            Theta(1:nLons,1:nLats,-1:nAlts+2) = &
-                 Temperature(1:nLons,1:nLats,-1:nAlts+2,iBlock) * &
-                 TempUnit(1:nLons,1:nLats,-1:nAlts+2)*&
-                 (P0(1:nLons,1:nLats,-1:nAlts+2)/ &
-                 Pressure(1:nLons,1:nLats,-1:nAlts+2,iBlock))**&
-                 GammaScale(1:nLons,1:nLats,-1:nAlts+2)
- 
-!! Prandtl is the Eddy Heat Conduction Coefficient After Hickey et al [2000] 
-
-            Prandtl = &
-                 KappaEddyDiffusion(1:nLons,1:nLats,0:nAlts+1,iBlock) * &
-                 Rho(1:nLons,1:nLats,0:nAlts+1,iBlock)
-
-            tmp2(1:nLons,1:nLats,0:nAlts+1) = &
-                 Rho(1:nLons,1:nLats,0:nAlts+1,iBlock)/&
-                 Gamma(1:nLons,1:nLats,0:nAlts+1,iBlock)
-
-            call calc_conduction(&
-                 iBlock, &
-                 Theta,   &
-                 Prandtl, &
-                 tmp2,    &
-                 EddyCond)
-
-!! Eddy Scaling is Set in UAM.in.  Defaults to 1.0
-
-            EddyCondAdia = &
-                 (1.0/EddyScaling)* &
-                 (Temperature(1:nLons,1:nLats,1:nAlts,iBlock) / &
-                 Theta(1:nLons,1:nLats,1:nAlts))*EddyCond
-            
-         else  !! Use The Old Version
-
-            Prandtl = & 
-                 KappaEddyDiffusion(1:nLons, 1:nLats,0:nAlts+1, iBlock) * &
-                 Rho(1:nLons, 1:nLats,0:nAlts+1, iBlock) * &
-                 Cp(1:nLons, 1:nLats,0:nAlts+1, iBlock)
-
-            call calc_conduction(iBlock, &
-                 Temperature(1:nLons, 1:nLats,-1:nAlts+2, iBlock) * &
-                 TempUnit(1:nLons, 1:nLats,-1:nAlts+2), &
-                 Prandtl, &
-                 tmp2, &
-                 EddyCond)
-
-            Conduction = Conduction + &
-                 EddyCond/TempUnit(1:nLons, 1:nLats,1:nAlts) 
-
-            tmp3 = &
-                 Prandtl      / &
-                 Gamma(1:nLons,1:nLats, 0:nAlts+1,iBlock) / &
-                 Rho(1:nLons, 1:nLats,0:nAlts+1, iBlock)  / &
-                 Cp(1:nLons, 1:nLats,0:nAlts+1, iBlock)
-
-            call calc_conduction(iBlock, &
-                 Pressure(1:nLons, 1:nLats,-1:nAlts+2,iBlock), &
-                 tmp3, &
-                 tmp2, &
-                 EddyCondAdia)
-   
-            Conduction = Conduction - &
-                 EddyCondAdia/TempUnit(1:nLons, 1:nLats,1:nAlts)
-   
-         endif  !! UseUpdatedTurbulentCond Check
-      endif  ! THE USETurbulentCond Check
+     ! Note that Conduction is the net temperature update
+     Conduction(1:nLons,1:nLats,0:nAlts+1) = &
+          (2.0*TemperatureH(1:nLons,1:nLats,0:nAlts+1) - &
+               TemperatureF(1:nLons,1:nLats,0:nAlts+1)) - &
+                Temperature(1:nLons,1:nLats,0:nAlts+1,iBlock) 
 
   else
      Conduction = 0.0
@@ -289,6 +222,9 @@ subroutine calc_GITM_sources(iBlock)
   ! ---------------------------------------------------------------
   !/
 
+  if (iDebugLevel > 4) write(*,*) "=====> Ion Drag", iproc
+  if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
+  
   if (UseIonDrag) then
 
      tmp = Collisions(1:nLons,1:nLats,1:nAlts,iVIN_)*&
@@ -304,6 +240,7 @@ subroutine calc_GITM_sources(iBlock)
      ! where Vis = Vin *(Ns/N)  
 
      do iSpecies = 1, nSpecies
+
         tmp = Collisions(1:nLons,1:nLats,1:nAlts,iVIN_)*&
              RhoI / &
              (Mass(iSpecies) * &
@@ -328,42 +265,166 @@ subroutine calc_GITM_sources(iBlock)
   ! Viscosity ----------------------------------------------------
   !/
 
-  if (iDebugLevel > 4) write(*,*) "=====> conduction", iproc
+  if (iDebugLevel > 4) write(*,*) "=====> Viscosity", iproc
+  if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
+  
+  if (UseViscosity) then
 
-  if(UseViscosity)then
-
+     if (iDebugLevel > 4) write(*,*) "=====> calc_viscosity", iproc
+     if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
      call calc_viscosity(iBlock)
 
-     call calc_conduction(iBlock, &
-          Velocity(1:nLons, 1:nLats,-1:nAlts+2, iNorth_, iBlock), &
-          ViscCoef(1:nLons, 1:nLats,0:nAlts+1), &
-          Rho(1:nLons, 1:nLats,0:nAlts+1, iBlock), &
-          Viscosity(1:nLons, 1:nLats,1:nAlts, iNorth_))
+     ! 07/13/2017:  JMB, Below is the 2nd Order
+     ! Implicit method for Horizontal Winds.
+     ! We assume that these winds (North, East)
+     ! have a zero gradient at the top, so NeuBCS = .true.
 
-     call calc_conduction(iBlock, &
-          Velocity(1:nLons, 1:nLats,-1:nAlts+2, iEast_, iBlock), &
-          ViscCoef(1:nLons, 1:nLats,0:nAlts+1), &
-          Rho(1:nLons, 1:nLats,0:nAlts+1, iBlock), &
-          Viscosity(1:nLons, 1:nLats,1:nAlts, iEast_))
+     NeuBCS = .true.
+     do iDir = iEast_, iNorth_
 
+        if (iDebugLevel > 4) write(*,*) "=====> calc_conduct", iproc, iDir, 1
+        if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
+
+        DtCSLocal = Dt/2.0
+        VelocityStage0 = Velocity(1:nLons, 1:nLats,-1:nAlts+2, iDir,iBlock)
+        call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
+            VelocityStage0, & 
+            ViscCoef(1:nLons, 1:nLats, 0:nAlts+1      ) + &
+                 Rho110 * &
+  KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock) , &
+                 Rho110, &
+           Viscosity(1:nLons, 1:nLats, 0:nAlts+1, iDir))
+
+     VelocityStage1(1:nLons,1:nLats, 0:nAlts+1, iDir ) = &
+           Velocity(1:nLons,1:nLats, 0:nAlts+1, iDir ,iBlock) + &
+          Viscosity(1:nLons,1:nLats, 0:nAlts+1, iDir  )
+
+        if (iDebugLevel > 4) write(*,*) "=====> calc_conduct", iproc, iDir, 2
+        if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
+
+        DtCSLocal = Dt/2.0
+        call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
+              VelocityStage1(1:nLons, 1:nLats,-1:nAlts+2, iDir), & 
+                    ViscCoef(1:nLons, 1:nLats, 0:nAlts+1      ) + &
+                         Rho110 * &
+          KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock) , &
+                         Rho110, &
+                   Viscosity(1:nLons, 1:nLats, 0:nAlts+1,iDir))
+
+          VelocityH(1:nLons,1:nLats, 0:nAlts+1, iDir ) = &
+     VelocityStage1(1:nLons,1:nLats, 0:nAlts+1, iDir ) + &
+          Viscosity(1:nLons,1:nLats, 0:nAlts+1, iDir  )
+
+     if (iDebugLevel > 4) write(*,*) "=====> calc_conduct", iproc, iDir, 3
+     if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
+
+     DtCSLocal = Dt
+     VelocityStage0 = Velocity(1:nLons, 1:nLats,-1:nAlts+2, iDir,iBlock)
+     call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
+            VelocityStage0, & 
+            ViscCoef(1:nLons, 1:nLats, 0:nAlts+1      ) + &
+                 Rho110 * &
+  KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock) , &
+                 Rho110, &
+           Viscosity(1:nLons, 1:nLats, 0:nAlts+1,iDir))
+
+     VelocityF(1:nLons,1:nLats, 0:nAlts+1, iDir) = &
+      Velocity(1:nLons,1:nLats, 0:nAlts+1, iDir,iBlock) + &
+     Viscosity(1:nLons,1:nLats, 0:nAlts+1, iDir  )
+
+      ! This is the final 2nd ORder Implicit Viscosity for 
+      ! the horizontal Bulk Winds
+        Viscosity(1:nLons,1:nLats, 0:nAlts+1, iDir ) = &
+  ( 2.0*VelocityH(1:nLons,1:nLats, 0:nAlts+1, iDir         ) - &
+        VelocityF(1:nLons,1:nLats, 0:nAlts+1, iDir         )) - &
+         Velocity(1:nLons,1:nLats, 0:nAlts+1,iDir,iBlock) 
+
+     enddo !iDir = iEast_, iNorth_
+
+     if (iDebugLevel > 4) write(*,*) "=====> Vertical Viscosity", iproc
+     if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
+
+     ! JMB:  07/13/2017
+     ! Add 2nd Order Viscosity for Each Species
      Viscosity(:,:,:,iUp_) = 0.0
+     do iSpecies = 1, nSpecies
+
+          DtCSLocal = Dt/2.0
+          VelocityStage0 = VerticalVelocity(1:nLons, 1:nLats,-1:nAlts+2, iSpecies,iBlock)
+          call calc_conduction(iBlock, DtCSLocal, VertVelNeuBCS(iSpecies), &
+               VelocityStage0, & 
+            (4.0/3.0)*ViscCoefS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies) + &
+       Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) * &
+             KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock) , &
+       Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock), &
+                      Viscosity(1:nLons, 1:nLats, 0:nAlts+1, iUp_))
+
+          VerticalVelocityStage1(1:nLons,1:nLats, 0:nAlts+1, iSpecies ) = &
+                VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1, iSpecies ,iBlock) + &
+                       Viscosity(1:nLons,1:nLats, 0:nAlts+1, iUp_  )
+
+          DtCSLocal = Dt/2.0
+          call calc_conduction(iBlock, DtCSLocal, VertVelNeuBCS(iSpecies), &
+         VerticalVelocityStage1(1:nLons, 1:nLats,-1:nAlts+2, iSpecies), & 
+            (4.0/3.0)*ViscCoefS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies) + &
+       Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) * &
+             KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock) , &
+       Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock), &
+                      Viscosity(1:nLons, 1:nLats, 0:nAlts+1, iUp_))
+
+               VerticalVelocityH(1:nLons,1:nLats, 0:nAlts+1, iSpecies ) = &
+          VerticalVelocityStage1(1:nLons,1:nLats, 0:nAlts+1, iSpecies ) + &
+                       Viscosity(1:nLons,1:nLats, 0:nAlts+1, iUp_  )
+
+          ! Full Time Step Update
+          DtCSLocal = Dt
+          VelocityStage0 = VerticalVelocity(1:nLons, 1:nLats,-1:nAlts+2, iSpecies,iBlock)
+          call calc_conduction(iBlock, DtCSLocal, VertVelNeuBCS(iSpecies), &
+               VelocityStage0, &
+            (4.0/3.0)*ViscCoefS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies) + &
+       Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) * &
+             KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock) , &
+       Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock), &
+                      Viscosity(1:nLons, 1:nLats, 0:nAlts+1, iUp_))
+
+          VerticalVelocityF(1:nLons,1:nLats, 0:nAlts+1, iSpecies) = &
+           VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1, iSpecies,iBlock) + &
+                  Viscosity(1:nLons,1:nLats, 0:nAlts+1, iUp_  )
+
+          ! Simply update the Vertical Winds here (rather than in add_sources)
+               VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1, iSpecies, iBlock  ) = &
+          2.0*VerticalVelocityH(1:nLons,1:nLats, 0:nAlts+1, iSpecies         ) - &
+              VerticalVelocityF(1:nLons,1:nLats, 0:nAlts+1, iSpecies         ) 
+
+      ! This is the final 2nd ORder Implicit Viscosity for 
+      ! the horizontal Bulk Winds
+        VerticalViscosityS(1:nLons,1:nLats, 0:nAlts+1, iSpecies ) = &
+  ( 2.0*VelocityH(1:nLons,1:nLats, 0:nAlts+1, iDir         ) - &
+        VelocityF(1:nLons,1:nLats, 0:nAlts+1, iDir         )) - &
+         VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1,iSpecies,iBlock) 
+
+     enddo ! iSpecies
 
   else
      Viscosity = 0.0
   end if
-
+!
   !\
   ! ---------------------------------------------------------------
   ! These terms are for Ion Densities
   ! ---------------------------------------------------------------
   !/
 
-  if (iDebugLevel > 4) write(*,*) "=====> IonChemistry", iproc, UseIonChemistry
-
-  if (iDebugLevel > 4) write(*,*) "=====> calc_ion_v", iproc
-
+  if (iDebugLevel > 4) write(*,*) "=====> get_potential", iproc
+  if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
   call get_potential(iBlock)
+
+  if (iDebugLevel > 4) write(*,*) "=====> Efield", iproc
+  if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
   call calc_efield(iBlock)
+
+  if (iDebugLevel > 4) write(*,*) "=====> Aurora", iproc
+  if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
   call aurora(iBlock)
   if (UseAuroralHeating) then
      AuroralHeating = AuroralHeatingRate(:,:,:,iBlock) / &
@@ -373,8 +434,12 @@ subroutine calc_GITM_sources(iBlock)
      AuroralHeating = 0.0
   endif
 
+  if (iDebugLevel > 4) write(*,*) "=====> Ion Velocity", iproc
+  if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
   call calc_ion_v(iBlock)
 
+  if (iDebugLevel > 4) write(*,*) "=====> Chemistry", iproc
+  if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
   ! The Emissions array was never set. Should this be here or earlier ????
   Emissions(:,:,:,:,iBlock) = 0.0
   call calc_chemistry(iBlock)
@@ -383,6 +448,10 @@ subroutine calc_GITM_sources(iBlock)
        ChemicalHeatingRate(:,:,:) * Element_Charge / &
        TempUnit(1:nLons,1:nLats,1:nAlts) / cp(1:nLons,1:nLats,1:nAlts,iBlock)/&
        rho(1:nLons,1:nLats,1:nAlts,iBlock)
+	   
+  ChemicalHeatingRateIon(:,:,:) = &
+       ChemicalHeatingRateIon(:,:,:) * Element_Charge
 
   ChemicalHeatingSpecies = ChemicalHeatingSpecies * Element_Charge
+
 end subroutine calc_GITM_sources

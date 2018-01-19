@@ -29,6 +29,9 @@ subroutine aurora(iBlock)
   real :: de1, de2, de3, de4, de5, detotal, h
 
   real :: LocalVar, HPn, HPs, avepower, ratio
+  
+  HPn = 0.0
+  HPs = 0.0
 
   if (IsFirstTime(iBlock)) then
      IsFirstTime(iBlock) = .false.
@@ -140,11 +143,6 @@ subroutine aurora(iBlock)
         eflx_ergs = ElectronEnergyFlux(j,i) !/ (1.0e-7 * 100.0 * 100.0)
         av_kev    = ElectronAverageEnergy(j,i)
 
-        !p = 40.0 * eflx_ergs**0.5 * av_kev / (16.0 + av_kev**2)
-        !h = 0.45 * av_kev**0.85 * p
-        !write(*,*) "eflux, avee: ", eflx_ergs, av_kev
-        !write(*,*) "hall, ped : ", h, p
-             
         ! For diffuse auroral models
 
         ED_Flux = 0.0
@@ -154,9 +152,6 @@ subroutine aurora(iBlock)
 
            UserData2d(j,i,1,2,iBlock) = av_kev
            UserData2d(j,i,1,3,iBlock) = eflx_ergs
-
-!           if (avee > 10.0) write(*,*) "avee, eflux : ",av_kev,eflx_ergs, &
-!                j,i,MLatitude(j, i, nAlts+1, iBlock), MLT(j, i, nAlts+1)
 
            HasSomeAurora = .true.
            avee = av_kev * 1000.0        ! keV -> eV
@@ -287,9 +282,10 @@ subroutine aurora(iBlock)
 
         if (HasSomeAurora) then
 
-           do n=1,ED_N_Energies
-              UserData2d(j,i,1,7+n,iBlock) = ED_flux(n)
-           enddo
+
+!           do n=1,ED_N_Energies
+!              UserData2d(j,i,1,7+n,iBlock) = ED_flux(n)
+!           enddo
 
            call R_ELEC_EDEP (ED_Flux, 15, ED_Energies, 3, ED_Ion, 7)
            call R_ELEC_EDEP (ED_Flux, 15, ED_Energies, 3, ED_Heating, 11)

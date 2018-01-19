@@ -6,7 +6,7 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   use ModPlanet, only: nSpecies, OmegaBody, nIonsAdvect
   use ModConstants, only: pi
   use ModSources, only: EUVHeating, KappaEddyDiffusion
-  use ModInputs, only: UseIonAdvection, iDebugLevel
+  use ModInputs, only: UseAUSMSolver,UseIonAdvection, iDebugLevel, UseImprovedIonAdvection
   use ModVertical, ONLY: &
        LogRho, &
        cMax1      => cMax,&
@@ -22,8 +22,10 @@ subroutine advance_vertical(iLon,iLat,iBlock)
        gamma_1d, &
        EddyCoef_1d, &
        ViscCoef_1d, &
+       ViscCoefS_1d, &
+       KappaTemp_1d, &
        Gravity_G, Altitude_G, dAlt_C, InvRadialDistance_C, dAlt_F, InvDAlt_F, &
-        Cv_1D, dAltdLon_1D, dAltdLat_1D, SZAVertical
+       Cv_1D, dAltdLon_1D, dAltdLat_1D, SZAVertical, MLatVertical
   
 
   implicit none
@@ -38,13 +40,16 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   iBlock1D = iBlock
 
   SZAVertical = SZA(iLon,iLat,iBlock)
+  MLatVertical=MLatitude(iLon,iLat,nAlts,iBlock)
 
   KappaTemp1 = KappaTemp(iLon,iLat,:,iBlock)
-  dAltdLon_1D = dAltdLon_CB(iLon,iLat,0,iBlock)
-  dAltdLat_1D = dAltdLat_CB(iLon,iLat,0,iBlock)
-  EddyCoef_1d(1:nAlts) = KappaEddyDiffusion(iLon,iLat,1:nAlts,iBlock)
-  ViscCoef_1d(1:nAlts) = ViscCoef(iLon,iLat,1:nAlts)
-  Cv_1D(1:nAlts) = cp(iLon,iLat,1:nAlts,iBlock)
+  dAltdLon_1D = dAltdLon_CB(iLon,iLat,1,iBlock)
+  dAltdLat_1D = dAltdLat_CB(iLon,iLat,1,iBlock)
+  EddyCoef_1d(0:nAlts+1) = KappaEddyDiffusion(iLon,iLat,0:nAlts+1,iBlock)
+  ViscCoef_1d(0:nAlts+1) = ViscCoef(iLon,iLat,0:nAlts+1)
+  ViscCoefS_1d(0:nAlts+1,1:nSpecies) = ViscCoefS(iLon,iLat,0:nAlts+1,1:nSpecies)
+  KappaTemp_1d(0:nAlts+1) = KappaTemp(iLon,iLat,0:nAlts+1,iBlock)
+  Cv_1D(-1:nAlts+2) = cp(iLon,iLat,-1:nAlts+2,iBlock)
   
   if (minval(NDensityS(iLon,iLat,:,1:nSpecies,iBlock)) <= 0.0) then
      write(*,*) "negative density found!"
@@ -75,7 +80,11 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   enddo
 
   do iSpecies = 1, nIons-1 !Advect
-     LogINS(:,iSpecies)  = log(IDensityS(iLon,iLat,:,iSpecies,iBlock))
+     if (UseImprovedIonAdvection) then
+        LogINS(:,iSpecies)  = IDensityS(iLon,iLat,:,iSpecies,iBlock)
+     else
+        LogINS(:,iSpecies)  = log(IDensityS(iLon,iLat,:,iSpecies,iBlock))
+     endif
   enddo
 
   MeanMajorMass_1d = MeanMajorMass(iLon,iLat,:)
@@ -89,8 +98,8 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   ! Cell centered variables
   Gravity_G           = Gravity_GB(iLon, iLat, :, iBlock)
   Altitude_G          = Altitude_GB(iLon, iLat, :, iBlock)
-  dAlt_C              = dAlt_GB(iLon, iLat, 1:nAlts, iBlock)
-  InvRadialDistance_C = InvRadialDistance_GB(iLon, iLat, 1:nAlts, iBlock)
+  dAlt_C              = dAlt_GB(iLon, iLat, -1:nAlts+2, iBlock)
+  InvRadialDistance_C = InvRadialDistance_GB(iLon, iLat, -1:nAlts+2, iBlock)
 
   ! Face centered variables
   ! This is the distance between cell centers. 
@@ -102,7 +111,17 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   SpeciesDensityOld(iLon,iLat,:,nSpeciesTotal+1:nSpeciesAll,iBlock) = &
        IDensityS(iLon,iLat,:,1:nIons-1,iBlock)
 
-  call advance_vertical_1d
+  
+! Old Version
+ ! call advance_vertical_1d
+
+  if (UseAUSMSolver) then
+     call advance_vertical_1d_ausm
+  else
+     ! Default case
+     call advance_vertical_1d_rusanov
+  endif
+  
 
    Rho(iLon,iLat,:,iBlock)                  = exp(LogRho)
 
@@ -158,7 +177,11 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   if (UseIonAdvection) then
 
      do iIon = 1, nIons-1 !Advect
-        IDensityS(iLon,iLat,:,iIon,iBlock) = exp(LogINS(:,iIon))
+        if (UseImprovedIonAdvection) then
+           IDensityS(iLon,iLat,:,iIon,iBlock) = LogINS(:,iIon)
+        else
+           IDensityS(iLon,iLat,:,iIon,iBlock) = exp(LogINS(:,iIon))
+        endif
      enddo
 
      !\

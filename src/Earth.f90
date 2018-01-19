@@ -1,7 +1,7 @@
 !  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 !-----------------------------------------------------------------------------
-! $Id: Earth.f90,v 1.15 2013/10/24 18:27:34 agburr Exp $
+! $Id: Earth.f90,v 1.21 2017/08/05 01:33:09 ridley Exp $
 !
 ! Author: Aaron Ridley, UMichigan
 !
@@ -17,8 +17,8 @@ subroutine fill_photo(photoion, photoabs, photodis)
   implicit none
 
   real, intent(out) :: photoion(Num_WaveLengths_High, nIons-1)
-  real, intent(out) :: photoabs(Num_WaveLengths_High, nSpecies)
-  real, intent(out) :: photodis(Num_WaveLengths_High, nSpecies)
+  real, intent(out) :: photoabs(Num_WaveLengths_High, nSpeciesTotal)
+  real, intent(out) :: photodis(Num_WaveLengths_High, nSpeciesTotal)
 
   integer :: iSpecies, iWave
 
@@ -26,7 +26,7 @@ subroutine fill_photo(photoion, photoabs, photodis)
   PhotoIon = 0.0
   PhotoDis = 0.0
 
-  photoabs(:,iO_3P_)     = PhotoAbs_O
+  photoabs(:,iO_3P_)  = PhotoAbs_O
   photoabs(:,iO2_)    = PhotoAbs_O2
 
   if (nSpecies > 2) then
@@ -38,6 +38,13 @@ subroutine fill_photo(photoion, photoabs, photodis)
      photoabs(:,min(iSpecies,nSpecies))    = PhotoIon_N
   endif
 
+  ! JMB:  06/25/2016
+  if (nSpecies > 5) then
+     iSpecies = iHe_
+     photoabs(:,min(iSpecies,nSpecies))    = PhotoAbs_He
+  endif
+
+
   ! This may need to be as defined below....
   photoion(:,iN2P_)   = PhotoIon_N2
   photoion(:,iO2P_)   = PhotoIon_O2
@@ -45,6 +52,7 @@ subroutine fill_photo(photoion, photoabs, photodis)
   photoion(:,iO_4SP_) = PhotoIon_OPlus4S
   photoion(:,iO_2DP_) = PhotoIon_OPlus2D
   photoion(:,iO_2PP_) = PhotoIon_OPlus2P
+  photoion(:,iHeP_)   = PhotoAbs_He
 
   do iWave = 1, Num_WaveLengths_High
      if (waves(iWave) >= 1250.0 .and. wavel(iWave) <= 1750.0) then
@@ -59,9 +67,19 @@ subroutine fill_photo(photoion, photoabs, photodis)
 
   enddo
 
-  !     Ion_Rate_Eff_N2(:,:,:) = Ion_Rate_Eff_N2(:,:,:) +              &
-  !          Intensity(:,:,:,N) * (PhotoAbs_N2(N) - PhotoIon_N2(N)) *  &
-  !          NDensity(:,:,:,N_N2,index)
+  ! PE Ratio:  N2 + e- -> N(2D) + N(4S)
+  pelecratio_N2(:,1) = PhotoElec_N2_N4S
+  ! PE Ratio:  N2 + e- -> N+ + N(4S)
+  pelecratio_N2(:,2) = PhotoElec_N2_NPlus
+  ! PE Ratio:  N2 + e- -> N2+
+  pelecratio_N2(:,3) = PhotoElec_N2_N2Plus
+
+  ! PE Ratio:  O2 + e- -> O(4S) + O(3P)
+  pelecratio_O2(:,1) = PhotoElec_O2_O3P
+  ! PE Ratio:  O2 + e- -> O2+
+  pelecratio_O2(:,2) = PhotoElec_O2_O2Plus
+  ! PE Ratio:  O2 + e- -> O(4S)+ + O(3P)
+  pelecratio_O2(:,3) = PhotoElec_O2_OPlus
 
 end subroutine fill_photo
 
@@ -133,6 +151,13 @@ subroutine calc_planet_sources(iBlock)
           TempUnit(1:nLons,1:nLats,1:nAlts))) * &
           NDensityS(1:nLons,1:nLats,1:nAlts,iNO_,iBlock)
 
+     RadiativeCooling2d = 0.0
+     do iAlt=1,nAlts
+        RadiativeCooling2d(1:nLons, 1:nLats) = &
+             RadiativeCooling2d(1:nLons, 1:nLats) + &
+             NOCooling(1:nLons,1:nLats,iAlt) * dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
+     enddo
+
      NOCooling = NOCooling / TempUnit(1:nLons,1:nLats,1:nAlts) / &
           (Rho(1:nLons,1:nLats,1:nAlts,iBlock)*cp(:,:,1:nAlts,iBlock))
 
@@ -188,15 +213,15 @@ subroutine calc_planet_sources(iBlock)
        35.0*1.602e-19*&
        ( &
        EuvIonRateS(:,:,:,iO2P_,iBlock)* &
-       nDensitys(:,:,1:nAlts,iO2_,iBlock) + &
+       NDensityS(1:nLons,1:nLats,1:nAlts,iO2_,iBlock) + &
        EuvIonRateS(:,:,:,iN2P_,iBlock)* &
-       nDensitys(:,:,1:nAlts,iN2_,iBlock) + &
+       NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock) + &
        EuvIonRateS(:,:,:,iO_4SP_,iBlock)* &
-       nDensitys(:,:,1:nAlts,iO_3P_,iBlock) + &
+       NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock) + &
        EuvIonRateS(:,:,:,iO_2DP_,iBlock)* &
-       nDensitys(:,:,1:nAlts,iO_3P_,iBlock) + &
+       NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock) + &
        EuvIonRateS(:,:,:,iO_2PP_,iBlock)* &
-       nDensitys(:,:,1:nAlts,iO_3P_,iBlock))
+       NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock))
   
   PhotoElectronHeating(:,:,:,iBlock) = &
        PhotoElectronHeating(:,:,:,iBlock) / &
@@ -244,12 +269,13 @@ subroutine init_heating_efficiency
 
   use ModGITM, only: nLons, nLats, nAlts, nBlocks, Altitude_GB
   use ModEUV, only: HeatingEfficiency_CB, eHeatingEfficiency_CB
+  use ModInputs, only: NeutralHeatingEfficiency
 
   implicit none
 
   integer :: iLon, iLat, iAlt
   !------------------------------------------------------------------
-  HeatingEfficiency_CB(:,:,:,1:nBlocks) = 0.05
+  HeatingEfficiency_CB(:,:,:,1:nBlocks) = NeutralHeatingEfficiency
 !  max(0.1, &
 !       0.40 - &
 !       5.56e-5*(Altitude_GB(1:nLons,1:nLats,1:nAlts,1:nBlocks)/1000 - 165)**2)
@@ -310,12 +336,29 @@ end subroutine calc_eddy_diffusion_coefficient
 
 subroutine set_planet_defaults
 
+  use ModPlanet
   use ModInputs
 
+  implicit none
+  
+  iNeutralDensityOutputList(iN_4S_)=.false.
+  iNeutralDensityOutputList(iHe_)=.false.
+  iNeutralDensityOutputList(iN_2D_)=.false.
+  iNeutralDensityOutputList(iN_2P_)=.false.
+  iNeutralDensityOutputList(iH_)=.false.
+  iNeutralDensityOutputList(iCO2_)=.false.
+  iNeutralDensityOutputList(iO_1D_)=.false.
+
+  iIonDensityOutputList(iNP_)=.false.
+  iIonDensityOutputList(iO_2DP_)=.false.
+  iIonDensityOutputList(iO_2PP_)=.false.
+  iIonDensityOutputList(iHP_)=.false.
+  iIonDensityOutputList(iHeP_)=.false.
+
+  iTemperatureOutputList(2)=.false.
+  iTemperatureOutputList(3)=.false.
+  
   return
 
 end subroutine set_planet_defaults
 
-subroutine planet_limited_fluxes(iBlock)
-!! Do Nothing
-end subroutine planet_limited_fluxes

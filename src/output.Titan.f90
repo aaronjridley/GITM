@@ -2,7 +2,7 @@
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 
 
-subroutine output_mars_specific
+subroutine output_earth_specific
 
   use ModGITM
 
@@ -10,4 +10,4 @@ subroutine output_mars_specific
 
   write(*,*) "This doesn't work!"
 
-end subroutine output_mars_specific
+end subroutine output_earth_specific

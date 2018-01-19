@@ -6,11 +6,11 @@
 ! ------------------------------------------------------------
 !/
 
-subroutine advance_vertical_1d
+subroutine advance_vertical_1d_rusanov
 
   use ModVertical
   use ModGITM, ONLY : Dt, iCommGITM, iProc
-  use ModInputs, only: UseBarriers, iDebugLevel, UseNighttimeIonBCs
+  use ModInputs, only: UseBarriers, iDebugLevel
   implicit none
   !-----------------------------------------------------------
   integer :: iError, iAlt
@@ -87,8 +87,6 @@ subroutine advance_vertical_1d
 
   ! Step 1, Fill in Ghost Cells
   call set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp,LogINS,IVel,VertVel)
-  !!!!!!------change the gradient of LogIns on the top boundary
-  if (UseNighttimeIonBCs)    call nighttime_timeconstant(LogINS,OldBCINS) 
 
   ! Store our original time step from GITM (CFL-limited).
 
@@ -109,7 +107,7 @@ subroutine advance_vertical_1d
 
 
 !!! Now calculate, k1 = f(tn, yn)
-  call advance_vertical_1stage_rusanov(&
+  call advance_vertical_1stage(&
        LogRho, LogNS, Vel_GD, Temp, NewLogRho, NewLogNS, NewVel_GD, NewTemp, &
        LogINS, NewLogINS, IVel, VertVel, NewVertVel)
 
@@ -167,9 +165,6 @@ subroutine advance_vertical_1d
   call set_vertical_bcs(UpdatedLogRho, UpdatedLogNS, UpdatedVel_GD, &
                         UpdatedTemp, UpdatedLogINS, IVel, UpdatedVS)
 
-  !!!!!!------change the gradient of LogIns on the top boundary
-  if (UseNighttimeIonBCs)    call nighttime_timeconstant(UpdatedLogINS,OldBCINS) 
-
    LogNS  = UpdatedLogNS
    LogINS = UpdatedLogINS
    LogRho = UpdatedLogRho
@@ -186,7 +181,7 @@ subroutine advance_vertical_1d
 
 !!!!! Calculate K2
 
-  call advance_vertical_1stage_rusanov(&
+  call advance_vertical_1stage(&
        LogRho, LogNS, Vel_GD, Temp, NewLogRho, NewLogNS, NewVel_GD, NewTemp, &
        LogINS, NewLogINS, IVel, VertVel, NewVertVel)
 
@@ -240,9 +235,6 @@ subroutine advance_vertical_1d
   call set_vertical_bcs(UpdatedLogRho, UpdatedLogNS, UpdatedVel_GD, &
                           UpdatedTemp, UpdatedLogINS, IVel, UpdatedVS)
 
-  !!!!!!------change the gradient of LogIns on the top boundary
-  if (UseNighttimeIonBCs)   call nighttime_timeconstant(UpdatedLogINS,OldBCINS)
-
   LogNS  = UpdatedLogNS
   LogINS = UpdatedLogINS
   LogRho = UpdatedLogRho
@@ -260,7 +252,7 @@ subroutine advance_vertical_1d
 !
 !!!!!! Calculate K3
 !
-  call advance_vertical_1stage_rusanov(&
+  call advance_vertical_1stage(&
        LogRho, LogNS, Vel_GD, Temp, NewLogRho, NewLogNS, NewVel_GD, NewTemp, &
        LogINS, NewLogINS, IVel, VertVel, NewVertVel)
 !
@@ -313,9 +305,6 @@ subroutine advance_vertical_1d
   call set_vertical_bcs(UpdatedLogRho, UpdatedLogNS, UpdatedVel_GD, &
                           UpdatedTemp, UpdatedLogINS, IVel, UpdatedVS)
 
-  !!!!!!------change the gradient of LogIns on the top boundary
-  if (UseNighttimeIonBCs)   call nighttime_timeconstant(UpdatedLogINS,OldBCINS)
-
   LogNS  = UpdatedLogNS
   LogINS = UpdatedLogINS
   LogRho = UpdatedLogRho
@@ -332,7 +321,7 @@ subroutine advance_vertical_1d
   
 !! Calculate K4 (Final Coefficient)
 
-  call advance_vertical_1stage_rusanov(&
+  call advance_vertical_1stage(&
        LogRho, LogNS, Vel_GD, Temp, NewLogRho, NewLogNS, NewVel_GD, NewTemp, &
        LogINS, NewLogINS, IVel, VertVel, NewVertVel)
   
@@ -378,9 +367,6 @@ subroutine advance_vertical_1d
   call set_vertical_bcs(FinalLogRho, FinalLogNS, FinalVel_GD, &
                           FinalTemp, FinalLogINS, IVel, FinalVS)
 
-  !!!!!!------change the gradient of LogIns on the top boundary
-  if (UseNighttimeIonBCs)   call nighttime_timeconstant(UpdatedLogINS,OldBCINS)
-
 !!! Set the Updated State:  Stage 2
 
    LogNS = FinalLogNS
@@ -394,10 +380,10 @@ subroutine advance_vertical_1d
   if (iDebugLevel > 7) &
        write(*,*) "========> Done with advance_vertical_1d", iproc
 
-end subroutine advance_vertical_1d
+end subroutine advance_vertical_1d_rusanov
 
 !=============================================================================
-subroutine advance_vertical_1stage_rusanov( &
+subroutine advance_vertical_1stage( &
      LogRho, LogNS, Vel_GD, Temp, NewLogRho, NewLogNS, NewVel_GD, NewTemp, &
      LogINS, NewLogINS, IVel, VertVel, NewVertVel)
 
@@ -432,6 +418,7 @@ subroutine advance_vertical_1stage_rusanov( &
   real, intent(inout) :: NewTemp(-1:nAlts+2)
   real, intent(out) :: NewVertVel(-1:nAlts+2,nSpecies)
   real :: NS(-1:nAlts+2,nSpecies)
+  real :: NS_small(1:nAlts,nSpecies)
   real :: Rho(-1:nAlts+2)
   real :: LogNum(-1:nAlts+2)
 
@@ -481,13 +468,13 @@ subroutine advance_vertical_1stage_rusanov( &
   nFilter = 10
   NT(-1:nAlts+2) = exp(LogNum(-1:nAlts+2))
 
-  call calc_rusanov_alts(LogRho ,GradLogRho,  DiffLogRho)
-  call calc_rusanov_alts(LogNum ,GradLogNum,  DiffLogNum)
-  call calc_rusanov_alts(Temp   ,GradTemp,    DiffTemp)
+  call calc_rusanov_alts_rusanov(LogRho ,GradLogRho,  DiffLogRho)
+  call calc_rusanov_alts_rusanov(LogNum ,GradLogNum,  DiffLogNum)
+  call calc_rusanov_alts_rusanov(Temp   ,GradTemp,    DiffTemp)
   do iDim = 1, 3
-     call calc_rusanov_alts(Vel_GD(:,iDim), &
+     call calc_rusanov_alts_rusanov(Vel_GD(:,iDim), &
           GradVel_CD(:,iDim),DiffVel_CD(:,iDim))
-     call calc_rusanov_alts(iVel(:,iDim), &
+     call calc_rusanov_alts_rusanov(iVel(:,iDim), &
           GradiVel_CD(:,iDim),DiffiVel_CD(:,iDim))
   enddo
 
@@ -496,11 +483,11 @@ subroutine advance_vertical_1stage_rusanov( &
   DiviVel = GradiVel_CD(:,iUp_) + 2*iVel(1:nAlts,iUp_)*InvRadialDistance_C(1:nAlts)
 
   do iSpecies=1,nSpecies
-     call calc_rusanov_alts(LogNS(:,iSpecies),GradTmp, DiffTmp)
+     call calc_rusanov_alts_rusanov(LogNS(:,iSpecies),GradTmp, DiffTmp)
      GradLogNS(:,iSpecies) = GradTmp
      DiffLogNS(:,iSpecies) = DiffTmp
 
-     call calc_rusanov_alts(VertVel(:,iSpecies),GradTmp, DiffTmp)
+     call calc_rusanov_alts_rusanov(VertVel(:,iSpecies),GradTmp, DiffTmp)
      GradVertVel(:,iSpecies) = GradTmp
      DiffVertVel(:,iSpecies) = DiffTmp
      DivVertVel(:,iSpecies) = GradVertVel(:,iSpecies) + &
@@ -508,7 +495,7 @@ subroutine advance_vertical_1stage_rusanov( &
   enddo
 
   do iSpecies=1,nIons-1
-     call calc_rusanov_alts(LogINS(:,iSpecies), GradTmp, DiffTmp)
+     call calc_rusanov_alts_rusanov(LogINS(:,iSpecies), GradTmp, DiffTmp)
      GradLogINS(:,iSpecies) = GradTmp
      DiffLogINS(:,iSpecies) = DiffTmp
   enddo
@@ -630,13 +617,25 @@ subroutine advance_vertical_1stage_rusanov( &
 
   ! Add Neutral Friction Between Species
   ! Needed for each increment in the RK-4 Solver
+!  if (UseNeutralFriction) then
+!     nVel(1:nAlts,1:nSpecies) = NewVertVel(1:nAlts,1:nSpecies)
+!     call calc_neutral_friction(nVel(1:nAlts,1:nSpecies), &
+!                  EddyCoef_1d(1:nAlts), NT(1:nAlts), &
+!                           NS(1:nAlts,1:nSpecies), &
+!                  GradLogConS(1:nAlts,1:nSpecies), &
+!                         Temp(1:nAlts))
+!     NewVertVel(1:nAlts,1:nSpecies) = nVel(1:nAlts,1:nSpecies)
+!  endif 
+!
+
   if (UseNeutralFriction) then
      nVel(1:nAlts,1:nSpecies) = NewVertVel(1:nAlts,1:nSpecies)
-     call calc_neutral_friction(nVel(1:nAlts,1:nSpecies), &
+     NS_small = NS(1:nAlts,1:nSpecies)
+     call calc_neutral_friction(Dt,nVel(1:nAlts,1:nSpecies), &
                   EddyCoef_1d(1:nAlts), NT(1:nAlts), &
-                           NS(1:nAlts,1:nSpecies), &
-                  GradLogConS(1:nAlts,1:nSpecies), &
-                         Temp(1:nAlts))
+                           NS_small, &
+                         GradLogConS(1:nAlts,1:nSpecies), &
+                                Temp(1:nAlts))
      NewVertVel(1:nAlts,1:nSpecies) = nVel(1:nAlts,1:nSpecies)
   endif 
 
@@ -683,34 +682,7 @@ subroutine advance_vertical_1stage_rusanov( &
      NewLogRho(iAlt) = alog(NewSumRho)
   enddo
 
-end subroutine advance_vertical_1stage_rusanov
-
-!=============================================================================
-subroutine nighttime_timeconstant(UpdatValue,OldBCs) 
-   
-  use ModVertical
-  use ModConstants, only:pi
-  use ModTime
-  
-  implicit none
-
-  real   :: UpdatValue(-1:nAlts+2,1:nIons)
-  real   :: OldBCs(1:2,1:nIons)
-  
-  if ( SZAVertical > Pi/2 .and. &
-       (( MLatVertical > 30.0 .and. MLatVertical <70.0) .or. &
-       ( MLatVertical > -60.0 .and. MLatVertical < -30.0 ))) then
-
-     ! iVel(nAlts+2,3)=-600.0
-     ! iVel(nAlts+1,3)=-600.0
-
-     UpdatValue(nAlts+1,:) = OldBCs(1,:)
-     UpdatValue(nAlts+2,:) = OldBCs(2,:)
-     
-  endif
-
-
-end subroutine nighttime_timeconstant
+end subroutine advance_vertical_1stage
 
 !\
 ! ------------------------------------------------------------
@@ -718,7 +690,7 @@ end subroutine nighttime_timeconstant
 ! ------------------------------------------------------------
 !/
 
-subroutine calc_rusanov_alts(Var, GradVar, DiffVar)
+subroutine calc_rusanov_alts_rusanov(Var, GradVar, DiffVar)
 
   use ModSizeGitm
   use ModVertical, only : dAlt_C, cMax
@@ -730,7 +702,7 @@ subroutine calc_rusanov_alts(Var, GradVar, DiffVar)
   real, dimension(1:nAlts+1) :: VarLeft, VarRight, DiffFlux
   !------------------------------------------------------------
 
-  call calc_facevalues_alts(Var, VarLeft, VarRight)
+  call calc_facevalues_alts_rusanov(Var, VarLeft, VarRight)
 
   ! Gradient based on averaged Left/Right values
   GradVar = 0.5 * &
@@ -742,15 +714,15 @@ subroutine calc_rusanov_alts(Var, GradVar, DiffVar)
 
   DiffVar = (DiffFlux(2:nAlts+1) - DiffFlux(1:nAlts))/dAlt_C(1:nAlts)
 
-end subroutine calc_rusanov_alts
+end subroutine calc_rusanov_alts_rusanov
 
 !\
 ! ------------------------------------------------------------
-! calc_facevalues_alts
+! calc_facevalues_alts_rusanov
 ! ------------------------------------------------------------
 !/
 
-subroutine calc_facevalues_alts(Var, VarLeft, VarRight)
+subroutine calc_facevalues_alts_rusanov(Var, VarLeft, VarRight)
 
   use ModVertical, only: dAlt_F, InvDAlt_F
   use ModSizeGITM, only: nAlts
@@ -803,6 +775,6 @@ subroutine calc_facevalues_alts(Var, VarLeft, VarRight)
      VarRight(i) = Var(i)   - 0.5*dVarLimited(i)   * dAlt_F(i)
   end do
 
-end subroutine calc_facevalues_alts
+end subroutine calc_facevalues_alts_rusanov
 
 

@@ -134,9 +134,9 @@ subroutine get_magfield(GeoLat,GeoLon,GeoAlt,xmag,ymag,zmag)
 
      CALL FELDG(1,GeoLat,GeoLon,GeoALT,XMAG,YMAG,ZMAG,bMag)
 
-     xmag =  xmag !* 1.0e-9
-     ymag =  ymag !* 1.0e-9
-     zmag = -zmag !* 1.0e-9
+     xmag =  xmag * 1.0e-9
+     ymag =  ymag * 1.0e-9
+     zmag = -zmag * 1.0e-9
 
   else
 

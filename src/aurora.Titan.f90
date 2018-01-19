@@ -4,23 +4,16 @@ subroutine aurora(iBlock)
 
   use ModGITM
   use ModSources
+  use ModTime, only : tSimulation, CurrentTime
+  use ModInputs
+  use ModConstants
+  use ModUserGITM
+  use ModMpi
+  use ModIndicesInterfaces
 
   implicit none
 
   integer, intent(in) :: iBlock
 
-  call report("Aurora",1)
-  call start_timing("Aurora")
-
-  ! No aurora by default
-
-  AuroralHeatingRate(:,:,:,iBlock)  = 0.0
-  AuroralIonRateS(:,:,:,:,iBlock) = 0.0
-
-  call end_timing("Aurora")
-
 end subroutine aurora
-
-
-
 

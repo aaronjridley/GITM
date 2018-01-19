@@ -1,7 +1,7 @@
 !  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 !----------------------------------------------------------------------------
-! $Id: ModSatellites.f90,v 1.10 2014/10/29 22:23:28 xingm Exp $
+! $Id: ModSatellites.f90,v 1.11 2015/07/02 13:36:25 ridley Exp $
 ! Author: Aaron Ridley, UMichigan
 !
 ! Modified:
@@ -23,7 +23,7 @@ module ModSatellites
 
   integer, parameter :: nMaxSats = 20
   integer, parameter :: nMaxSatInputLines = 100000 !Asad: increased for RCAC
-  integer, parameter :: nMaxSatPos = 50
+  integer, parameter :: nMaxSatPos = 10
 
   integer :: nSats = 0
 

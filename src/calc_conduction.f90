@@ -1,27 +1,29 @@
 !  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 
-subroutine calc_conduction(iBlock, Quantity, Diff, MulFac, dTdt_cond)
+subroutine calc_conduction(iBlock, DtIn, NeuBCS, Quantity, Diff, MulFac, dTdt_cond)
 
   use ModSizeGitm
-  use ModGITM, only: dAlt_GB, Latitude, Longitude, dt, Altitude_GB, &
-       RadialDistance_GB
+  use ModGITM, only: dAlt_GB, Latitude, Longitude, Altitude_GB, RadialDistance_GB
   use ModConstants
 
   implicit none
 
   integer, intent(in) :: iBlock
-  real, intent(in) :: Quantity(nLons, nLats, -1:nAlts+2)
-  real, intent(in) :: Diff(nLons, nLats, 0:nAlts+1)
-  real, intent(in) :: MulFac(nLons, nLats,0:nAlts+1)
-  real, intent(out) :: dTdt_cond(nLons, nLats, nAlts)
+  real, intent(in)    :: DtIn
+  logical, intent(in) :: NeuBCS
+  real, intent(in)    :: Quantity( nLons, nLats, -1:nAlts+2)
+  real, intent(in)    :: Diff(     nLons, nLats,  0:nAlts+1)
+  real, intent(in)    :: MulFac(   nLons, nLats,  0:nAlts+1)
+  real, intent(out)   :: dTdt_cond(nLons, nLats,  0:nAlts+1)
 
-  real, dimension(0:nAlts+1) :: m, du, r, du12, du22, &
-       dl, lou, dlou, di, r2
+  real, dimension(0:nAlts+1) :: &
+       m, du, r, du12, du22, dl, lou, dlou, di, r2
 
-  real :: tempold(0:nAlts+1), temp(0:nAlts+1)
-  real, dimension(0:nAlts+1) :: a,b,c,d, cp, dp
+  real, dimension(0:nAlts+1) :: tempold, temp
+  real, dimension(0:nAlts+1) :: a, b, c, d, cp, dp
   integer :: iLon, iLat, iAlt
+  integer :: i
 
   call start_timing("conduction")
   call report("calc_conduction",3)
@@ -34,14 +36,14 @@ subroutine calc_conduction(iBlock, Quantity, Diff, MulFac, dTdt_cond)
         r2 = RadialDistance_GB(iLon,iLat, 0:nAlts+1,iBlock)**2
         di = diff(iLon,iLat,:)*r2
 
-        m = dt/(MulFac(iLon, iLat, 0:nAlts+1)*r2)
+        m = DtIn/(MulFac(iLon,iLat, 0:nAlts+1)*r2)
         du = Altitude_GB(iLon,iLat, 1:nAlts+2,iBlock) - &
              Altitude_GB(iLon,iLat, 0:nAlts+1,iBlock)
         dl = Altitude_GB(iLon,iLat, 0:nAlts+1,iBlock) - &
              Altitude_GB(iLon,iLat,-1:nAlts+0,iBlock)
         r = du/dl
 
-        du12 = du*du * (1+r*r)
+        du12 = du*du * (1+r)*(1+r)
         du22 = 0.5 * (dl*du + du*du)
 
         lou  = di/du22
@@ -53,8 +55,6 @@ subroutine calc_conduction(iBlock, Quantity, Diff, MulFac, dTdt_cond)
 
         dl(0) = dl(1)
         dl(nAlts+1) = dl(nAlts)
-
-        ! dl = 0.0
 
         ! Do a google search for a tri-diagnal solver and you will come up
         ! with this:
@@ -74,10 +74,28 @@ subroutine calc_conduction(iBlock, Quantity, Diff, MulFac, dTdt_cond)
         b(0) = -1.0
         c(0) = 0.0
 
-        a(nAlts+1) = 1.0
-        b(nAlts+1) = -1.0
-        c(nAlts+1) = 0.0
-        d(nAlts+1) = 0.0
+!        i = nAlts+1
+!        a(i) = -1.0*( -r(i)*(1.0+r(i))*di(i)/du22(i))
+!        b(i) = -1.0*( 1.0/m(i) + r(i)*(1+r(i))*di(i)/du22(i))
+!        c(i) = 0.0
+!        d(i) = -tempold(i)/m(i)
+
+        if(NeuBCS) then
+           i = nAlts+1 
+           !a(nAlts+1) = 1.0
+           !b(nAlts+1) = -1.0
+           !c(nAlts+1) = 0.0
+           !d(nAlts+1) = 0.0
+           a(i) =  1.0*( r(i)*(1.0+r(i))*di(i)*m(i)/du22(i))
+           b(i) = -1.0*( 1.0 + r(i)*(1+r(i))*di(i)*m(i)/du22(i))
+           c(i) = 0.0
+           d(i) = -tempold(i)
+        else
+           a(nAlts+1) = 0.0
+           b(nAlts+1) = -1.0
+           c(nAlts+1) = 0.0
+           d(nAlts+1) = -tempold(nAlts+1)
+        endif
 
         cp(0) = c(0)/b(0)
         do iAlt = 1, nAlts+1
@@ -92,8 +110,8 @@ subroutine calc_conduction(iBlock, Quantity, Diff, MulFac, dTdt_cond)
            temp(iAlt) = dp(iAlt)-cp(iAlt)*temp(iAlt+1)
         enddo
 
-        dTdt_cond(iLon,iLat,1:nAlts) = temp(1:nAlts) - &
-             Quantity(iLon,iLat,1:nAlts)
+        dTdt_cond(iLon,iLat,0:nAlts+1) = &
+             temp(0:nAlts+1) - Quantity(iLon,iLat,0:nAlts+1)
 
      enddo
   enddo

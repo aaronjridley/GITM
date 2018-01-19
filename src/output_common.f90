@@ -1,7 +1,7 @@
 !  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 !----------------------------------------------------------------------------
-! $Id: output_common.f90,v 1.55 2014/10/29 22:23:28 xingm Exp $
+! $Id: output_common.f90,v 1.63 2017/10/24 14:23:20 ridley Exp $
 !
 ! Author: Aaron Ridley, UMichigan
 !
@@ -14,6 +14,7 @@
 ! AGB 10/18/13: Added gravity, collision frequency, and pressure gradient
 !               to 3DION output
 ! AGB 12/20/13: Removed gravity from 3DION output
+! AJR 06/30/17: Added in 3DLST - A list of variables
 !----------------------------------------------------------------------------
 
 integer function bad_outputtype()
@@ -30,6 +31,7 @@ integer function bad_outputtype()
      IsFound = .false.
 
      if (OutputType(iOutputType) == '3DALL')     IsFound = .true.
+     if (OutputType(iOutputType) == '3DLST')     IsFound = .true.
      if (OutputType(iOutputType) == '3DNEU')     IsFound = .true.
      if (OutputType(iOutputType) == '3DION')     IsFound = .true.
      if (OutputType(iOutputType) == '3DTHM')     IsFound = .true.
@@ -42,6 +44,7 @@ integer function bad_outputtype()
      if (OutputType(iOutputType) == '2DMEL')     IsFound = .true.
      if (OutputType(iOutputType) == '2DUSR')     IsFound = .true.
      if (OutputType(iOutputType) == '2DTEC')     IsFound = .true.
+     if (OutputType(iOutputType) == '2DANC')     IsFound = .true.
 
      if (OutputType(iOutputType) == '1DALL')     IsFound = .true.
      if (OutputType(iOutputType) == '0DALL')     IsFound = .true.
@@ -91,7 +94,7 @@ subroutine output(dir, iBlock, iOutputType)
   character (len=5) :: proc_str,cBlock, cType
   character (len=24) :: cTime='', cTimeSave=''
   integer :: iiLat, iiLon, iiAlt, nGCs, cL=0
-  integer :: iLon,iLat,iAlt, nVars_to_Write, nlines, iBLK,iSpecies
+  integer :: iLon,iLat,iAlt, nVars_to_Write, nlines, iBLK,iSpecies, i
   logical :: done, IsFirstTime = .true., IsThere
 
   real :: LatFind, LonFind, AltFind
@@ -247,6 +250,28 @@ subroutine output(dir, iBlock, iOutputType)
      nvars_to_write = 13+nSpeciesTotal+nSpecies+nIons
      call output_3dall(iBlock)
 
+  case ('3DLST')
+
+     nvars_to_write = 3
+     if (iRhoOutputList) nvars_to_write = nvars_to_write+1
+     do iSpecies = 1,nSpeciesTotal
+        if (iNeutralDensityOutputList(iSpecies)) nvars_to_write = nvars_to_write+1
+     enddo
+     do i = 1,3
+        if (iNeutralWindOutputList(i)) nvars_to_write = nvars_to_write+1
+     enddo
+     do iSpecies = 1,nIons
+        if (iIonDensityOutputList(iSpecies)) nvars_to_write = nvars_to_write+1
+     enddo
+     do i = 1,3
+        if (iIonWindOutputList(i)) nvars_to_write = nvars_to_write+1
+     enddo
+     do i = 1,3
+        if (iTemperatureOutputList(i)) nvars_to_write = nvars_to_write+1
+     enddo
+
+     call output_3dlst(iBlock)
+
   case ('3DNEU')
 
      nvars_to_write = 8+nSpeciesTotal+nSpecies
@@ -308,14 +333,18 @@ subroutine output(dir, iBlock, iOutputType)
 
   case ('2DTEC')
 
-     if (iBlock == 1) call set_nVarsUser2d
      nvars_to_write = 5
      call output_2dtec(iBlock)
+
+  case ('2DANC')
+
+     nvars_to_write = 10
+     call output_2danc(iBlock)
 
   case('1DALL')
 
      nGCs = 0
-     nvars_to_write = 13+nSpeciesTotal+nSpecies+nIons+nSpecies+5
+     nvars_to_write = 13+nSpeciesTotal+nSpecies+nIons !+nSpecies+5
      call output_1dall(iiLon, iiLat, iBlock, rLon, rLat, iOutputUnit_)
 
   case ('0DALL')
@@ -428,7 +457,9 @@ contains
           write(iOutputUnit_,"(I7,A)") nMagLons+1, " nLongitudes"
           write(iOutputUnit_,*) " "
           write(iOutputUnit_,*) "NO GHOSTCELLS"
-       elseif (cType(3:5) =="GEL".or.cType(3:5)=="TEC") then
+       elseif (cType(3:5) =="GEL".or. &
+            cType(3:5)=="TEC".or. &
+            cType(1:5)=="2DANC") then
           write(iOutputUnit_,"(I7,A)") nLats, " nLatitude"
           write(iOutputUnit_,"(I7,A)") nLons, " nLongitudes"
           write(iOutputUnit_,*) " "
@@ -445,13 +476,76 @@ contains
     write(iOutputUnit_,"(I7,A1,a)")  2, " ", "Latitude"
     write(iOutputUnit_,"(I7,A1,a)")  3, " ", "Altitude"
 
+    if (cType(3:5) == "LST") then
+
+       iOff = 4
+       if (iRhoOutputList) then
+          write(iOutputUnit_,"(I7,A1,a)")  iOff, " ", "Rho (kg/m3)"
+          iOff = iOff+1
+       endif
+       do iSpecies = 1,nSpeciesTotal
+          if (iNeutralDensityOutputList(iSpecies)) then
+             write(iOutputUnit_,"(I7,A1,a)")  iOff, " ", &
+                  "["//cSpecies(iSpecies)//"] (/m3)"
+             iOff = iOff+1
+          endif
+       enddo
+       if (iNeutralWindOutputList(1)) then
+          write(iOutputUnit_,"(I7,A1,a)")  iOff, " ", "Vn (east) (m/s)"
+          iOff=iOff+1
+       endif
+       if (iNeutralWindOutputList(2)) then
+          write(iOutputUnit_,"(I7,A1,a)")  iOff, " ", "Vn (north) (m/s)" 
+          iOff=iOff+1
+       endif
+       if (iNeutralWindOutputList(3)) then
+          write(iOutputUnit_,"(I7,A1,a)")  iOff, " ", "Vn (up) (m/s)"
+          iOff=iOff+1
+       endif
+
+       do iSpecies = 1,nIons
+          if (iIonDensityOutputList(iSpecies)) then
+             write(iOutputUnit_,"(I7,A1,a)")  iOff, " ", &
+                  "["//cIons(iSpecies)//"] (/m3)"
+             iOff = iOff+1
+          endif
+       enddo
+
+       if (iIonWindOutputList(1)) then
+          write(iOutputUnit_,"(I7,A1,a)")  iOff, " ", "Vi (east) (m/s)"
+          iOff=iOff+1
+       endif
+       if (iIonWindOutputList(2)) then
+          write(iOutputUnit_,"(I7,A1,a)")  iOff, " ", "Vi (north) (m/s)" 
+          iOff=iOff+1
+       endif
+       if (iIonWindOutputList(3)) then
+          write(iOutputUnit_,"(I7,A1,a)")  iOff, " ", "Vi (up) (m/s)"
+          iOff=iOff+1
+       endif
+
+       if (iTemperatureOutputList(1)) then
+          write(iOutputUnit_,"(I7,A1,a)")  iOff, " ", "Neutral Temperature (K)"
+          iOff=iOff+1
+       endif
+       if (iTemperatureOutputList(2)) then
+          write(iOutputUnit_,"(I7,A1,a)")  iOff, " ", "Ion Temperature (K)" 
+          iOff=iOff+1
+       endif
+       if (iTemperatureOutputList(3)) then
+          write(iOutputUnit_,"(I7,A1,a)")  iOff, " ", "Electron Temperature (K)"
+          iOff=iOff+1
+       endif
+
+    end if
+
     if (cType(3:5) == "MAG") then
-       write(iOutputUnit_,"(I7,A1,a)") iOff+5, " ", "Magnetic Latitude"
-       write(iOutputUnit_,"(I7,A1,a)") iOff+6, " ", "Magnetic Longitude"
-       write(iOutputUnit_,"(I7,A1,a)") iOff+8, " ", "B.F. East"
-       write(iOutputUnit_,"(I7,A1,a)") iOff+9, " ", "B.F. North"
-       write(iOutputUnit_,"(I7,A1,a)") iOff+10, " ", "B.F. Vertical"
-       write(iOutputUnit_,"(I7,A1,a)") iOff+11, " ", "B.F. Magnitude"
+       write(iOutputUnit_,"(I7,A1,a)") 4, " ", "Magnetic Latitude"
+       write(iOutputUnit_,"(I7,A1,a)") 5, " ", "Magnetic Longitude"
+       write(iOutputUnit_,"(I7,A1,a)") 6, " ", "B.F. East"
+       write(iOutputUnit_,"(I7,A1,a)") 7, " ", "B.F. North"
+       write(iOutputUnit_,"(I7,A1,a)") 8, " ", "B.F. Vertical"
+       write(iOutputUnit_,"(I7,A1,a)") 9, " ", "B.F. Magnitude"
     end if
 
     if (cType(3:5) == "GEL") then
@@ -466,6 +560,18 @@ contains
        write(iOutputUnit_,"(I7,A1,a)") 11, " ", "Hall FL Conductance"
        write(iOutputUnit_,"(I7,A1,a)") 12, " ", "DivJu FL"
        write(iOutputUnit_,"(I7,A1,a)") 13, " ", "FL Length"
+
+    endif
+    
+    if(cType(1:5) == "2DANC") then
+
+       write(iOutputUnit_,"(I7,A1,a)")  4, " ", "Local Time"
+       write(iOutputUnit_,"(I7,A1,a)")  5, " ", "Solar Zenith Angle"
+       write(iOutputUnit_,"(I7,A1,a)")  6, " ", "Vertical TEC"
+       write(iOutputUnit_,"(I7,A1,a)")  7, " ", "AltIntJouleHeating (W/m2)"
+       write(iOutputUnit_,"(I7,A1,a)")  8, " ", "AltIntHeatingTransfer (W/m2)"
+       write(iOutputUnit_,"(I7,A1,a)")  9, " ", "AltIntEuvHeating (W/m2)"
+       write(iOutputUnit_,"(I7,A1,a)") 10, " ", "AltIntNOCooling (W/m2)"
 
     endif
 
@@ -619,21 +725,21 @@ contains
 
        if (cType(3:5) == "ALL") then
 
-          write(iOutputUnit_,"(I7,A1,a)") iOff+1, " ", "N2 Mixing Ratio"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+2, " ", "CH4 Mixing Ratio"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+3, " ", "Ar Mixing Ratio"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+4, " ", "HCN Mixing Ratio"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+5, " ", "H2 Mixing Ratio"
-
-!       write(iOutputUnit_,"(I7,A1,a)") iOff+6, " ", "15N2 Mixing Ratio"
-!       write(iOutputUnit_,"(I7,A1,a)") iOff+7, " ", "13CH4 Mixing Ratio"
-
-          iOff = iOff + nSpecies
-          write(iOutputUnit_,"(I7,A1,a)") iOff+1, " ", "RadCooling"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+2, " ", "EuvHeating"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+3, " ", "Conduction"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+4, " ", "Heat Balance Total"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+5, " ", "Heaing Efficiency"
+!          write(iOutputUnit_,"(I7,A1,a)") iOff+1, " ", "N2 Mixing Ratio"
+!          write(iOutputUnit_,"(I7,A1,a)") iOff+2, " ", "CH4 Mixing Ratio"
+!          write(iOutputUnit_,"(I7,A1,a)") iOff+3, " ", "Ar Mixing Ratio"
+!          write(iOutputUnit_,"(I7,A1,a)") iOff+4, " ", "HCN Mixing Ratio"
+!          write(iOutputUnit_,"(I7,A1,a)") iOff+5, " ", "H2 Mixing Ratio"
+!
+!!       write(iOutputUnit_,"(I7,A1,a)") iOff+6, " ", "15N2 Mixing Ratio"
+!!       write(iOutputUnit_,"(I7,A1,a)") iOff+7, " ", "13CH4 Mixing Ratio"
+!
+!          iOff = iOff + nSpecies
+!          write(iOutputUnit_,"(I7,A1,a)") iOff+1, " ", "RadCooling"
+!          write(iOutputUnit_,"(I7,A1,a)") iOff+2, " ", "EuvHeating"
+!          write(iOutputUnit_,"(I7,A1,a)") iOff+3, " ", "Conduction"
+!          write(iOutputUnit_,"(I7,A1,a)") iOff+4, " ", "Heat Balance Total"
+!          write(iOutputUnit_,"(I7,A1,a)") iOff+5, " ", "Heaing Efficiency"
 
        else
 
@@ -720,12 +826,11 @@ contains
     write(iOutputUnit_,"(I7,A1,a)") iOff+4, " ", "V!Di!N (north)"
     write(iOutputUnit_,"(I7,A1,a)") iOff+5, " ", "V!Di!N (up)"
 
-    iOff = iOff + 5
-    do iSpecies = 1, nSpecies
-       write(iOutputUnit_,"(I7,A1,a)")  iOff+iSpecies, " ", &
-            " "//cSpecies(iSpecies)//"Mixing Ratio"
-    enddo
-
+!    iOff = iOff + 5
+!    do iSpecies = 1, nSpecies
+!       write(iOutputUnit_,"(I7,A1,a)")  iOff+iSpecies, " ", &
+!            " "//cSpecies(iSpecies)//"Mixing Ratio"
+!    enddo
 
     write(iOutputUnit_,*) ""
 
@@ -776,7 +881,7 @@ contains
   subroutine write_head_version
 
     write(iOutputUnit_,*) "VERSION"
-    write(iOutputUnit_,*) 3.1+PlanetNum
+    write(iOutputUnit_,*) GitmVersion+PlanetNum
     write(iOutputUnit_,*) ""
 
   end subroutine write_head_version
@@ -903,13 +1008,10 @@ subroutine output_3dall(iBlock)
   integer :: iAlt, iLat, iLon, iiAlt, iiLat, iiLon, i
 
   do iAlt=-1,nAlts+2
-     !!! Why ???
      iiAlt = max(min(iAlt,nAlts),1)
      do iLat=-1,nLats+2
-        !!! Why ???
         iiLat = min(max(iLat,1),nLats)
         do iLon=-1,nLons+2
-           !!! Why ???
            iiLon = min(max(iLon,1),nLons)
            write(iOutputUnit_)       &
                 Longitude(iLon,iBlock), &
@@ -929,6 +1031,89 @@ subroutine output_3dall(iBlock)
   enddo
 
 end subroutine output_3dall
+
+!----------------------------------------------------------------
+!
+!----------------------------------------------------------------
+
+subroutine output_3dlst(iBlock)
+
+  use ModGITM
+  use ModInputs
+
+  implicit none
+
+  integer, intent(in) :: iBlock
+  integer :: iAlt, iLat, iLon, iiAlt, iiLat, iiLon, iOff, iSpecies, i
+
+  ! lat/lon/alt + rho + nSpecies + nIons + neu vel + ion vel + temps
+  real :: tmp(3+1+nSpeciesTotal+nIons+3+3+3)
+  
+  do iAlt=-1,nAlts+2
+     iiAlt = max(min(iAlt,nAlts),1)
+     do iLat=-1,nLats+2
+        iiLat = min(max(iLat,1),nLats)
+        do iLon=-1,nLons+2
+           iiLon = min(max(iLon,1),nLons)
+
+           tmp(1) = Longitude(iLon,iBlock)
+           tmp(2) = Latitude(iLat,iBlock)
+           tmp(3) = Altitude_GB(iLon,iLat,iAlt,iBlock)
+
+           iOff = 3
+           if (iRhoOutputList) then
+              iOff = iOff+1
+              tmp(iOff) = Rho(iLon,iLat,iAlt,iBlock)
+           endif
+
+           do iSpecies = 1,nSpeciesTotal
+              if (iNeutralDensityOutputList(iSpecies)) then
+                 iOff = iOff+1
+                 tmp(iOff) = NDensityS(iLon,iLat,iAlt,iSpecies,iBlock)
+              endif
+           enddo
+           
+           do i = 1,3
+              if (iNeutralWindOutputList(i)) then
+                 iOff = iOff+1
+                 tmp(iOff) = Velocity(iLon,iLat,iAlt,i,iBlock)
+              endif
+           enddo
+           
+           do iSpecies = 1,nIons
+              if (iIonDensityOutputList(iSpecies)) then
+                 iOff = iOff+1
+                 tmp(iOff) = IDensityS(iLon,iLat,iAlt,iSpecies,iBlock)
+              endif
+           enddo
+           
+           do i = 1,3
+              if (iIonWindOutputList(i)) then
+                 iOff = iOff+1
+                 tmp(iOff) = IVelocity(iLon,iLat,iAlt,i,iBlock)
+              endif
+           enddo
+           
+           if (iTemperatureOutputList(1)) then
+              iOff=iOff+1
+              tmp(iOff) = Temperature(iLon,iLat,iAlt,iBlock)*TempUnit(iLon,iLat,iAlt)
+           endif
+           if (iTemperatureOutputList(2)) then
+              iOff=iOff+1
+              tmp(iOff) = ITemperature(iLon,iLat,iAlt,iBlock)
+           endif
+           if (iTemperatureOutputList(3)) then
+              iOff=iOff+1
+              tmp(iOff) = eTemperature(iLon,iLat,iAlt,iBlock)
+           endif
+
+           write(iOutputUnit_) tmp(1:iOff)
+           
+        enddo
+     enddo
+  enddo
+
+end subroutine output_3dlst
 
 !----------------------------------------------------------------
 !
@@ -997,7 +1182,8 @@ subroutine output_3dion(iBlock)
 		je2(iLon,iLat,iAlt), &
                 mLatitude(iLon,iLat,iAlt,iBlock), &
                 mLongitude(iLon,iLat,iAlt,iBlock), &
-                B0(iLon,iLat,iAlt,:,iBlock), &  !Geomagnetic B0(nLons,nLats,nAlts,4[iEast_,iNorth_,iUp_,iMag_],nBlocks)
+                !Geomagnetic B0(nLons,nLats,nAlts,4[iEast_,iNorth_,iUp_,iMag_],nBlocks)
+                B0(iLon,iLat,iAlt,:,iBlock), &  
                 potential(iLon,iLat,iAlt,iBlock), &
                 EField(iLon,iLat,iAlt,:), &  ! EField(Lon,lat,alt,3)
                 sqrt(sum(EField(iLon,iLat,iAlt,:)**2)), & ! magnitude of E.F.
@@ -1313,6 +1499,45 @@ subroutine output_2dtec(iBlock)
 end subroutine output_2dtec
 
 !-------------------------------------------------------------------------------
+! AJR: Routine to output a 2D ION file that includes:
+! lat, lon, SZA, VTEC, potential, energy flux, average energy, etc.
+!-------------------------------------------------------------------------------
+
+subroutine output_2danc(iBlock)
+
+  use ModGITM
+  use ModElectrodynamics
+  use ModInputs
+  use ModEUV, only : Sza
+  use ModSources, only : JouleHeating2d, EuvHeating2d, RadiativeCooling2d, HeatTransfer2d
+
+  implicit none
+
+  integer, intent(in) :: iBlock
+  integer :: iLat, iLon, iAlt, iiLat, iiLon
+
+  call calc_vtec(iBlock)
+
+  iAlt = nAlts
+  do iLat=1,nLats
+     do iLon=1,nLons
+        write(iOutputUnit_)       &
+             Longitude(iLon,iBlock), &
+             Latitude(iLat,iBlock),&
+             Altitude_GB(iLon,iLat,iAlt,iBlock), &
+             LocalTime(iLon), &
+             Sza(iLon,iLat,iBlock), &
+             VTEC(iLon,iLat,iBlock), &
+             JouleHeating2d(iLon,iLat), &
+             HeatTransfer2d(iLon,iLat), &
+             EuvHeating2d(iLon,iLat), &
+             RadiativeCooling2d(iLon,iLat)
+     enddo
+  enddo
+
+end subroutine output_2danc
+
+!-------------------------------------------------------------------------------
 ! AGB: Routine to output a 3D Mag file that includes the geomagnetic field info
 !-------------------------------------------------------------------------------
 
@@ -1422,7 +1647,6 @@ subroutine output_1dall(iiLon, iiLat, iBlock, rLon, rLat, iUnit)
 
      iiAlt = max(min(iAlt,nAlts),1)
 
-
      Vars(1) = &
           rLon*Longitude(iiLon,iBlock)+(1-rLon)*Longitude(iiLon+1,iBlock)
      Vars(2) = &
@@ -1436,7 +1660,6 @@ subroutine output_1dall(iiLon, iiLat, iBlock, rLon, rLat, iUnit)
      iOff = 4
      do iSpecies = 1, nSpeciesTotal
         Tmp = NDensityS(0:nLons+1,0:nLats+1,iAlt,iSpecies,iBlock)
-!        Tmp = NDensityS(0:nLons+1,0:nLats+1,iAlt,iSpecies,iBlock)/NDensity(0:nLons+1,0:nLats+1,iAlt,iBlock)
         Vars(iOff+iSpecies) = inter(Tmp,iiLon,iiLat,rlon,rlat)
      enddo
 
@@ -1470,51 +1693,44 @@ subroutine output_1dall(iiLon, iiLat, iBlock, rLon, rLat, iUnit)
      Tmp = iTemperature(0:nLons+1,0:nLats+1,iAlt,iBlock)
      Vars(iOff) = inter(Tmp,iiLon,iiLat,rlon,rlat)
 
-!     do iDir = 1, 3
-!        Tmp = IVelocity(0:nLons+1,0:nLats+1,iAlt,iDir,iBlock)
-!        Vars(iOff+iDir) = inter(Tmp,iiLon,iiLat,rlon,rlat)
-!     enddo
+     iOff = iOff + 1
+     Tmp = IVelocity(0:nLons+1,0:nLats+1,iAlt,iEast_,iBlock)
+     Vars(iOff) = inter(Tmp,iiLon,iiLat,rlon,rlat)
 
-        iOff = iOff + 1
-        Tmp = IVelocity(0:nLons+1,0:nLats+1,iAlt,iEast_,iBlock)
-        Vars(iOff) = inter(Tmp,iiLon,iiLat,rlon,rlat)
+     iOff = iOff + 1
+     Tmp = IVelocity(0:nLons+1,0:nLats+1,iAlt,iNorth_,iBlock)
+     Vars(iOff) = inter(Tmp,iiLon,iiLat,rlon,rlat)
 
-        iOff = iOff + 1
-        Tmp = IVelocity(0:nLons+1,0:nLats+1,iAlt,iNorth_,iBlock)
-        Vars(iOff) = inter(Tmp,iiLon,iiLat,rlon,rlat)
+     iOff = iOff + 1
+     Tmp = IVelocity(0:nLons+1,0:nLats+1,iAlt,iUp_,iBlock)
+     Vars(iOff) = inter(Tmp,iiLon,iiLat,rlon,rlat)
 
-        iOff = iOff + 1
-        Tmp = IVelocity(0:nLons+1,0:nLats+1,iAlt,iUp_,iBlock)
-        Vars(iOff) = inter(Tmp,iiLon,iiLat,rlon,rlat)
-
-        do iSpecies = 1, nSpecies
-           Tmp = NDensityS(0:nLons+1,0:nLats+1,iAlt,iSpecies,iBlock)/NDensity(0:nLons+1,0:nLats+1,iAlt,iBlock)
-           Vars(iOff+iSpecies) = inter(Tmp,iiLon,iiLat,rlon,rlat)
-        enddo
-
-!        iOff = iOff + 1
-!        Tmp = NDensityS(0:nLons+1,0:nLats+1,iAlt,iSpecies,iBlock)/NDensity(0:nLons+1,0:nLats+1,iAlt,iBlock)
+!     do iSpecies = 1, nSpecies
+!        Tmp = NDensityS(0:nLons+1,0:nLats+1,iAlt,iSpecies,iBlock) / &
+!             NDensity(0:nLons+1,0:nLats+1,iAlt,iBlock)
 !        Vars(iOff+iSpecies) = inter(Tmp,iiLon,iiLat,rlon,rlat)
-! AGB: Fixed this to use interpolation like all the other variables.
-!      Also the porper lat and lon
-        iOff = iOff + nSpecies
-        Tmp = Dt*RadCooling(0:nLons+1,0:nLats+1,iAlt,iBlock) * &
-             TempUnit(0:nLons+1,0:nLats+1,iAlt)
-        Vars(iOff+1) = inter(Tmp,iiLon,iiLat,rlon,rlat)
-
-        Tmp = Dt*EuvHeating(0:nLons+1,0:nLats+1,iAlt,iBlock) * &
-             TempUnit(0:nLons+1,0:nLats+1,iAlt)
-        Vars(iOff+2) = inter(Tmp,iiLon,iiLat,rlon,rlat)
-
-        Tmp(1:nLons,1:nLats) = Conduction(1:nLons,1:nLats,iAlt) * &
-             TempUnit(1:nLons,1:nLats,iAlt)
-        Vars(iOff+3) = inter(Tmp,iiLon,iiLat,rlon,rlat)
- 
-        Vars(iOff+4) = Vars(iOff+2) - Vars(iOff+1) + Vars(iOff+3)
-
-        Tmp = HeatingEfficiency_CB(0:nLons+1,0:nLats+1,iAlt,iBlock)
-        Vars(iOff+5) = inter(Tmp,iiLon,iiLat,rlon,rlat)
-! AGB: End of corrections
+!     enddo
+!
+!! AGB: Fixed this to use interpolation like all the other variables.
+!!      Also the porper lat and lon
+!     iOff = iOff + nSpecies
+!     Tmp = Dt*RadCooling(0:nLons+1,0:nLats+1,iAlt,iBlock) * &
+!          TempUnit(0:nLons+1,0:nLats+1,iAlt)
+!     Vars(iOff+1) = inter(Tmp,iiLon,iiLat,rlon,rlat)
+!
+!     Tmp = Dt*EuvHeating(0:nLons+1,0:nLats+1,iAlt,iBlock) * &
+!          TempUnit(0:nLons+1,0:nLats+1,iAlt)
+!     Vars(iOff+2) = inter(Tmp,iiLon,iiLat,rlon,rlat)
+!
+!     Tmp(1:nLons,1:nLats) = Conduction(1:nLons,1:nLats,iAlt) * &
+!          TempUnit(1:nLons,1:nLats,iAlt)
+!     Vars(iOff+3) = inter(Tmp,iiLon,iiLat,rlon,rlat)
+! 
+!     Vars(iOff+4) = Vars(iOff+2) - Vars(iOff+1) + Vars(iOff+3)
+!
+!     Tmp = HeatingEfficiency_CB(0:nLons+1,0:nLats+1,iAlt,iBlock)
+!     Vars(iOff+5) = inter(Tmp,iiLon,iiLat,rlon,rlat)
+!! AGB: End of corrections
 
      write(iOutputUnit_) Vars
 

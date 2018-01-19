@@ -17,6 +17,7 @@ subroutine euv_ionization_heat(iBlock)
   integer, intent(in) :: iBlock
 
   integer :: iAlt, iWave, iSpecies, iIon, iError, iLon,iLat
+  integer :: iRxn
   real, dimension(nLons,nLats) :: Tau, Intensity
 
   logical :: IsFirstTime(nBlocksMax) = .true.
@@ -54,6 +55,11 @@ subroutine euv_ionization_heat(iBlock)
   photoabs(1:Num_Wavelengths_High,1:nSpeciesTotal)= 0.0
   photodis(1:Num_Wavelengths_High,1:nSpeciesTotal) = 0.0
 
+   N2PERateS(:,:,:,:,iBlock) = 0.0
+  CH4PERateS(:,:,:,:,iBlock) = 0.0
+   O2PERateS(:,:,:,:,iBlock) = 0.0
+    OPERateS(:,:,:,:,iBlock) = 0.0
+
   ! This transfers the specific photo absorption and ionization cross
   ! sections into general variables, so we can use loops...
 
@@ -87,6 +93,34 @@ subroutine euv_ionization_heat(iBlock)
                 Intensity*PhotoDis(iWave,iSpecies)
         enddo
 
+        ! Total Photoelectron rates are relative to the total ionization 
+        ! rate only
+        ! Thus, we use the total ionization rates for each species.
+        ! Note: that we are missing the dissociative ionizatoin of O2->O + O+
+        do iRxn = 1, 3
+            O2PERateS(:,:,iAlt,iRxn,iBlock) = & 
+            O2PERateS(:,:,iAlt,iRxn,iBlock) + & 
+               Intensity*(photoion(iWave,iO2P_))*&
+                pelecratio_O2(iWave,iRxn)
+        enddo 
+
+        do iRxn = 1, 3
+            N2PERateS(:,:,iAlt,iRxn,iBlock) = & 
+            N2PERateS(:,:,iAlt,iRxn,iBlock) + & 
+               Intensity*(photoion(iWave,iN2P_) + &
+                          photoion(iWave,iNP_))*&
+                pelecratio_N2(iWave,iRxn)
+        enddo 
+
+        do iRxn = 1, 3
+            OPERateS(:,:,iAlt,iRxn,iBlock) = & 
+            OPERateS(:,:,iAlt,iRxn,iBlock) + & 
+               Intensity*(photoion(iWave,iO_4SP_) + &
+                          photoion(iWave,iO_2DP_) + &
+                          photoion(iWave,iO_2PP_))*&
+                pelecratio_O(iWave,iRxn)
+        enddo 
+
         do iSpecies = 1, nSpecies
            EHeat = EHeat + &
                 Intensity*PhotonEnergy(iWave)* &
@@ -108,7 +142,7 @@ subroutine euv_ionization_heat(iBlock)
      enddo
   enddo
 
-
+  if (IncludeEclipse) call calc_eclipse_effects
   call night_euv_ionization
 
   EuvIonRateS = EuvIonRateS + nEuvIonRateS
@@ -120,8 +154,16 @@ subroutine euv_ionization_heat(iBlock)
   !/
 
   if (UseSolarHeating) then
+
+     EuvHeating2d = 0.0
+
      do iAlt = 1, nAlts
 
+        EuvHeating2d(1:nLons,1:nLats) = &
+             EuvHeating2d(1:nLons,1:nLats) + &
+             EuvHeating(:,:,iAlt,iBlock)  * &
+             dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
+                     
         EuvHeating(:,:,iAlt,iBlock) = EuvHeating(:,:,iAlt,iBlock) / &
            Rho(1:nLons,1:nLats,iAlt,iBlock) / &
            cp(1:nLons,1:nLats,iAlt,iBlock) / &
@@ -140,6 +182,104 @@ subroutine euv_ionization_heat(iBlock)
 
 contains 
 
+  !\
+  ! -------------------------------------------------------------
+  !/
+
+  subroutine calc_eclipse_effects
+
+    real :: x,y,z,xp,yp,zp, distance, PercentDone
+    real :: yPos, zPos, e
+    real :: factor(nLons,nLats,nAlts)
+
+    Factor = 1.0
+    
+    if ( CurrentTime > EclipseStartTime .and. &
+         CurrentTime < EclipseEndTime) then
+
+       PercentDone = (CurrentTime - EclipseStartTime) / &
+            (EclipseEndTime - EclipseStartTime)
+
+       yPos = EclipseStartY + (EclipseEndY - EclipseStartY) * PercentDone
+       zPos = EclipseStartZ + (EclipseEndZ - EclipseStartZ) * PercentDone
+
+       ! Need to rotate lat/lon/alt into solar coordinate X,Y,Z system
+
+       !   x = r * cos(localtime-!pi) * cos(lats*!dtor)
+       !   y = r * sin(localtime-!pi) * cos(lats*!dtor)
+       !   z = r * sin(lats*!dtor)
+       !
+       !   xp = x * cos(tilt) - z * sin(tilt)
+       !   zp = x * sin(tilt) + z * cos(tilt)
+       
+       do iLon = 1,nLons 
+          do iLat = 1,nLats
+             do iAlt = 1,nAlts
+                ! Calculate X,Y,Z for points on Earth (in lat/localtime/alt)
+                x = &
+                     RadialDistance_GB(iLon,iLat,iAlt,iBlock) * &
+                     cos(localtime(iLon)*pi/12.0 - pi) * &
+                     cos(Latitude(iLat,iBlock))
+                y = &
+                     RadialDistance_GB(iLon,iLat,iAlt,iBlock) * &
+                     sin(localtime(iLon)*pi/12.0 - pi) * &
+                     cos(Latitude(iLat,iBlock))
+                z = &
+                     RadialDistance_GB(iLon,iLat,iAlt,iBlock) * &
+                     sin(Latitude(iLat,iBlock))
+
+                ! rotate around y-axis for the Earth Tilt:
+                xp = x * cos(-SunDeclination) - z * sin(-SunDeclination)
+                yp = y
+                zp = x * sin(-SunDeclination) + z * cos(-SunDeclination)
+
+                distance = sqrt( (yPos - yp)**2 + (zPos-zp)**2 )
+       
+                ! If it is close to the eclipse, do calculations
+                
+                if (Distance < EclipseMaxDistance + EclipseExpWidth*2) then
+
+                   ! Assume a linearly decreasing effect:
+                   e = EclipsePeak - EclipsePeak * distance/EclipseMaxDistance
+                   if (e < 0) e = 0
+
+                   ! Towards the edge, assume an exponential:
+                   e = e + EclipseExpAmp * exp(-((Distance-EclipseMaxDistance)/EclipseExpWidth)**2)
+                   Factor(iLon,iLat,iAlt) = 1.0 - e
+
+                   ! Change the ionization rate and heating rate by the factor:
+                   do iIon = 1, nIons-1
+                      EuvIonRateS(iLon,iLat,iAlt,iIon,iBlock) = &
+                           EuvIonRateS(iLon,iLat,iAlt,iIon,iBlock) * &
+                           Factor(iLon,iLat,iAlt)
+                   enddo
+                   EuvHeating(iLon,iLat,iAlt,iBlock) = &
+                        EuvHeating(iLon,iLat,iAlt,iBlock) * &
+                        Factor(iLon,iLat,iAlt)
+
+                   N2PERateS(iLon,iLat,iAlt,:,iBlock) = &
+                        N2PERateS(iLon,iLat,iAlt,:,iBlock) * Factor(iLon,iLat,iAlt)
+                   O2PERateS(iLon,iLat,iAlt,:,iBlock) = &
+                        O2PERateS(iLon,iLat,iAlt,:,iBlock) * Factor(iLon,iLat,iAlt)
+                   OPERateS(iLon,iLat,iAlt,:,iBlock) = &
+                        OPERateS(iLon,iLat,iAlt,:,iBlock) * Factor(iLon,iLat,iAlt)
+                   CH4PERateS(iLon,iLat,iAlt,:,iBlock) = &
+                        CH4PERateS(iLon,iLat,iAlt,:,iBlock) * Factor(iLon,iLat,iAlt)
+
+                endif
+                
+             enddo
+          enddo
+       enddo
+                       
+    endif
+
+  end subroutine calc_eclipse_effects
+
+  !\
+  ! -------------------------------------------------------------
+  !/
+  
   subroutine night_euv_ionization
 
 !!! Nighttime EUV Ionization
@@ -323,7 +463,7 @@ subroutine calc_euv
 
   implicit none
 
-  integer :: i
+  integer :: i, ii
   real    :: flxfac, wavelength_ave
 
   !:::::::::::::::::::::::::::::::: EUVAC :::::::::::::::::::::::
@@ -346,14 +486,15 @@ subroutine calc_euv
   !----- The scaling factors are restricted to be greater than 0.8
   !
 
- 
   do i = 1, Num_waveLengths_Low
 
-     FLXFAC=(1.0 + AFAC(I) * (0.5*(F107+F107A) - 80.0))
+     ! This has to be backwards, due to the way that the wavelengths are defined:
+     ii = Num_waveLengths_Low - i + 1
+     FLXFAC=(1.0 + AFAC(II) * (0.5*(F107+F107A) - 80.0))
      IF(FLXFAC.LT.0.8) FLXFAC=0.8
-     EUV_Flux(i) = F74113(I) * FLXFAC * 1.0E9 * 10000.
-
- enddo
+     EUV_Flux(i) = F74113(II)* FLXFAC * 1.0E9 * 10000.
+     
+  enddo
 
 end subroutine calc_euv
 
@@ -389,6 +530,8 @@ subroutine calc_scaled_euv
   character (len=2) :: dday, dhour, dminute 
   character (len=7) :: dtime
 
+  real :: e
+  
   ! regression coefficients which reduce to solar min. spectrum:
   ! for Hinteregger_Contrast_Ratio model:
 
@@ -415,227 +558,211 @@ subroutine calc_scaled_euv
      call stop_gitm("Stopping in euv_ionization_heat")
   endif
 
-  if (UseEUVData) call Set_Euv(iError, CurrentTime, EndTime)
+  if (UseEUVData) then
 
-  call calc_euv
+     call Set_Euv(iError, CurrentTime, EndTime)
 
-  hlybr = 0.
-  fexvir = 0.
-  hlya = 3.E+11 + 0.4E+10 * (f107-70.)
-  heiew = 0.
-
-  f107_ratio = (f107-68.0) / (243.0-68.0)
-
-  xuvfac = 4.0 - f107_ratio
-  if (xuvfac < 1.0) xuvfac = 1.0
-
-  do N = 1, Num_WaveLengths_High
-     Solar_Flux(N) = RFLUX(N) + (XFLUX(N)-RFLUX(N)) * f107_Ratio
-  enddo
-
-  iModelSolar = Tobiska_EUV91
-!  iModelSolar = Hinteregger_Contrast_Ratio
-
-  select case(iModelSolar)
-
-  case (Hinteregger_Contrast_Ratio)
-
-     if (hlybr > 0.001) then
-        r1 = hlybr
-     else
-        r1 =  B1(1) + B1(2)*(f107A-71.5) + B1(3)*(f107-f107A+3.9)
-     endif
-     if (fexvir > 0.001) THEN
-        r2 = fexvir
-     else
-        r2 =  B2(1) + B2(2)*(f107A-71.5) + B2(3)*(f107-f107A+3.9)
-     endif
-     do N = 13, Num_WaveLengths_High
-        Solar_Flux(N) = (RFLUX(N) + ((r1-1.)*SCALE1(N)              &
-             +  (r2-1.)*SCALE2(N)) / 1000.)
+     do N=1,Num_WaveLengths_High
+        wvavg(N)=(WAVEL(N)+WAVES(N))/2.
      enddo
 
-  case (Hinteregger_Linear_Interp)
+     call start_timing("new_euv")
+     SeeTime(:) = 0
 
-     ! do nothing
-
-  case (Tobiska_EUV91)
-
-     if (HLYA > 0.001) then
-
-        hlymod = hlya
-
-     else
-
-        if (heiew > 0.001) then
-           hlymod = heiew * 3.77847e9 + 8.40317e10
-        else
-           hlymod = 8.70e8 * F107 + 1.90e11
-        endif
-
-     endif
-
-     if (heiew > 0.001) then
-        heimod = heiew * 3.77847e9 + 8.40317e10
-     else
-        heimod = hlymod
-     endif
-
-     do N=16,55
-        Solar_Flux(N) = TCHR0(N)        + &
-             TCHR1(N)*hlymod + &
-             TCHR2(N)*heimod + &
-             TCOR0(N)        + &
-             TCOR1(N)*f107   + &
-             TCOR2(N)*f107A
+     do N = 1, nSeeTimes
+        SeeTime(N) = TimeSee(N)
      enddo
 
-  case (WoodsAndRottman_10Nov88)
-
-     DO N=15,55
-        Solar_Flux(N) = WAR1(N)
-     enddo
-
-  case (WoodsAndRottman_20Jun89)
-
-     DO N=15,55
-        Solar_Flux(N) = WAR2(N)
-     enddo
-
-  end select
-
-  !
-  ! Substitute in H Lyman-alpha and XUVFAC if provided:
-  !
-
-  if (hlya > 0.001) Solar_Flux(12) = hlya / 1.E9
-  if (xuvfac > 0.001) THEN
-     xuvf = xuvfac
-  else
-     xuvf = 1.0
-  endif
-
-  !
-  ! Convert from gigaphotons to photons, cm^-2 to m^-2, etc.:
-  !
-
-  do N=1,Num_WaveLengths_High
-
-     IF (Solar_Flux(N) < 0.0) Solar_Flux(N) = 0.0
-
-     IF ((WAVEL(N) < 251.0) .AND. (WAVES(N) > 15.0)) then
-        Solar_Flux(N) = Solar_Flux(N)*xuvf
-     endif
-
-     !
-     ! Convert to photons/m^2/s
-     !
-
-     Solar_Flux(N) = Solar_Flux(N) * 1.E9 * 10000.0
-
-     !
-     ! Convert to eV/m^2/s
-     !
-
-
-     wavelength_ave = (WAVEL(N) + WAVES(N))/2.0
-     PhotonEnergy(N)= 6.626e-34*2.998e8/(wavelength_ave*1.0e-10)
-
-     !
-     !       Solar_Flux(N) = Solar_Flux(N) * &
-     !            (Planck_Constant * Speed_Light) / &
-     !            (wavelength_ave * 1.0e-10 * Element_Charge)
-
-  enddo
-
-  do N = 16,Num_WaveLengths_High
-     Flux_of_EUV(N) = Solar_Flux(N)
-  enddo
-
-  do N = 1,15
-     Flux_of_EUV(N) = Solar_Flux(N)
-  enddo
-
-  do N=1,Num_WaveLengths_Low
-     NN = N+15
-     Flux_of_EUV(NN) = 0.5*(EUV_Flux(N)+Solar_Flux(NN))
-  enddo
-
-
-  Flux_of_EUV = Flux_of_EUV/(SunOrbitEccentricity**2)
-
-
-  do N=1,Num_WaveLengths_High
-     wvavg(N)=(WAVEL(N)+WAVES(N))/2.
-  enddo
-
- if (UseEUVData) then
-
-    call start_timing("new_euv")
-    SeeTime(:) = 0
-
-    do N = 1, nSeeTimes
-       SeeTime(N) = TimeSee(N)
-    enddo
-
-    tDiff = CurrentTime - SeeTime
+     tDiff = CurrentTime - SeeTime
     
-    where (tDiff .lt. 0) tDiff = 1.e20
-    iMin = minloc(tDiff)
+     where (tDiff .lt. 0) tDiff = 1.e20
+     iMin = minloc(tDiff)
     
-    Timed_Flux = SeeFlux(:,iMin(1))
+     Timed_Flux = SeeFlux(:,iMin(1))
 
-    if (CurrentTime .ge. FlareTimes(iFlare) .and. CurrentTime-dt .le. FlareTimes(iFlare)) then
+     if (CurrentTime .ge. FlareTimes(iFlare) .and. CurrentTime-dt .le. FlareTimes(iFlare)) then
 
-       FlareStartIndex = iMin(1)+1
-       FlareEndIndex = iMin(1) + FlareLength
-       Timed_Flux = SeeFlux(:,FlareStartIndex)
-       FlareEndTime = SeeTime(FlareEndIndex)
-       DuringFlare = .true.
-       iFlare = iFlare + 1
+        FlareStartIndex = iMin(1)+1
+        FlareEndIndex = iMin(1) + FlareLength
+        Timed_Flux = SeeFlux(:,FlareStartIndex)
+        FlareEndTime = SeeTime(FlareEndIndex)
+        DuringFlare = .true.
+        iFlare = iFlare + 1
        
-    else 
-       if (DuringFlare) then
-          if (Seetime(iMin(1)+1) .lt. FlareTimes(iFlare) .or. FlareTimes(iFlare) .eq. 0) then
-             if (CurrentTime .lt. SeeTime(FlareStartIndex)) then
-                !We may not be to the point where the flare has begun in the SEE data yet...
-                Timed_Flux = SeeFlux(:,FlareStartIndex)
-             else
-                if (CurrentTime .le. FlareEndTime) then
-                   !Exponentially interpolate between last seetime and next seetim 
-                   !using y = kexp(-mx)
+     else 
+        if (DuringFlare) then
+           if (Seetime(iMin(1)+1) .lt. FlareTimes(iFlare) .or. FlareTimes(iFlare) .eq. 0) then
+              if (CurrentTime .lt. SeeTime(FlareStartIndex)) then
+                 !We may not be to the point where the flare has begun in the SEE data yet...
+                 Timed_Flux = SeeFlux(:,FlareStartIndex)
+              else
+                 if (CurrentTime .le. FlareEndTime) then
+                    !Exponentially interpolate between last seetime and next seetim 
+                    !using y = kexp(-mx)
                    
-                   y1 = SeeFlux(:,iMin(1))
-                   y2 = SeeFlux(:,iMin(1)+1)
-                   x1 = 0
-                   x2 = SeeTime(iMin(1)+1) - SeeTime(iMin(1))
-                   x = CurrentTime - SeeTime(iMin(1))
+                    y1 = SeeFlux(:,iMin(1))
+                    y2 = SeeFlux(:,iMin(1)+1)
+                    x1 = 0
+                    x2 = SeeTime(iMin(1)+1) - SeeTime(iMin(1))
+                    x = CurrentTime - SeeTime(iMin(1))
                    
-                   m = ALOG(y2/y1)/(x1-x2)
-                   k = y1*exp(m*x1)
-                   Timed_Flux = k*exp(-1*m*x)
-                else
-                   DuringFlare = .False.
-                end if
-             end if
-          end if
-       end if
-    end if
+                    m = ALOG(y2/y1)/(x1-x2)
+                    k = y1*exp(m*x1)
+                    Timed_Flux = k*exp(-1*m*x)
+                 else
+                    DuringFlare = .False.
+                 end if
+              end if
+           end if
+        end if
+     end if
     
-    !!need to convert from W/m^2 to photons/m^2/s
-    do N=1,Num_WaveLengths_High 
+     !!need to convert from W/m^2 to photons/m^2/s
+     do N=1,Num_WaveLengths_High 
         Flux_of_EUV(N) = Timed_Flux(N)*wvavg(N)*1.0e-10/(6.626e-34*2.998e8) &
              /(SunOrbitEccentricity**2)
      enddo
      call end_timing("new_euv")
 
+  else
+
+     if (UseRidleyEUV) then
+
+        do N = 1, Num_WaveLengths_High
+           Solar_Flux(N) = &
+                RidleySlopes(1,N) * (f107**RidleyPowers(1,N)) + &
+                RidleySlopes(2,N) * (f107a**RidleyPowers(2,N)) + &
+                RidleySlopes(3,N) * (f107a-f107) + &
+                RidleyIntercepts(N)
+           wvavg(N)=(WAVEL(N)+WAVES(N))/2.
+           Flux_of_EUV(N) = Solar_Flux(N)*wvavg(N)*1.0e-10/(6.626e-34*2.998e8) &
+                /(SunOrbitEccentricity**2)
+        enddo
+
+     else
+
+        ! This runs EUVAC and puts the data into EUV_Flux
+        if (UseEUVAC) call calc_euv
+
+        ! This stuff is for Tobiska:
+        hlybr = 0.
+        fexvir = 0.
+        hlya = 3.E+11 + 0.4E+10 * (f107-70.)
+        heiew = 0.
+
+        xuvfac = 4.0 - f107_ratio
+        if (xuvfac < 1.0) xuvfac = 1.0
+
+        ! I think that this is the Hinteregger stuff, which goes from
+        ! 2A - 1750A, so it is used to fill in the Above and Below spectrum
+        f107_ratio = (f107-68.0) / (243.0-68.0)
+        do N = 1, Num_WaveLengths_High
+           Solar_Flux(N) = RFLUX(N) + (XFLUX(N)-RFLUX(N)) * f107_Ratio
+        enddo
+
+        ! This is a total hack, just comparing FISM to these fluxes:
+        Solar_flux(Num_WaveLengths_High-4) = Solar_flux(Num_WaveLengths_High-4) * 3.0
+        Solar_flux(Num_WaveLengths_High-3) = Solar_flux(Num_WaveLengths_High-3) * 3.0
+        Solar_flux(Num_WaveLengths_High-2) = Solar_flux(Num_WaveLengths_High-2) * 5.0
+        Solar_flux(Num_WaveLengths_High-1) = Solar_flux(Num_WaveLengths_High-1) * 100.0
+        Solar_flux(Num_WaveLengths_High) = Solar_flux(Num_WaveLengths_High) * 800.0
+
+        if (.not.UseAboveHigh) Solar_flux(56:Num_WaveLengths_High) = 0
+        if (.not.UseBelowLow)  Solar_flux(1:Num_WaveLengths_Low) = 0
+  
+        if (HLYA > 0.001) then
+
+           hlymod = hlya
+
+        else
+
+           if (heiew > 0.001) then
+              hlymod = heiew * 3.77847e9 + 8.40317e10
+           else
+              hlymod = 8.70e8 * F107 + 1.90e11
+           endif
+
+        endif
+
+        if (heiew > 0.001) then
+           heimod = heiew * 3.77847e9 + 8.40317e10
+        else
+           heimod = hlymod
+        endif
+
+        ! hlymod is SME Lyman-alpha
+        ! heimod is He I 10,830A, scaled to Lyman-alpha
+        do N=16,55
+           Solar_Flux(N) = TCHR0(N)        + &
+                TCHR1(N)*hlymod + &
+                TCHR2(N)*heimod + &
+                TCOR0(N)        + &
+                TCOR1(N)*f107   + &
+                TCOR2(N)*f107A
+        enddo
+
+        !
+        ! Substitute in H Lyman-alpha and XUVFAC if provided:
+        !
+
+        if (hlya > 0.001) Solar_Flux(12) = hlya / 1.E9
+        if (xuvfac > 0.001) THEN
+           xuvf = xuvfac
+        else
+           xuvf = 1.0
+        endif
+
+        !
+        ! Convert from gigaphotons to photons, cm^-2 to m^-2, etc.:
+        !
+
+        do N=1,Num_WaveLengths_High
+
+           IF (Solar_Flux(N) < 0.0) Solar_Flux(N) = 0.0
+
+           ! I don't know why we scale this...
+           IF ((WAVEL(N) < 251.0) .AND. (WAVES(N) > 15.0)) then
+              Solar_Flux(N) = Solar_Flux(N)*xuvf
+           endif
+
+           !
+           ! Convert to photons/m^2/s
+           !
+
+           Solar_Flux(N) = Solar_Flux(N) * 1.E9 * 10000.0
+
+           !
+           ! Calculate the energy in the bin:
+           !
+     
+           wavelength_ave = (WAVEL(N) + WAVES(N))/2.0
+           PhotonEnergy(N)= 6.626e-34*2.998e8/(wavelength_ave*1.0e-10)
+
+        enddo
+
+        ! Solar_Flux has the Tobiska and Hinteregger fluxes in there already:
+  
+        do N = 1,Num_WaveLengths_High
+           Flux_of_EUV(N) = Solar_Flux(N)
+        enddo
+
+        if (UseEUVAC) then
+           do N=1,Num_WaveLengths_Low
+              NN = N+15
+              if (UseTobiska) then
+                 Flux_of_EUV(NN) = 0.5*(EUV_Flux(N)+Solar_Flux(NN))
+              else
+                 Flux_of_EUV(NN) = EUV_Flux(N)
+              endif
+           enddo
+        endif
+  
+        ! Take into account the sun distance to the planet:
+        Flux_of_EUV = Flux_of_EUV/(SunOrbitEccentricity**2)
+
+     endif
+
   endif
-
-  ! Second Spectra, provided by Steve Bougher....
-
-!  do n = 1, nS2WaveLengths
-!     S2PhotonEnergy(N) = 6.626e-34*2.998e8/(S2WaveLengths(n)*1.0e-10)
-!  enddo
 
 end subroutine calc_scaled_euv
 
@@ -647,10 +774,11 @@ end subroutine calc_scaled_euv
 subroutine init_euv
 
   use ModEUV
+  use ModInputs, only: UseRidleyEUV
 
   implicit none
 
-  integer :: N, NN
+  integer :: N, NN, iError
 
   call report("init_euv",2)
 
@@ -691,41 +819,29 @@ subroutine init_euv
      BranchingRatio_N2(NN) = BranchingRatio_N2_to_NPlus(N)
      BranchingRatio_O2(NN) = BranchingRatio_O2_to_OPlus(N)
 
-enddo
+  enddo
 
   ! Convert everything from /cm2 to /m2
 
-     PhotoAbs_O2      = PhotoAbs_O2  / 10000.0
-     PhotoAbs_O       = PhotoAbs_O   / 10000.0
-     PhotoAbs_N2      = PhotoAbs_N2  / 10000.0
-     PhotoAbs_CH4     = PhotoAbs_CH4 / 10000.0
-     PhotoAbs_CO2      = PhotoAbs_CO2        / 10000.0
-     PhotoAbs_CO      = PhotoAbs_CO        / 10000.0
+  PhotoAbs_O2      = PhotoAbs_O2  / 10000.0
+  PhotoAbs_O       = PhotoAbs_O   / 10000.0
+  PhotoAbs_N2      = PhotoAbs_N2  / 10000.0
+  PhotoAbs_CH4     = PhotoAbs_CH4 / 10000.0
+  PhotoAbs_CO2      = PhotoAbs_CO2/ 10000.0
+  PhotoAbs_CO      = PhotoAbs_CO  / 10000.0
+  PhotoAbs_He       = PhotoAbs_He / 10000.0
 
-     PhotoIon_O2      = PhotoIon_O2        / 10000.0
-     PhotoIon_CO2      = PhotoIon_CO2        / 10000.0
-     PhotoIon_CO      = PhotoIon_CO        / 10000.0
-     PhotoIon_OPlus4S = PhotoIon_OPlus4S   / 10000.0
-     PhotoIon_N2      = PhotoIon_N2        / 10000.0
-     PhotoIon_N       = PhotoIon_N         / 10000.0
-     PhotoIon_OPlus2D = PhotoIon_OPlus2D   / 10000.0
-     PhotoIon_OPlus2P = PhotoIon_OPlus2P   / 10000.0
+  PhotoIon_O2      = PhotoIon_O2        / 10000.0
+  PhotoIon_CO2      = PhotoIon_CO2        / 10000.0
+  PhotoIon_CO      = PhotoIon_CO        / 10000.0
+  PhotoIon_OPlus4S = PhotoIon_OPlus4S   / 10000.0
+  PhotoIon_N2      = PhotoIon_N2        / 10000.0
+  PhotoIon_N       = PhotoIon_N         / 10000.0
+  PhotoIon_OPlus2D = PhotoIon_OPlus2D   / 10000.0
+  PhotoIon_OPlus2P = PhotoIon_OPlus2P   / 10000.0
+  
+  if (UseRidleyEUV) call read_euv_waves(iError)
      
-
-
-!  do n = 1, nS2WaveLengths
-!
-!     S2PhotoAbsCO  = S2PhotoAbsCO * 1.0e-18 / 10000.0
-!     S2PhotoAbsCO2 = S2PhotoAbsCO2 * 1.0E-18 / 10000.0
-!     S2PhotoAbsN2  = S2PhotoAbsN2 * 1.0E-18 / 10000.0
-!     S2PhotoAbsO2  = S2PhotoAbsO2 * 1.0E-18 / 10000.0
-!     S2PhotoIonN2  = S2PhotoIonN2 * 1.0E-18 / 10000.0
-!     S2PhotoIonCO  = S2PhotoIonCO * 1.0E-18 / 10000.0
-!     S2PhotoIonCO2 = S2PhotoIonCO2 * 1.0E-18 / 10000.0
-!     S2PhotoIonO2  = S2PhotoIonO2 * 1.0E-18 / 10000.0
-!
-!  enddo
-
 end subroutine init_euv
 
 subroutine Set_Euv(iError, StartTime, EndTime)
@@ -838,8 +954,60 @@ subroutine Set_Euv(iError, StartTime, EndTime)
 
 end subroutine Set_Euv
 
+  
+subroutine read_euv_waves(iError)
 
+  use ModKind
+  use ModEUV
+  use ModInputs
 
+  implicit none
+
+  integer, intent(out)     :: iError
+  character(len=80)        :: cline
+
+  integer :: nFiles, nWaves, iWave, i 
+  real :: tmp(6)
   
+  call report("read_euv_waves",2)
+
+  open(unit = iInputUnit_, file=cRidleyEUVFile, IOSTAT = iError)
+
+  if (iError /= 0) then
+     write(*,*) "Error in opening RidleyEUVFile  Is this set?"
+     write(*,*) "Code : ",iError,cRidleyEUVFile
+     call stop_gitm("Stopping in read_euv_waves")
+  endif
+     
+  read(iInputUnit_,*,iostat=iError) nFiles
   
+  do i=1,nFiles
+     read(iInputUnit_,*,iostat=iError) cline
+  enddo
+
+  read(iInputUnit_,*,iostat=iError) nWaves
+
+  if (nWaves /= Num_WaveLengths_High) then
+     write(*,*) "Error in RidleyEUVFile - nWaves /= Num_wavelengths_high"
+     write(*,*) "Values : ", nWaves, Num_WaveLengths_High
+     call stop_gitm("Stopping in read_euv_waves")
+  endif
+
+  read(iInputUnit_,*,iostat=iError) cline
   
+  do i=1,nWaves
+
+     read(iInputUnit_,*,iostat=iError) iWave, tmp
+     RidleySlopes(1,i) = tmp(1)
+     RidleySlopes(2,i) = tmp(2)
+     RidleySlopes(3,i) = tmp(3)
+     RidleyIntercepts(i) = tmp(4)
+     RidleyPowers(1,i) = tmp(5)
+     RidleyPowers(2,i) = tmp(6)
+     
+  enddo
+
+  close(iInputUnit_)
+  
+end subroutine read_euv_waves
+

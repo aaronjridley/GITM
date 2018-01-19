@@ -58,7 +58,7 @@ program GITM
      if(RCMRFlag) then
         Dt = 2
      else
-        Dt = 1.e32
+        Dt = FixedDt
      end if
 
      call calc_timestep_vertical

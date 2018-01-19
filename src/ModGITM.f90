@@ -8,6 +8,8 @@ module ModGITM
 
   implicit none
 
+  real :: GitmVersion = 4.0
+  
   real :: dt = 0.0
 
   integer :: iCommGITM, iProc, nProcs
@@ -29,7 +31,7 @@ module ModGITM
 
   ! RCMR
   real :: f107_est, f107a_est, f107_msis, f107a_msis
-  real :: PhotoElectronHeatingEfficiency_est
+  real :: PhotoElectronHeatingEfficiency_est, EDC_est(1,1)
   integer :: Sat_Loc
 
   ! Topography
@@ -45,7 +47,6 @@ module ModGITM
 
   real, allocatable :: Rho(:,:,:,:)
   real, allocatable :: Temperature(:,:,:,:)
-  real, allocatable :: InvScaleHeight(:,:,:,:)
   real, allocatable :: Pressure(:,:,:,:)
   real, allocatable :: NDensity(:,:,:,:)
   real, allocatable :: eTemperature(:,:,:,:)
@@ -73,12 +74,16 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
   real, allocatable :: Ke(:,:,:,:)
   real, allocatable :: dKe(:,:,:,:)
 
+  ! JMB:  06/24/2016
+  real, dimension(nSpecies) :: ThermalDiffCoefS
+
   real, dimension(nLons, nLats, nBlocksMax) :: &
        SurfaceAlbedo, SurfaceTemp,SubsurfaceTemp, tinertia, &
        dSubsurfaceTemp, dSurfaceTemp
 
   real, allocatable :: cp(:,:,:,:)
   real :: ViscCoef(0:nLons+1,0:nLats+1, 0:nAlts+1)
+  real :: ViscCoefS(0:nLons+1,0:nLats+1, 0:nAlts+1,1:nSpecies)
 
   real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2) :: &
        MeanIonMass, MeanMajorMass
@@ -109,7 +114,16 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
   real, allocatable :: cMax_GDB(:,:,:,:,:)
 
   real, dimension(1:nLons, 1:nLats, 1:nAlts, 3) :: &
-       IonDrag, Viscosity
+       IonDrag
+
+  ! JMB:  07/13/2017
+  ! 2nd Order Viscosity Terms
+  real, dimension(1:nLons, 1:nLats, 0:nAlts+1, 3) :: &
+       Viscosity
+  ! Added this for the Vertical Winds.  Calculated in calc_sources
+  ! and used in add_sources
+  real, dimension(1:nLons, 1:nLats, 0:nAlts+1, 1:nSpecies) :: &
+       VerticalViscosityS
 
  ! AGB: Added pressure gradient
   real, allocatable :: PressureGradient(:,:,:,:,:)
@@ -152,7 +166,8 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
   real :: SubsolarLatitude, SubsolarLongitude 
   real :: MagneticPoleColat, MagneticPoleLon
   real :: HemisphericPowerNorth, HemisphericPowerSouth
-
+  real :: SunDeclination
+  
   integer, parameter :: iEast_ = 1, iNorth_ = 2, iUp_ = 3, iMag_ = 4
   integer, parameter :: iVIN_ = 1, iVEN_ = 2, iVEI_ = 3
 
@@ -180,7 +195,6 @@ contains
     allocate(dAltDLat_CB(nLons,nLats,nAlts,nBlocks))
     allocate(Rho(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
     allocate(Temperature(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
-    allocate(InvScaleHeight(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
     allocate(Pressure(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
     allocate(NDensity(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
     allocate(eTemperature(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
@@ -205,7 +219,7 @@ contains
     allocate(KappaTemp(nLons, nLats, 0:nAlts+1, nBlocks))
     allocate(Ke(nLons, nLats, 0:nAlts+1, nBlocks))
     allocate(dKe(nLons, nLats, 0:nAlts+1, nBlocks))
-    allocate(cp(nLons,nLats,0:nAlts+1,nBlocks))
+    allocate(cp(nLons,nLats,-1:nAlts+2,nBlocks))
     allocate(B0(-1:nLons+2,-1:nLats+2,-1:nAlts+2,4,nBlocks))
     allocate(MLatitude(-1:nLons+2,-1:nLats+2,-1:nAlts+2,nBlocks))
     allocate(MLongitude(-1:nLons+2,-1:nLats+2,-1:nAlts+2,nBlocks))
@@ -220,7 +234,7 @@ contains
     allocate(b0_cD(-1:nLons+2,-1:nLats+2,-1:nAlts+2,nBlocks))
     allocate(b0_Be3(-1:nLons+2,-1:nLats+2,-1:nAlts+2,nBlocks))
     allocate(cMax_GDB(0:nLons+1,0:nLats+1,0:nAlts+1,3,nBlocks))
-    allocate(PressureGradient(1:nLons, 1:nLats, 1:nAlts, 3, nBlocks))
+    allocate(PressureGradient(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3, nBlocks))
     allocate(Potential(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
     allocate(Velocity(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3, nBlocks))
     allocate(IVelocity(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3, nBlocks))
@@ -255,7 +269,6 @@ contains
     deallocate(dAltDLat_CB)
     deallocate(Rho)
     deallocate(Temperature)
-    deallocate(InvScaleHeight)
     deallocate(Pressure)
     deallocate(NDensity)
     deallocate(eTemperature)

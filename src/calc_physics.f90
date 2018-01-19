@@ -1,4 +1,4 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
+!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 subroutine calc_physics(iBlock)
 
@@ -17,13 +17,17 @@ subroutine calc_physics(iBlock)
   integer :: itime(7)
   real*8 :: VernalDay
   real :: JulianDayEq, DaysInYear, OrbitAngle
-  real :: SunDeclination, SinDec, CosDec
+  real :: SinDec, CosDec
 
-  real :: DayNumber,TimeHour,Cy
-  real :: MeanAnomaly,RMeanAnomaly,DMeanAnomaly
-  real :: EccAnomaly1,EccAnomaly2,REccAnomaly1,REccAnomlay2
-  real :: TrueAnomaly,RTrueAnomaly
-  
+  real :: DayNumber,TimeHour
+  real :: MeanAnomaly,DMeanAnomaly, TrueAnomaly
+
+  real :: DNoverCY, tol, eccentricityDeg, dm
+  real :: semimajoraxis, eccentricity,inclination,meanLongitude,longitudePerihelion
+  real :: longitudeNode, argPerihelion, EccAnomaly, dEccAnomaly
+  real :: heliocentricX, heliocentricY, heliocentricZ
+  real :: x_ecl, y_ecl
+
   integer :: i
   integer :: iLon, iLat, iAlt
 
@@ -33,73 +37,83 @@ subroutine calc_physics(iBlock)
   ! Solar Things
   !/
 
-!\
-! Orbital Elements procedure taken from 
-! http://home.att.net/~srschmitt/planetorbits.html
-!/
-
+  !!!! Calculate orbital parameters based on E Standish, Solar System Dynamics, JPL,.
+  !!!! No constant orbital speed assumption
   TimeHour = iTimeArray(4)+iTimeArray(5)/60.0+iTimeArray(6)/3600.0
-  
+
   DayNumber = 367*iTimeArray(1)-7*(iTimeArray(1)+(iTimeArray(2)+9)/12)/4 &
-	   +275*iTimeArray(2)/9+iTimeArray(3)-730531.5+TimeHour/24.0
- 
-  CY = DayNumber/36525.0
-  
-  MeanAnomaly =(SunOrbit_D+((SunOrbit_E*CY)/3600.0)) - SunOrbit_C
-  RMeanAnomaly = pi/180.0*MeanAnomaly
-  DMeanAnomaly = RMeanAnomaly/(2.0*pi)
-  
-  if (DMeanAnomaly > 0.0) then
-	 RMeanAnomaly = (2.0*pi)*(DMeanAnomaly-floor(DMeanAnomaly))
-  else
-	 RMeanAnomaly = (2.0*pi)*(DMeanAnomaly-ceiling(DMeanAnomaly))
-  endif
-  
-  if (RMeanAnomaly < 0.0) then
-	 RMeanAnomaly = (2.0*pi)+RMeanAnomaly
-  endif
-  
-  EccAnomaly1 = RMeanAnomaly + SunOrbit_B*sin(RMeanAnomaly)*(1.0+ &
-	 SunOrbit_B*cos(RMeanAnomaly))
-  
-  !  Calculate true anomaly  
-  do i=1,10
-	 EccAnomaly2 = EccAnomaly1
-	 
-	 EccAnomaly1 = EccAnomaly2 - ((EccAnomaly2-SunOrbit_B* &
-		sin(EccAnomaly2)-RMeanAnomaly)/(1.0-SunOrbit_B* &
-		cos(EccAnomaly2)))
+     +275*iTimeArray(2)/9+iTimeArray(3)-730531.5+TimeHour/24.0
 
-  enddo
+  DNoverCY = DayNumber/36525.0
 
-  TrueAnomaly = 2.0*atan(sqrt((1.0+SunOrbit_B)/ &
-	 (1.0-SunOrbit_B))*tan(0.5*EccAnomaly1))
- 
-  if (TrueAnomaly < 0) then
-	 TrueAnomaly = TrueAnomaly + (2.0*pi)
-  endif
-  
- !!!!!!! General SunOrbitEccentricity 
-  SunOrbitEccentricity = SunOrbit_A*(1.0-SunOrbit_B**2.0)/(1.0+ &
-	   SunOrbit_B*cos(TrueAnomaly))
+  !Compute Keplerian elements at current date
 
- OrbitAngle = 2.*pi*(CurrentTime - VernalTime)/SecondsPerYear
+  semimajoraxis       = semimajoraxis_0+semimajordot*DNoverCY     !AU
+  eccentricity        = eccentricity_0+eccentricitydot*DNoverCY   !Rad
+  inclination         = inclination_0+inclinationdot*DNoverCY     !deg
+  meanLongitude       = meanLongitude_0+meanLongitudedot*DNoverCY !deg
+  longitudeNode       = semimajoraxis_0+semimajordot*DNoverCY     !deg
+  longitudePerihelion = longitudePerihelion_0+longitudePeriheliondot*DNoverCY !deg
 
- !!!!!!! Old SunOrbitEccentricity
-!  SunOrbitEccentricity = SunOrbit_A                     + &
-!                         SunOrbit_B*cos(OrbitAngle)    + &
-!                         SunOrbit_C*sin(OrbitAngle)    + &
-!                         SunOrbit_D*cos(2.*OrbitAngle) + &
-!                         SunOrbit_E*sin(2.*OrbitAngle)
+  !Compute argument of perihelion and mean anomaly
+  argPerihelion = longitudePerihelion - longitudeNode
+  !computation of M for Jupiter and out is supposed to be modified by additional
+  !terms for the time interval 3000BC - 30000AD... This probably doesn't matter.
+  MeanAnomaly = meanLongitude - longitudePerihelion
+  MeanAnomaly = mod(MeanAnomaly,360.0)
+  if (MeanAnomaly > 180) MeanAnomaly = MeanAnomaly - 360
 
+  !Need to solve Kepler's equation by iterating
+  DEccAnomaly = 10000.0
+  tol = 1.0e-6
+  eccentricityDeg = (180/pi)*eccentricity
+  EccAnomaly = MeanAnomaly+eccentricityDeg*sin(MeanAnomaly*pi/180)
+  i = 0
+  do while (abs(DEccAnomaly) > tol .and. i < 100)
+    dM = MeanAnomaly - (eccAnomaly - eccentricityDeg*sin(pi/180*eccAnomaly))
+    DEccAnomaly = dM/(1-eccentricity*cos(pi/180*eccAnomaly))
+    eccAnomaly = eccAnomaly+dEccAnomaly
+    i = i+1
+  end do
 
+  !Get heliocentric coordinates, TrueAnomaly and sunorbiteccentricity
+  heliocentricX = semimajoraxis*(cos(EccAnomaly*pi/180.)-eccentricity)
+  heliocentricY = semimajoraxis*(1-eccentricity**2)**(0.5)*sin(eccAnomaly*pi/180.)
+  heliocentricZ = 0
+
+  TrueAnomaly = atan2(heliocentricY,heliocentricX)*180/pi
+  sunorbiteccentricity = sqrt(heliocentricX**2+heliocentricY**2)
+
+  !convert to J2000 coordinates with x-axis aligned with vernal equinox so
+  !we can get solar longitude in the coorect system.  We don't need z.
+  x_ecl = heliocentricX * &
+    (cos(argPerihelion*pi/180.)*cos(longitudeNode*pi/180.) - &
+    sin(argPerihelion*pi/180.)*sin(longitudeNode*pi/180.)*cos(inclination*pi/180.)) + &
+    heliocentricY * &
+    (-sin(argPerihelion*pi/180.)*cos(longitudeNode*pi/180.) - &
+    cos(argPerihelion*pi/180.)*sin(longitudeNode*pi/180.)*cos(inclination*pi/180.))
+
+  y_ecl = heliocentricX * &
+    (cos(argPerihelion*pi/180.)*sin(longitudeNode*pi/180.) + &
+    sin(argPerihelion*pi/180.)*cos(longitudeNode*pi/180.)*cos(inclination*pi/180.)) + &
+    heliocentricY * &
+    (-sin(argPerihelion*pi/180.)*sin(longitudeNode*pi/180.) + &
+    cos(argPerihelion*pi/180.)*cos(longitudeNode*pi/180.)*cos(inclination*pi/180.))
+
+  !Calculate orbit angle, aka Ls. In this CS, need the angle from -x axis.
+  orbitAngle = atan(y_ecl/x_ecl)
+  if (x_ecl > 0) orbitangle = orbitangle+pi
+  if (x_ecl < 0 .and. y_ecl > 0) orbitangle = orbitangle + 2*pi
   SunDeclination = atan(tan(Tilt*pi/180.)*sin(OrbitAngle))
 
   SinDec = sin(SunDeclination)
   CosDec = cos(SunDeclination)
 
-  LocalTime = mod((UTime/3600.0 + &
-       Longitude(:,iBlock) * HoursPerDay / TwoPi), HoursPerDay)
+  ! Updated to work at all Planets
+  ! We need the equivalent number of "hours" per planet rotation,
+  ! assuming that there are 24.0 LT hours per planet day
+  LocalTime = mod((UTime/(Rotation_Period/24.0) + &
+       Longitude(:,iBlock) * 24.0/TwoPi), 24.0)
 
   if (UseApex) &
        call SUBSOLR(iTimeArray(1),iJulianDay,iTimeArray(4),&
@@ -132,7 +146,7 @@ subroutine calc_physics(iBlock)
            MLT(:,iLat,iAlt) = LocalTime
         enddo
 
-        ! Since we go over the pole, 
+        ! Since we go over the pole,
         !we have to move the points to the proper location:
 
         if (Latitude(0,iBlock) < -pi/2.0) then
@@ -160,7 +174,7 @@ subroutine calc_physics(iBlock)
         sza(iLon, iLat,iBlock) =  &
              acos(SinDec*sin(Latitude(iLat,iBlock)) + &
              CosDec*CosLatitude(iLat,iBlock) * &
-             cos(pi*(LocalTime(iLon)-HoursPerDay/2)/(HoursPerDay/2)))
+             cos(pi*(LocalTime(iLon)- 24.0/2.0)/(24.0/2.)))
 
         if (DtLTERadiation < Rotation_Period) then
            call calc_avesza(iLon,iLat,iBlock, SinDec, CosDec)
@@ -197,7 +211,7 @@ subroutine get_subsolar(CurrentTime, VernalTime, lon_sp, lat_sp)
   implicit none
 
   real*8, intent(in) :: CurrentTime, VernalTime
-  real*8, intent(out) :: lon_sp, lat_sp 
+  real*8, intent(out) :: lon_sp, lat_sp
 
   lon_sp=(pi - ((CurrentTime - VernalTime)/Rotation_Period &
        - floor((CurrentTime - VernalTime)/Rotation_Period))*2*pi)
@@ -207,3 +221,41 @@ subroutine get_subsolar(CurrentTime, VernalTime, lon_sp, lat_sp)
        /SecondsPerYear))
 
 end subroutine get_subsolar
+
+!-----------------------------------------------------------------------------
+! get_sza: A routine to get the sza given latitude and longitude
+!
+! Author: Ankit Goel, UMich, 21 April 2015
+!
+! Comments:
+!----------------------------------------------------------------------------
+
+subroutine get_sza(lon, lat, sza_calc)
+  use ModGITM
+  use ModTime
+  use ModConstants
+  use ModEUV
+  use ModPlanet
+  use ModInputs
+  implicit none
+
+  double precision, intent(in) :: lon, lat !lat, lon need to be in radians
+  double precision, intent(out) :: sza_calc
+
+  real(8) :: OrbitAngle_1, LocalTime_1
+  real(8) :: SunDeclination_1, SinDec, CosDec
+
+  OrbitAngle_1 = 2.*pi*(CurrentTime - VernalTime)/SecondsPerYear
+  SunDeclination_1 = atan(tan(Tilt*pi/180.)*sin(OrbitAngle_1))
+
+  SinDec = sin(SunDeclination_1)
+  CosDec = cos(SunDeclination_1)
+
+  LocalTime_1 = mod((UTime/3600.0 + &
+       lon * HoursPerDay / TwoPi), HoursPerDay)
+
+  sza_calc = acos(SinDec*sin(Lat) + &
+                  CosDec*Cos(lat) * &
+                  cos(pi*(LocalTime_1-HoursPerDay/2)/(HoursPerDay/2)))
+
+end subroutine get_sza

@@ -1,5 +1,3 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
 
 subroutine calc_rates(iBlock)
 
@@ -13,6 +11,8 @@ subroutine calc_rates(iBlock)
 ! Modified (02/20/07) : SWB :  Conversion from cgs to mks for Kt and Km corrected.
 !                              Comment out write statements (no longer needed)
 ! Modified (10/05/07) : SWB :  Scaling-off of Km for spin-up stability fo winds.
+! Modified (13/03/26) : SWB :  Sens test of Km (eddy viscosity) for minimum wind impact
+! Modified (13/04/18) : SWB :  Standard Km (eddy viscosity) for modest wind impact
 ! ----------------------------------------------------------------------------
   use ModGITM
   use ModRates
@@ -341,8 +341,13 @@ trouble = .false.
 !   * No scaling of molecular vciscosity
      ViscCoef(1:nLons,1:nLats,iAlt) =  kmmix(1:nLons,1:nLats,iAlt)
 
+!  * Benchmark: Jan.-March 2013
      ViscCoef(1:nLons,1:nLats,iAlt)  =  ViscCoef(1:nLons,1:nLats,iAlt)  + 500.0*&
                            Rho(1:nLons,1:nLats,iAlt,iBlock)*KappaEddyDiffusion(1:nLons,1:nLats,iAlt,iBlock)
+!  * Sensi Testing: March 2013
+!    ViscCoef(1:nLons,1:nLats,iAlt)  =  ViscCoef(1:nLons,1:nLats,iAlt)  + 250.0*&
+!                          Rho(1:nLons,1:nLats,iAlt,iBlock)*KappaEddyDiffusion(1:nLons,1:nLats,iAlt,iBlock)
+
 !     Visc_3D(:,:,iAlt,iBlock) =  kmmix(1:nLons,1:nLats,iAlt)
 
 

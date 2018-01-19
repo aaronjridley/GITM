@@ -1,6 +1,11 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
 Module ModChemistry
+
+!  Turn off CO2 sources and losses; infinite reservoir assumption.
+!  Fix added for: (1)  O+O2+CO2 and (2) few rate coefficients: 11-12-01
+!  Corrections to rates for aligmnent with Brecht et al (2011) for NOx in the VTGCM
+!  -- S. W. Bougher (170208)
+!  Addition to permit NOVEM and NOINT to be calculated as VTGCM in Brecht et al (2011)
+!  -- S. W. Bougher (170421)
 
   use ModSizeGitm
   use ModGITM
@@ -52,14 +57,17 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
 !  TN, TE, TI dependent reaction rates precalculated (like vtgcm)
 !  Rates calculated once each iLON, iLAT, iALT bin of loop 
 !  (m3/sec, m6/sec units needed) 
+!  -- Only use Te , 1200 K rate for O2+ DR.  OK up to 200 km?
 !/ --------------------------------------------------------------------------
 ! DR Rates with Electron Temp, te:  cm^3/s -> m^3/s
 ! real :: rtN2P_e, rtNOP_e, rtCO2P_e, rtO2P_e  ! DR rates
 
            rt300te = sqrt(300.0/te)
            rtN2P_e = 1.01e-7*(300./te)**0.39*1.0e-6
-           rtNOP_e = 3.4e-7*rt300te*1.0e-6
-           rtNOP_e2 = 0.6e-07*rt300te*1.0e-6
+!          rtNOP_e = 3.4e-7*rt300te*1.0e-6
+           rtNOP_e = 3.0e-7*rt300te*1.0e-6
+!          rtNOP_e2 = 0.6e-07*rt300te*1.0e-6
+           rtNOP_e2 = 1.0e-07*rt300te*1.0e-6
            rtCO2P_e = 3.5e-07*rt300te*1.0e-6
            rtO2P_e = 1.95e-07*(300./te)**0.70*1.0e-6
 !\
@@ -78,10 +86,13 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
 ! Reaction Rates with Neutral Temp, tn: cm^6/s -> m^6/s
 ! real :: rtO_O_CO2, rtO_CO_CO2, rtO_O2_CO2, rtO_N4S_CO2  ! Ter-molecular
 
-           rtO_O_CO2 = 2.75e-32*(200./tn)**3.3*1.e-12
+!          rtO_O_CO2 = 2.75e-32*(200./tn)**3.3*1.e-12
+           rtO_O_CO2 = 2.75e-32*1.e-12
            rtO_CO_CO2 = 6.5e-33*exp(-2180./tn)*1.e-12
-           rtO_O2_CO2 = 5.0e-28/tn**2.3*1.e-12
-           rtO_N4S_CO2 = 2.0e-32*rt300tn*1.e-12
+!          rtO_O2_CO2 = 5.0e-28/tn**2.3*1.e-12
+           rtO_O2_CO2 = 1.35e-33*1.e-12
+!          rtO_N4S_CO2 = 2.0e-32*rt300tn*1.e-12
+           rtO_N4S_CO2 = 1.83e-32*rt300tn*1.e-12
 !\
 ! Reactions and Rates taken from vtgcm  [May 2008] (T-independent)
 ! real :: rtCO2_OP, rtO_CO2P_tOP, rtO_CO2P_tO2P, rtN4S_O2P, rtN2D_CO2,  &
@@ -91,9 +102,11 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
            rtO_CO2P_tOP = 9.6e-11*1.e-6
            rtO_CO2P_tO2P = 1.64e-10*1.e-6 
            rtN4S_O2P = 1.0e-10*1.e-6 
-           rtN2D_CO2 = 3.6e-13*1.e-6 
+!          rtN2D_CO2 = 3.6e-13*1.e-6 
+           rtN2D_CO2 = 2.8e-13*1.e-6 
            rtN2D_CO = 1.9e-12*1.e-6 
-           rtN2D_O =  6.9e-13*1.e-6
+!          rtN2D_O =  6.9e-13*1.e-6
+           rtN2D_O =  2.0e-11*1.e-6
            rtN2D_N2 =  1.7e-14*1.e-6
            rtN4S_CO2 =  1.7e-16*1.e-6
            rtNO_O2P = 4.5e-10*1.e-6 
@@ -177,9 +190,11 @@ subroutine calc_chemical_sources(iLon,iLat,iAlt,iBlock,IonSources, &
               ! ----------------------------------------------------------
               ! N2 + hv ==> N(4S) + N(2D)   Assume 50% Branching Ratio
               ! N2 + pe ==> N(4S) + N(2D)   Assume 50% Branching Ratio (later)
+              ! Triple photodissrate due to fine structure approximation (VTGCM)
               ! ----------------------------------------------------------
               !rr=EuvDissRateS(iLon,iLat,iAlt,iN2_,iBlock) + PEDissRateS(iLon,iLat,iAlt,iN2_,iBlock)
-              rr=EuvDissRateS(iLon,iLat,iAlt,iN2_,iBlock) 
+              !rr=EuvDissRateS(iLon,iLat,iAlt,iN2_,iBlock)
+              rr=EuvDissRateS(iLon,iLat,iAlt,iN2_,iBlock)*3.0 
 
               Reaction = rr * Neutrals(iN2_)
 
@@ -304,6 +319,7 @@ subroutine calc_chemical_sources(iLon,iLat,iAlt,iBlock,IonSources, &
               !if (ialt .eq. 50) write(*,*) "CO2+ + e- ==> O + CO",niters, ialt,reaction,rtCO2P_e , Ions(ie_) , Ions(iCO2P_) 
                ! -----------------------------------------------------------
               ! NO+ + e- ==> O + N2D 
+              ! g = 0.75
               ! -----------------------------------------------------------
 
               Reaction = rtNOP_e * Ions(ie_) * Ions(iNOP_) 
@@ -315,6 +331,7 @@ subroutine calc_chemical_sources(iLon,iLat,iAlt,iBlock,IonSources, &
 
               ! -----------------------------------------------------------
               ! NO+ + e- ==> O + N4S 
+              ! (1-g) = 0.25
               ! -----------------------------------------------------------
 
               Reaction = rtNOP_e2 * Ions(ie_) * Ions(iNOP_) 
@@ -546,6 +563,7 @@ subroutine calc_chemical_sources(iLon,iLat,iAlt,iBlock,IonSources, &
               ! -----------------------------------------------------------
               ! O + O2 + CO2 ==> stuff + CO2  
               ! -----------------------------------------------------------
+!             Reaction = rtO_O_CO2 *Neutrals(iO_)*Neutrals(iO_)*Neutrals(iCO2_)
               Reaction = rtO_O2_CO2 *Neutrals(iO_)*Neutrals(iO2_)*Neutrals(iCO2_)
 
               NeutralLosses(iO_) = NeutralLosses(iO_) + Reaction
@@ -627,12 +645,18 @@ subroutine calc_chemical_sources(iLon,iLat,iAlt,iBlock,IonSources, &
 
               ! -----------------------------------------------------------
               ! N4S + O  ==> NO* + hv (Nightglow reaction)
+              ! New code added by S. W. Bougher (170427)
               ! -----------------------------------------------------------
               Reaction = rtN4S_O*Neutrals(iN4S_)*Neutrals(iO_)
 
               NeutralLosses(iN4S_) = NeutralLosses(iN4S_) + Reaction
               NeutralLosses(iO_) = NeutralLosses(iO_) + Reaction
               NeutralSources(iNO_) = NeutralSources(iNO_) + Reaction
+
+!             Total NO (delta plus gamma band system) mission (190-260 nm)
+!             Initially Should be ph/m3.sec units  (check)
+!             Convert to ph/cm3.sec units  
+              Emission(iENOUV_) = Emission(iENOUV_) + Reaction*1.0E-06
 
 !----------------------------------
 !New reactions
@@ -671,7 +695,10 @@ subroutine calc_chemical_sources(iLon,iLat,iAlt,iBlock,IonSources, &
               ! -----------------------------------------------------------
               ! He, H:  little idea about Aij coefficients
               ! -----------------------------------------------------------
-
+!------------CO2 infinite reservoir assumption used-------------
+              NeutralLosses(iCO2_) = 0.0
+              NeutralSources(iCO2_) = 0.0
+!------------Diffusion and advection only (no chemistry presently) -------
               NeutralLosses(iAr_) = 0.0
               NeutralSources(iAr_) = 0.0
               NeutralLosses(iHe_) = 0.0

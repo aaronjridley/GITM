@@ -16,6 +16,8 @@ subroutine init_get_potential
   character (len=100), dimension(100) :: Lines
   character (len=100) :: TimeLine
   real    :: bz
+
+!  real    :: dynamo(-1:nLons+2,-1:nLats+2)
   logical :: IsFirstTime = .true.
   integer :: iError
   iError = 0
@@ -240,7 +242,9 @@ subroutine get_potential(iBlock)
   logical :: IsFirstAurora(nBlocksMax) = .true.
   real    :: mP, dis
 
-  real, dimension(-1:nLons+2,-1:nLats+2) :: TempPotential, Grid, Dynamo
+  real, dimension(-1:nLons+2,-1:nLats+2) :: TempPotential, Grid, dynamo
+  real, dimension(-1:nLons+2,-1:nLats+2) :: SubMLats, SubMLons
+
 
   call start_timing("get_potential")
   call report("get_potential",2)
@@ -300,16 +304,19 @@ subroutine get_potential(iBlock)
 !           call stop_gitm("Stopping in get_potential")
         endif
 
-        if (UseDynamo) then
+        if (UseDynamo .and. .not. Is1D) then
            dynamo = 0.0
            call get_dynamo_potential( &
                 MLongitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock), &
-                MLatitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock), dynamo)
+                 MLatitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock), dynamo)
+
            do iLon = -1,nLons+2
               do iLat = -1,nLats+2 
-                 if (abs(MLatitude(iLon, iLat, iAlt, iBlock)) < DynamoHighLatBoundary-2.0) then
-                    dis= (DynamoHighLatBoundary - 2.0 - &
-                          abs(MLatitude(iLon, iLat, iAlt, iBlock)))/10.0
+!!                 if (abs(MLatitude(iLon, iLat, iAlt, iBlock)) < DynamoHighLatBoundary) then
+!!                    TempPotential(iLon,iLat) = TempPotential(iLon,iLat) + dynamo(iLon,iLat)
+                 if (abs(MLatitude(iLon, iLat, iAlt, iBlock)) < DynamoHighLatBoundary) then
+                    dis= (DynamoHighLatBoundary - &
+                          abs(MLatitude(iLon, iLat, iAlt, iBlock)))/20.0
                     if (dis > 1.0) then
                        TempPotential(iLon,iLat) = dynamo(iLon,iLat)
                     else
@@ -424,7 +431,8 @@ subroutine get_dynamo_potential(lons, lats, pot)
 
   implicit none
 
-  real, dimension(-1:nLons+2,-1:nLats+2), intent(in) :: lons, lats
+  real, dimension(-1:nLons+2,-1:nLats+2), intent(in) :: lons
+  real, dimension(-1:nLons+2,-1:nLats+2), intent(in) :: lats
   real, dimension(-1:nLons+2,-1:nLats+2), intent(out) :: pot
 
   integer :: iLon, iLat, iL, iM

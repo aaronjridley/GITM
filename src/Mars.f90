@@ -1,6 +1,18 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
 subroutine fill_photo(photoion, photoabs, photodis)
+
+! CVS_new_code:  Dec. 19, 2011 (DP additions)
+! -- Timing Fix, photoabs(58,iCO2_) = 0.0
+! -- E(EUV) = 0.21 (off) or 0.18 (on)
+! -- TOTAL(1) = 0.0; TOTAL(2) = 0.0
+! -- populate 1-D and 3-D fields for diagnostics from RT code
+!    (RadCoolingRate,LowAtmosRadRate subroutines) 
+! -- ALS = constant for Amanda Brech = 0.2 (for Comparison Studies Studes Only!)
+! CVS_new_code:  Dec. 20, 2011 (DP additions)
+! -- ALS = array from 2-D table (standard input for all cases)
+! Adjustment:  May 2012
+! -- KMAX = 1000., KMIN = 500.
+! Adjustments:  November 2012  (standard)
+! -- ALS = array from 2-D table (standard input for all cases)
 
   use ModPlanet
   use ModEUV
@@ -31,8 +43,9 @@ subroutine fill_photo(photoion, photoabs, photodis)
   photoabs(:,iO_)      = PhotoAbs_O
   photoabs(:,iN2_)    = PhotoAbs_N2
   photoabs(:,iO2_)    = PhotoAbs_O2
+  photoabs(58,iCO2_) = 0.0! timing fix (DP: Nov. 2011)
 
-  ! ---------------------------------------------------------------------
+ ! ---------------------------------------------------------------------
   !  Specific Photoionization Cross Sections (nIons-1)
   !  Total Ionization Cross Sections * Specific Branching Ratios
   !  Need:  O+, O2+, CO2+, N2+ Productions
@@ -68,7 +81,8 @@ subroutine init_heating_efficiency
 
   implicit none
 
-  HeatingEfficiency_CB  = 0.21
+! HeatingEfficiency_CB  = 0.21
+  HeatingEfficiency_CB  = 0.18
   eHeatingEfficiency_CB = 0.0
 
   call init_radcool
@@ -95,6 +109,9 @@ subroutine calc_planet_sources(iBlock)
   integer :: nw, iLat, iLon, iAlt
   integer :: L_LAYERS, L_LEVELS, L_NLAYRAD,L_NLEVRAD
 
+  real :: tmp2(nLons, nLats, nAlts)
+  real :: tmp3(nLons, nLats, nAlts)
+
   ! Ls Variables
   real :: deltat
   real :: em
@@ -107,13 +124,13 @@ subroutine calc_planet_sources(iBlock)
   ! New sources specificly for Mars include: 
   ! (1) calc_radcooling(iBlock):  added 1/31/07 (BOUGHER)
   ! (2) calc_radcode(iBlock)   :  to be added later (NELLI)
+  ! (3) OCooling code : added 4/14/12 (BOUGHER)
 
   if (useGravityWave)  call calc_GW(iBlock)
   
   !\ -------------------------------------------------------------------
   ! CO2 NLTE Cooling Formulation from Miguel Lopez-Valverde (2001)
   !/
-
   !/ Cooling ON
 
   call calc_radcooling(iBlock)
@@ -138,9 +155,50 @@ subroutine calc_planet_sources(iBlock)
   !/ Cooling OFF (zeroed out)
   !    RadCooling = 0.0
   !    RadCoolingRate = 0.0
+
   !\ -------------------------------------------------------------------
+  ! O(63 micron) Cooling Formulation from Kockarts (1970)
+  !/
 
+  if (UseOCooling) then
 
+     ! [O] cooling
+     ! Initial Reference: Kockarts, G., P. Sp.Sci., Vol. 18, pp. 271-285, 1970
+     ! Exact LTE (opt. thin) equations found in Banks and Kockarts [1973] pg. 22.
+     ! a. Where does tau = 1.0, above which optically thin approx is valid?
+     ! b. We reduce the LTE 63-um cooling rate by a factor of 2 for
+     !    the non-LTE effects.[Roble et.al,1987, JGR, 92, 8745]
+
+     tmp2 = exp(-228./(Temperature(1:nLons,1:nLats,1:nAlts,iBlock)*&
+          TempUnit(1:nLons,1:nLats,1:nAlts)))
+     tmp3 = exp(-326./(Temperature(1:nLons,1:nLats,1:nAlts,iBlock)*&
+          TempUnit(1:nLons,1:nLats,1:nAlts)))
+
+     ! In erg/cm3/s
+!  Factor of two applied:
+! ---------------------------------------------------------------------
+     OCooling = 0.5* (1.69e-18*tmp2 + 4.59e-20*tmp3) * &
+          (NDensityS(1:nLons,1:nLats,1:nAlts,iO_,iBlock)/1.0e6) / &
+          (1.0 + 0.6*tmp2 + 0.2*tmp3)
+!  Utilized without factor of two in Earth GITM:
+! ---------------------------------------------------------------------
+!    OCooling = (1.69e-18*tmp2 + 4.59e-20*tmp3) * &
+!         (NDensityS(1:nLons,1:nLats,1:nAlts,iO_,iBlock)/1.0e6) / &
+!         (1.0 + 0.6*tmp2 + 0.2*tmp3)
+     ! In w/m3/3
+     OCooling = OCooling/10.0
+     ! In our special units:
+     OCooling = OCooling/ TempUnit(1:nLons,1:nLats,1:nAlts) / &
+          (Rho(1:nLons,1:nLats,1:nAlts,iBlock)*cp(:,:,1:nAlts,iBlock))
+
+  else
+
+     OCooling = 0.0
+
+  endif
+
+  RadCooling(1:nLons,1:nLats,1:nAlts,iBlock) = & 
+         RadCooling(1:nLons,1:nLats,1:nAlts,iBlock) + OCooling
   !\
   ! ---------------------------------------------------------------
   ! This calls the lower atmosphere radiation code
@@ -200,7 +258,7 @@ subroutine calc_planet_sources(iBlock)
         ell_s = 360.0+360.0*(ell_s/360.0-ceiling(ell_s/360.0))
      endif
 
-     !	 print*, ell_s
+!     	 print*, ell_s
 
      LowAtmosRadRate(1:nLons,1:nLats,1:nAlts,iBlock)=0.0
 
@@ -257,6 +315,75 @@ end subroutine calc_planet_sources
 !
 !---------------------------------------------------------+
 
+subroutine init_topography
+
+  use ModGITM
+  use ModInputs
+
+  implicit None
+  
+!  real, intent(out) :: altzero2(nLons,nLats,nBlocks)
+
+  integer, parameter :: nMOLALons = 1440 , nMOLALats = 720 !1/4 degree resolution
+  
+  real, dimension(nMolaLons,nMOLALats, 3) :: SurfaceAltitude
+  integer :: ilon, ilat, iilon, iilat, jlon, jlat, iBlock
+  real :: rlat, rlon,latfind,lonfind
+
+
+  open(unit=iInputUnit_, file='DataIn/Mars_MOLA_topo.dat', action='read', status="old")
+  if (iDebugLevel > 4) write(*,*) "=====> Reading Topography"
+  
+  do iLat = 1, nMOLALats
+     do iLon = 1, nMOLALons
+        
+        read(iInputUnit_,*) SurfaceAltitude(iLon,iLat,iNorth_), &
+             SurfaceAltitude(iLon,iLat,iEast_), &
+             SurfaceAltitude(iLon,iLat,iUp_)
+
+     enddo
+  enddo
+  close(iInputUnit_)
+  
+  do iBlock = 1, nBlocks
+     do iLon = 1, nLons
+        do iLat = 1, nLats
+           
+           LonFind = Longitude(iLon,iBlock)*180/pi
+           LatFind = latitude(iLat,iBlock)*180/pi
+           
+           do jLon = 1, nMOLALons-1
+              
+              if (SurfaceAltitude(jLon,1,iEast_) <= LonFind .and. &
+                   SurfaceAltitude(jLon+1,1,iEast_) >= LonFind) then
+                 iiLon = jLon
+                rLon = 1.0 - (LonFind -  SurfaceAltitude(jLon,1,iEast_))/ &
+                      (SurfaceAltitude(jLon+1,1,iEast_)-SurfaceAltitude(jLon,1,iEast_))
+
+              endif
+           enddo
+           
+           do jLat = 1, nMOLALats-1
+              
+              if (SurfaceAltitude(1,jLat,iNorth_) <= LatFind .and. &
+                   SurfaceAltitude(1,jLat+1,iNorth_) >= LatFind) then
+                 iiLat = jLat
+                 rLat = 1.0 - (LatFind -  SurfaceAltitude(1,jLat,iNorth_))/ &
+                      (SurfaceAltitude(1,jLat+1,iNorth_)-SurfaceAltitude(1,jLat,iNorth_))
+              endif
+           enddo
+           
+           altzero(iLon,iLat,iBlock) =  (rLon)*(rLat)*SurfaceAltitude(iiLon,iiLat,iUp_) + &
+                (1-rLon)*(  rLat)*SurfaceAltitude(iiLon +1,iiLat,iUp_) + &
+                (rLon)*(1-rLat)*SurfaceAltitude(iiLon,iiLat+1,iUp_) + &
+                (1-rLon)*(1-rLat)*SurfaceAltitude(iiLon+1,iiLat+1,iUp_) 
+
+        enddo
+     enddo
+     
+  enddo
+
+end subroutine init_topography
 !---------------------------------------------------------+
 !
 !---------------------------------------------------------+
@@ -307,6 +434,7 @@ subroutine calc_radcooling(iBlock)
   use ModSources, only: RadCoolingRate
   use ModPlanet
   use ModGITM
+  use ModUserGITM
   use ModConstants, only:  Boltzmanns_Constant, Speed_Light, &
        Planck_Constant
   use ModIndicesInterfaces
@@ -471,6 +599,10 @@ subroutine calc_radcooling(iBlock)
               d19cp1 = k19cap1*co2t + k19cbp1*n2co(i)
               d19cp2 = k19cap2*co2t + k19cbp2*n2co(i)
               !
+              ! The O-CO2 collisional de-excitation
+              ! 6.0e-12, from SABER CO2 observations
+              !k20xc = 6.e-12 * rfvto3p
+              ! Standard 3.0e-12 value
               k20xc = 3.e-12 * rfvto3p
               k20cp1 = k20xc * 2.0 * exp( -ee/tlayer(i) * nu1 )
               k20cp2 = k20xc * 2.0 * exp( -ee/tlayer(i) * nu2 )
@@ -516,8 +648,41 @@ subroutine calc_radcooling(iBlock)
 
   !-------------------------------------------------------------
 
+! CO2 Cooing Rate
   RadCoolingRate(1:nLons,1:nLats,1:nAlts,iBlock) = &
        -cooltot(1:nLons,1:nLats,1:nAlts) 
+
+!  Diagnostics
+     !-----------------------------------------------------------------
+     ! S. W. BOUGHER defined:  11-11-01 UserData1D
+     ! S. W. BOUGHER defined:  11-11-01 UserData3D
+     ! Pressure (ubar units for MTGCM compatibility)
+     !-----------------------------------------------------------------
+     UserData3D(:,:,:,8,iBlock) = 0.0
+     UserData3D(1:nLons, 1:nLats, 1:nAlts, 8, iBlock) =  &
+               Pressure(1:nLons, 1:nLats, 1:nAlts, iBlock)*10.0
+     UserData3D(:,:,:,9,iBlock) = 0.0
+     UserData3D(1:nLons, 1:nLats, 1:nAlts, 9, iBlock) =  &
+               Temperature(1:nLons,1:nLats,1:nAlts,iBlock)*  &
+               TempUnit(1:nLons,1:nLats,1:nAlts)
+     UserData3D(:,:,:,10,iBlock) = 0.0
+     UserData3D(1:nLons, 1:nLats, 1:nAlts, 10, iBlock) =  &
+               vmro(1:nLons,1:nLats,1:nAlts)
+     UserData3D(:,:,:,11,iBlock) = 0.0
+     UserData3D(1:nLons, 1:nLats, 1:nAlts, 11, iBlock) =  &
+               vmrco2(1:nLons,1:nLats,1:nAlts)
+!
+     UserData1D(1,1,:,8) = 0.0
+     UserData1D(1, 1, 1:nAlts, 8) =  Pressure(1, 1, 1:nAlts, iBlock)*10.0
+     UserData1D(1,1,:,9) = 0.0
+     UserData1D(1, 1, 1:nAlts, 9) =   &
+               Temperature(1,1,1:nAlts,iBlock)*  &
+               TempUnit(1,1,1:nAlts)
+     UserData1D(1,1,:,10) = 0.0
+     UserData1D(1, 1, 1:nAlts, 10) = vmro(1,1,1:nAlts)
+     UserData1D(1,1,:,11) = 0.0
+     UserData1D(1, 1, 1:nAlts, 11) =  vmrco2(1,1,1:nAlts)
+  !-------------------------------------------------------------
 
   !-------------------------------------------------------------
 
@@ -727,8 +892,20 @@ end subroutine init_isochem
      real :: KMin
 
      KappaEddyDiffusion(:,:,:,iBlock) = 0.0
+!    KMax = 1000.0
+!    KMin = 100.0
+
+! KHigh
+!     KMax = 10000.0
+!     KMin = 500.0
+
+! KModerate
+!     KMax = 5000.0
+!     KMin = 500.0
+
+! KStandard
      KMax = 1000.0
-     KMin = 100.0
+     KMin = 500.0
 
      ! \
      ! First, find the altitude level corresponding to the asymptotic
@@ -771,6 +948,10 @@ end subroutine init_isochem
         do iLat = 1, nLats
            do iLon = 1, nLons
 
+              ! Krasnopolsky et al. [2005] Helium modeling
+!              KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) =  &
+!                   (1.0e-04)*(1.8e+13)/sqrt( (1.0e-06)*NDensity(iLon,iLat,iAlt,iBlock)) 
+
               KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) =  &
                    KMax* sqrt( NEddyMax(iLon,iLat) / NDensity(iLon,iLat,iAlt,iBlock)) 
               !
@@ -778,11 +959,15 @@ end subroutine init_isochem
               !! This gives an upper bound of Kmax
               KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
                    min(KMax, KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) )
+
+             KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
+                  max(KMin, KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) )
               !
               !! This gives an lower bound of Kmin
-              KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
-                   max(KMin, KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) )
-              !
+!             KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
+!                  max(100.0e+02, KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) )
+             !
+
            enddo
         enddo
 
@@ -1190,11 +1375,20 @@ end subroutine init_isochem
     !          Converted to Mars GITM by S. M. Nelli (2007)
     !  Inputs: from MarsGITM  (Pressure, Temperature)
     !          all on MarsGITM grid (nLons,nLats,nAlts)
-    !  Output: xLowAtmosRadRate(1:nLons,1:nLats,1:nAlts,iBlock)
+    !  Output: LowAtmosRadRate(1:nLons,1:nLats,1:nAlts,iBlock)
+    !        **lowatmosradrate(iLon,iLat,L_NLAYRAD-L1,iBlock)=TOTAL(L1)
+    !        : qnirtot(1:nLons,1:nLats,1:nAlts,iBlock)
+    !        **qnirtot(iLon,iLat,L_NLAYRAD-L1,iBlock)= HEATING(L1)/XLTECORRECTION(L1)
+    !        : qnirlte(1:nLons,1:nLats,1:nAlts,iBlock)
+    !        **qnirlte(iLon,iLat,L_NLAYRAD-L1,iBlock)= HEATING(L1)
+    !        : cirlte(1:nLons,1:nLats,1:nAlts,iBlock)
+    !        **cirlte(iLon,iLat,L_NLAYRAD-L1,iBlock)= GREENHOUSE(L1)*COOLCORRECTION(L1)
+    !        : all K/sec
+    !        : Last Revised :  11-10-28 S. W. Bougher
     !  =======================================================================
     !
     use ModInputs
-    use ModSources, only: LowAtmosRadRate
+    use ModSources, only: LowAtmosRadRate,QnirLTE,QnirTOT,CirLTE
     use ModPlanet
     use ModGITM
     use ModEUV, only: AveCosSza
@@ -1369,6 +1563,9 @@ end subroutine init_isochem
 
        !C  Check for ground ice.  Change albedo if there is any ice.
 
+!      Scalar albedo for 1-D Tests with Brecht
+!      ALS   = 0.24
+!      2-D Array albedo for Production Simulations
        ALS   = SurfaceAlbedo(iLon,iLat,iBlock)
 
        ! FOR FUTURE CONSIDERATION OF CO2 GROUND ICE
@@ -1484,16 +1681,21 @@ end subroutine init_isochem
        HEATING(2) = 0.0 
 
        lowatmosradrate(iLon,iLat,L_NLAYRAD-L1,iBlock)=TOTAL(L1)
+!      qnirlte(iLon,iLat,L_NLAYRAD-L1,iBlock)= XLTECORRECTION(L1)
+       qnirlte(iLon,iLat,L_NLAYRAD-L1,iBlock)= HEATING(L1)
+       qnirtot(iLon,iLat,L_NLAYRAD-L1,iBlock)= HEATING(L1)/XLTECORRECTION(L1)
+       cirlte(iLon,iLat,L_NLAYRAD-L1,iBlock)= GREENHOUSE(L1)*COOLCORRECTION(L1)
 
-       dSubsurfaceTemp(iLon,iLat,iBlock) = -2.0*PI/sqrt(Pa*Pd)*&
+
+       dSubsurfaceTemp(iLon,iLat,iBlock) = -2.0*PI/sqrt(Pa*PdM)*&
             (SubsurfaceTemp(iLon,iLat,iBlock)-&
             SurfaceTemp(iLon,iLat,iBlock))+2.0*PI/Pa*&
             (CoreTemp-SubsurfaceTemp(iLon,iLat,iBlock))
        
        dSurfaceTemp(iLon,iLat,iBlock) = 1.0/(0.5*tinertia(iLon,iLat,iBlock)*&
-            sqrt(Pd/PI))*(fluxdnv(L_NLAYRAD)*(1.0-SurfaceAlbedo(iLon,iLat,iBlock))+&
+            sqrt(PdM/PI))*(fluxdnv(L_NLAYRAD)*(1.0-SurfaceAlbedo(iLon,iLat,iBlock))+&
             fluxdni(L_NLAYRAD)-SBconstant*SurfaceTemp(iLon,iLat,iBlock)**4.0)+&
-            2.0*PI/Pd*(SubsurfaceTemp(iLon,iLat,iBlock)-SurfaceTemp(iLon,iLat,iBlock))
+            2.0*PI/PdM*(SubsurfaceTemp(iLon,iLat,iBlock)-SurfaceTemp(iLon,iLat,iBlock))
 
     end do
 !stop
@@ -3559,72 +3761,3 @@ END DO
            subroutine planet_limited_fluxes(iBlock)
              !! Do Nothing
            end subroutine planet_limited_fluxes
-subroutine init_topography
-
-  use ModGITM
-  use ModInputs
-
-  implicit None
-  
-!  real, intent(out) :: altzero2(nLons,nLats,nBlocks)
-
-  integer, parameter :: nMOLALons = 1440 , nMOLALats = 720 !1/4 degree resolution
-  
-  real, dimension(nMolaLons,nMOLALats, 3) :: SurfaceAltitude
-  integer :: ilon, ilat, iilon, iilat, jlon, jlat, iBlock
-  real :: rlat, rlon,latfind,lonfind
-
-
-  open(unit=iInputUnit_, file='DataIn/Mars_MOLA_topo.dat', action='read', status="old")
-  if (iDebugLevel > 4) write(*,*) "=====> Reading Topography"
-  
-  do iLat = 1, nMOLALats
-     do iLon = 1, nMOLALons
-        
-        read(iInputUnit_,*) SurfaceAltitude(iLon,iLat,iNorth_), &
-             SurfaceAltitude(iLon,iLat,iEast_), &
-             SurfaceAltitude(iLon,iLat,iUp_)
-
-     enddo
-  enddo
-  close(iInputUnit_)
-  
-  do iBlock = 1, nBlocks
-     do iLon = 1, nLons
-        do iLat = 1, nLats
-           
-           LonFind = Longitude(iLon,iBlock)*180/pi
-           LatFind = latitude(iLat,iBlock)*180/pi
-           
-           do jLon = 1, nMOLALons-1
-              
-              if (SurfaceAltitude(jLon,1,iEast_) <= LonFind .and. &
-                   SurfaceAltitude(jLon+1,1,iEast_) >= LonFind) then
-                 iiLon = jLon
-                rLon = 1.0 - (LonFind -  SurfaceAltitude(jLon,1,iEast_))/ &
-                      (SurfaceAltitude(jLon+1,1,iEast_)-SurfaceAltitude(jLon,1,iEast_))
-
-              endif
-           enddo
-           
-           do jLat = 1, nMOLALats-1
-              
-              if (SurfaceAltitude(1,jLat,iNorth_) <= LatFind .and. &
-                   SurfaceAltitude(1,jLat+1,iNorth_) >= LatFind) then
-                 iiLat = jLat
-                 rLat = 1.0 - (LatFind -  SurfaceAltitude(1,jLat,iNorth_))/ &
-                      (SurfaceAltitude(1,jLat+1,iNorth_)-SurfaceAltitude(1,jLat,iNorth_))
-              endif
-           enddo
-           
-           altzero(iLon,iLat,iBlock) =  (rLon)*(rLat)*SurfaceAltitude(iiLon,iiLat,iUp_) + &
-                (1-rLon)*(  rLat)*SurfaceAltitude(iiLon +1,iiLat,iUp_) + &
-                (rLon)*(1-rLat)*SurfaceAltitude(iiLon,iiLat+1,iUp_) + &
-                (1-rLon)*(1-rLat)*SurfaceAltitude(iiLon+1,iiLat+1,iUp_) 
-
-        enddo
-     enddo
-     
-  enddo
-
-end subroutine init_topography

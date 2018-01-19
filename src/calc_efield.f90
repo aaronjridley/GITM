@@ -11,8 +11,9 @@ subroutine calc_efield(iBlock)
   integer, intent(in) :: iBlock
 
   integer :: i, j, k, imax, jmax, kmax, ku, kd
-  real :: maxi
+  real :: maxi, edotb
   real :: altu, alt, altd, du, dd, r, r2, pu, p, pd, dpda
+  real :: bdir(3)
 
   call report("Electric Field",2)
   call start_timing("calc_efield")
@@ -62,11 +63,22 @@ subroutine calc_efield(iBlock)
 
            EField(j,i,k,iUp_) = -dpda
 
-           ! the electric field in the vertical direction should not be very
-           ! large.  Let's limit it, since it seems to blow up:
+!           ! the electric field in the vertical direction should not be very
+!           ! large.  Let's limit it, since it seems to blow up:
+!
+!           if (EField(j,i,k,iUp_) >  MaxEField) EField(j,i,k,iUp_) =  MaxEField
+!           if (EField(j,i,k,iUp_) < -MaxEField) EField(j,i,k,iUp_) = -MaxEField
 
-           if (EField(j,i,k,iUp_) >  MaxEField) EField(j,i,k,iUp_) =  MaxEField
-           if (EField(j,i,k,iUp_) < -MaxEField) EField(j,i,k,iUp_) = -MaxEField
+           bdir = B0(j,i,k,1:3,iBlock) / B0(j,i,k,iMag_,iBlock)
+
+           edotb = &
+                efield(j,i,k,iEast_) * bdir(iEast_) + &
+                efield(j,i,k,iNorth_) * bdir(iNorth_) + &
+                efield(j,i,k,iUp_) * bdir(iUp_)
+                
+           efield(j,i,k,iEast_)  = efield(j,i,k,iEast_)  - edotb * bdir(iEast_)
+           efield(j,i,k,iNorth_) = efield(j,i,k,iNorth_) - edotb * bdir(iNorth_)
+           efield(j,i,k,iUp_)    = efield(j,i,k,iUp_)    - edotb * bdir(iUp_)
 
         enddo
      enddo

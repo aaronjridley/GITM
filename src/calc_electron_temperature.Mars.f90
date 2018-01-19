@@ -1,9 +1,10 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
 
 subroutine calc_electron_temperature(iBlock)
 
-  !  Take values from empirical datasets fropm Viking (settei.F)
+  !  Take Tion and Telec values from empirical datasets from Viking (settei.F)
+  !  -- Pre-MAVEN
+  !  Take Telec values from Ergun et al (2015) plus Linear Fit to Tn at 130 km
+  !  -- Post-MAVEN  (dayside low SZA experiment for dayside orbit application)
 
   use ModGITM
   use ModPlanet, only : ialtminiono
@@ -11,12 +12,40 @@ subroutine calc_electron_temperature(iBlock)
   implicit none
 
   integer, intent(in) :: iBlock
-  integer :: iLon,iLat,iAlt,iminiono
-  real :: Alt
+  integer :: iLon,iLat,iAlt,iminiono,k130
+  real :: Alt,TN130
+  real,parameter :: TL = 510.
+  real,parameter :: TH = 3140.
+  real,parameter :: Z0 = 241.
+  real,parameter :: H0 = 60.
+  real,parameter :: TE180 = 810.
 
   call report("Electron Density", 2)
   !Electron Temperature
   !FOX[93] FORMULATION FOR DY TE FROM ROHRBAUGH ET. AL. [79]
+
+! do iLon = 1, nLons
+!    do iLat = 1, nLats
+!       iMinIono = iAltMinIono(iLon,iLat,iBlock)
+!       do ialt = iminiono, nAlts
+!
+!          Alt = Altitude_GB(iLon,iLat,iAlt,iBlock) /1000.0
+!          if (Alt < 130.0) eTemperature(iLon,iLat,iAlt,iBlock) = &
+!               Temperature(iLon,iLat,iAlt,iBlock) * TempUnit(iLon,iLat,iAlt)
+!
+!          if (Alt > 180.0) eTemperature(iLon,iLat,iAlt,iBlock) = &
+!               4200.0 - 3750.0*exp((180-Alt)/89.6)
+!
+!          if (Alt >= 130.0 .and. Alt <= 180.0) eTemperature(iLon,iLat,iAlt,iBlock) = &
+!               700.0-536.0*exp((130.0 - Alt)/65.4)
+!
+!       enddo
+!    enddo
+! enddo
+
+  !Electron Temperature
+  !Bougher[2017] FORMULATION FOR low SZA Dayside TE:  
+  !    Combo of Ergun ea (2015) tanh above 180 km and Linear Fit to Tn(130 km) below.
 
   do iLon = 1, nLons
      do iLat = 1, nLats
@@ -24,21 +53,27 @@ subroutine calc_electron_temperature(iBlock)
         do ialt = iminiono, nAlts
 
            Alt = Altitude_GB(iLon,iLat,iAlt,iBlock) /1000.0
-           if (Alt < 130.0) eTemperature(iLon,iLat,iAlt,iBlock) = &
-                Temperature(iLon,iLat,iAlt,iBlock) * TempUnit(iLon,iLat,iAlt)
+           if (Alt < 130.0) Then
+              eTemperature(iLon,iLat,iAlt,iBlock) = &
+                  Temperature(iLon,iLat,iAlt,iBlock) * TempUnit(iLon,iLat,iAlt)
+              k130 = ialt 
+           endif
+
+           if (Alt >= 130.0 .and. Alt <= 180.0) Then
+              TN130 = Temperature(iLon,iLat,k130,iBlock)*TempUnit(iLon,iLat,k130)
+              eTemperature(iLon,iLat,iAlt,iBlock) = TN130+(TE180-TN130)*(Alt-130.)/50.
+           endif
+
 
            if (Alt > 180.0) eTemperature(iLon,iLat,iAlt,iBlock) = &
-                4200.0 - 3750.0*exp((180-Alt)/89.6)
-
-           if (Alt >= 130.0 .and. Alt <= 180.0) eTemperature(iLon,iLat,iAlt,iBlock) = &
-                700.0-536.0*exp((130.0 - Alt)/65.4)
+              0.5*(TH+TL) + 0.5*(TH-TL)*tanh((Alt-Z0)/H0)
 
         enddo
      enddo
-  enddo
+ enddo
 
   !Ion Temperature
-  !FOX[93] FORMULATION FOR DY TE FROM ROHRBAUGH ET. AL. [79]
+  !FOX[93] FORMULATION FOR DY TI FROM ROHRBAUGH ET. AL. [79]
 
   do iLon = 1, nLons
      do iLat = 1, nLats
@@ -62,7 +97,11 @@ subroutine calc_electron_temperature(iBlock)
 end subroutine calc_electron_temperature
 
 
+subroutine calc_electron_ion_sources(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeatingm, iHeating, lame, lami)
 
+  ElectronHeating = 0.0
+
+end subroutine calc_electron_ion_sources
 
 
 

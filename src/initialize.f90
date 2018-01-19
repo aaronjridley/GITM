@@ -343,10 +343,6 @@ subroutine initialize_gitm(TimeIn)
            
            do iAlt=-1,nAlts+2
 
-              InvScaleHeight(:,:,iAlt,iBlock)  =  &
-                   -Gravity_GB(:,:,iAlt,iBlock) / &
-                   Temperature(:,:,iAlt,iBlock)
-
               Rho(:,:,iAlt,iBlock) = 0.0
 
               NewSumRho = 0.0
@@ -414,14 +410,6 @@ subroutine initialize_gitm(TimeIn)
            enddo
         endif
      endif
-
-  else
-
-     do iBlock = 1, nBlocks
-        InvScaleHeight(:,:,:,iBlock)  =  &
-             -Gravity_GB(:,:,:,iBlock) / &
-             Temperature(:,:,:,iBlock)
-     enddo
 
   endif
 

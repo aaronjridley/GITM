@@ -1,7 +1,7 @@
 !  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 !----------------------------------------------------------------------
-! $Id: satellites.f90,v 1.15 2015/06/08 15:08:19 ridley Exp $
+! $Id: satellites.f90,v 1.17 2017/07/17 19:52:02 lregoli Exp $
 !
 ! Author: Aaron Ridley, UMichigan
 !
@@ -19,6 +19,8 @@
 !                                                         and added comments
 !           Asad, UMichigan, Feb 2013 - Added data reading capability to allow
 !                                       data assimilation
+!           Aaron, May 2015 - fixed some error with cLine. Needed iCharLen_ to
+!                             be used from ModInputs
 !
 ! Comments: Routines to handle satellite data in GITM.
 !
@@ -33,7 +35,7 @@ subroutine read_satellites(iError)
   use ModRCMR, only: RCMRFlag
   use ModSatellites
   use ModGITM, only: iUp_, iEast_, iNorth_
-  use ModInputs, only: iDebugLevel,iCharLen_
+  use ModInputs, only: iDebugLevel, iCharLen_
   use ModConstants
 
   implicit none
@@ -59,7 +61,8 @@ subroutine read_satellites(iError)
 
   do iSat = 1, nSats
 
-     if (iDebugLevel > 2) write(*,*) "Reading Satellite File : ",cSatFileName(iSat), iSat
+     if (iDebugLevel > 2) &
+          write(*,*) "Reading Satellite File : ",cSatFileName(iSat), iSat
 
      open(unit=iSatUnit,file=cSatFileName(iSat),status="old",iostat = iError)
 
@@ -95,7 +98,6 @@ subroutine read_satellites(iError)
         else
            read(iSatUnit,*,iostat=iError) iTime, Pos
         endif
-
 
         if (iError == 0) then
 
@@ -179,20 +181,86 @@ subroutine move_satellites
 
   use ModRCMR, only: RCMRFlag
   use ModSatellites
-  use ModGITM, only: nBlocks, dt
+  use ModGITM, only: nBlocks, dt, iProc
   use ModTime, only: CurrentTime, tSimulation
   use ModConstants, only: pi !alex
   implicit none
 
   integer :: iSat, iPos, iLine = 1, i, iBlock, iOut
   real    :: r
+  character (len=8)         :: cName
   character (len=3)         :: cPos
+  character (len=iCharLen_) :: cTmp
   integer :: l1, l2
 
   iOut = -1
   if (RCMRFlag) iOut = -2
 
   do iSat = 1, nSats
+if (SatDtPlot(iSat) < 0) then
+!Then we only write the sat file if it is the time listed in the input file
+iLine = iSatCurrentIndex(iSat)
+
+if (iSatCurrentIndex(iSat) == 0) then
+
+if ( CurrentTime >= SatTime(iSat,1) .and. &
+CurrentTime <= SatTime(iSat,nSatLines(iSat))) then
+iLine = 1
+
+if (CurrentTime == SatTime(iSat,nSatLines(iSat))) then
+iLine = nSatLines(iSat)
+else
+do while (SatTime(iSat,iLine) < CurrentTime)
+iLine = iLine + 1
+enddo
+iLine = iLine - 1
+
+endif
+iSatCurrentIndex(iSat) = iLine
+iLine = 0
+endif
+else
+if (CurrentTime > SatTime(iSat,iSatCurrentIndex(iSat)+1) .and. &
+(CurrentTime-dt) < SatTime(iSat,iSatCurrentIndex(iSat)+1)) then
+
+iSatCurrentIndex(iSat) = iSatCurrentIndex(iSat) + 1
+
+endif
+
+endif
+
+if (iSatCurrentIndex(iSat) /= iLine) then
+!only plot if the index has changed!
+
+iLine = iSatCurrentIndex(iSat)
+
+do iPos = 1, nSatPos(iSat,iLine)
+do i=1,3
+if (i == 1 .and. &
+SatPos(iSat, i, iPos, iLine) > 300 .and. &
+SatPos(iSat, i, iPos, iLine+1) < 60) then
+SatCurrentPos(iSat, i, iPos) = &
+SatPos(iSat, i, iPos, iLine)
+else
+SatCurrentPos(iSat, i, iPos) = &
+SatPos(iSat, i, iPos, iLine)
+
+endif
+enddo
+
+do iBlock = 1, nBlocks
+
+write(cPos,'(i3.3)') iPos
+cTmp  = cSatFileName(iSat)
+cName = cTmp(1:4)//"_"//cPos
+CurrentSatellitePosition = SatCurrentPos(iSat,:,iPos)
+CurrentSatelliteName     = cName
+call output("UA/data/",iBlock, -1)
+enddo
+enddo
+endif
+
+else
 
      !Asad added this so that each satellite would be updated in output()
      CurrSat = iSat
@@ -284,7 +352,7 @@ subroutine move_satellites
            enddo
 
         endif
-
+    endif
      endif
 
   enddo

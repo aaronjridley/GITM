@@ -1,59 +1,110 @@
 !  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
+!-----------------------------------------------------------------------------
+! $Id: Titan.f90,v 1.3 2017/07/12 18:51:35 jmbell Exp $
+!
+! Author: Aaron Ridley, UMichigan
+!
+! Modified: AGB Oct 2013 - Corrected spelling of photoelectron heating
+!                          efficiency variable
+!-----------------------------------------------------------------------------
 
 subroutine fill_photo(photoion, photoabs, photodis)
 
   use ModPlanet
   use ModEUV
-  use ModInputs
 
   implicit none
 
   real, intent(out) :: photoion(Num_WaveLengths_High, nIons-1)
-  real, intent(out) :: photoabs(Num_WaveLengths_High, nSpecies)
+  real, intent(out) :: photoabs(Num_WaveLengths_High, nSpeciesTotal)
   real, intent(out) :: photodis(Num_WaveLengths_High, nSpeciesTotal)
 
   integer :: iSpecies, iWave, NWH, i, iIon
-
   NWH = Num_WaveLengths_High
-
-  photoabs(:,:) = 0.0
-  photodis(:,:) = 0.0
-  photoion(:,:) = 0.0
 
   PhotoAbs = 0.0
   PhotoIon = 0.0
   PhotoDis = 0.0
 
-  photoabs(1:NWH,iN2_) = PhotoAbs_N2(1:NWH)
-  photoabs(1:NWH,iCH4_) = PhotoAbs_CH4(1:NWH)
+  ! Net Absorption:  Used in Solar EUV Heating
+  photoabs(1:NWH,iN2_)   = PhotoAbs_N2(1:NWH)
+  photoabs(1:NWH,iCH4_)  = PhotoAbs_CH4(1:NWH)
+  !photoabs(1:NWH,iHCN_)  = PhotoAbs_HCN(1:NWH)
+  !photoabs(1:NWH,iH2_)   = PhotoAbs_H2(1:NWH)
+  !photoabs(1:NWH,iC2H4_) = PhotoAbs_C2H4(1:NWH)
 
-!  photoabs(1:NWH,iH2_) = PhotoAbs_H2(1:NWH)
-
-!! Photo-dissociation cross sections (N2 and CH4 Only for Now)
-
+!  photoabs(1:NWH,iC2H2_) = PhotoAbs_C2H2(1:NWH)
+!! Net N2 and CH4 Photo-dissociation 
    photodis(1:NWH,iN2_) = QuantumYield_N2_N4S(1:NWH) * &
                           PhotoAbs_N2(1:NWH)
 
-  photodis(1:NWH,iCH4_)=  (   QuantumYield_CH4_CH3(1:NWH)  + &
-                              QuantumYield_CH4_3CH2(1:NWH) + &
-                              QuantumYield_CH4_1CH2(1:NWH) + &
-                              QuantumYield_CH4_CH(1:NWH)  ) *  &
-                              PhotoAbs_CH4(1:NWH)
+   photodis(1:NWH,iCH4_)=  (   QuantumYield_CH4_CH3(1:NWH)  + &
+                               QuantumYield_CH4_3CH2(1:NWH) + &
+                               QuantumYield_CH4_1CH2(1:NWH) + &
+                               QuantumYield_CH4_CH(1:NWH)  ) *  &
+                               PhotoAbs_CH4(1:NWH)
 
   photodis(1:NWH,iH2_)= PhotoAbs_H2(1:NWH)
+  photodis(1:NWH,iHCN_)= PhotoAbs_HCN(1:NWH)
+  photodis(1:NWH,iC2H4_)= PhotoAbs_C2H4(1:NWH)
 
-!\
-! Photoproduction of N(4S) from N2:---------------------------------
-!/
-  photodis(1:NWH,iN4S_)= QuantumYield_N2_N4S(1:NWH) * &
-                         PhotoAbs_N2(1:NWH)
+!--------
+!   N2 Photolytic Reactions
+  ! Rxn1:  hv + N2 -> N(2D) (65%) + N(4S)(35%)
+  photodiss_N2(:,1)  = PhotoAbs_N2*QuantumYield_N2_N4S
+  ! Rxn3:  hv + N2 -> N+ + N(4S)
+  photodiss_N2(:,2)  = PhotoAbs_N2(:)*QuantumYield_N2_NPlus(:)
+  ! Rxn3:  hv + N2 -> N2+ 
+  photodiss_N2(:,3)  = PhotoAbs_N2(:)*QuantumYield_N2_N2Plus(:)
 
-!/
-!\
-! Photoproduction of CH3, 3CH2, 1CH2, and CH from CH4:--------------
+  ! Photoelectron contributions (Solomon and Qian [2005] for N2)
+  ! PE Ratio:  N2 + e- -> N(2D) + N(4S)
+  pelecratio_N2(:,1) = PhotoElec_N2_N4S
+  ! PE Ratio:  N2 + e- -> N+ + N(4S)
+  pelecratio_N2(:,2) = PhotoElec_N2_NPlus
+  ! PE Ratio:  N2 + e- -> N2+
+  pelecratio_N2(:,3) = PhotoElec_N2_N2Plus
+
+!--------
+! Photolysis of CH4 
 !
-  
+!--------
+!   CH4 Photolytic Reactions
+  ! Rxn1:  hv + CH4 -> CH3 + H
+  photodiss_CH4(:,1)  = PhotoAbs_CH4*QuantumYield_CH4_CH3
+  ! Rxn3:  hv + CH4 -> 1CH2 + H2
+  photodiss_CH4(:,2)  = PhotoAbs_CH4(:)*QuantumYield_CH4_1CH2(:)
+  ! Rxn3:  hv + CH4 -> 3CH2 + H
+  photodiss_CH4(:,3)  = PhotoAbs_CH4(:)*QuantumYield_CH4_3CH2(:)
+  ! Rxn3:  hv + CH4 -> CH + H2 + H
+  photodiss_CH4(:,4)  = PhotoAbs_CH4(:)*QuantumYield_CH4_CH(:)
+  ! Rxn3:  hv + CH4 -> CH4+ 
+  photodiss_CH4(:,5)  = PhotoAbs_CH4(:)*QuantumYield_CH4_CH4Plus(:)
+  ! Rxn3:  hv + CH4 -> CH3+ + H 
+  photodiss_CH4(:,6)  = PhotoAbs_CH4(:)*QuantumYield_CH4_CH3Plus(:)
+  ! Rxn3:  hv + CH4 -> CH2+ + H 
+  photodiss_CH4(:,7)  = PhotoAbs_CH4(:)*QuantumYield_CH4_CH2Plus(:)
+  ! Rxn3:  hv + CH4 -> CH+ + H2 + H
+  photodiss_CH4(:,8)  = PhotoAbs_CH4(:)*QuantumYield_CH4_CHPlus(:)
+  ! Rxn3:  hv + CH4 -> C+ + 2*H2 
+  photodiss_CH4(:,9)  = PhotoAbs_CH4(:)*QuantumYield_CH4_CPlus(:)
+  ! Rxn3:  hv + CH4 -> 1CH2 + H2Plus
+  photodiss_CH4(:,10)  = PhotoAbs_CH4(:)*QuantumYield_CH4_H2Plus(:)
+  ! Rxn3:  hv + CH4 -> CH3 + HPlus
+  photodiss_CH4(:,11)  = PhotoAbs_CH4(:)*QuantumYield_CH4_HPlus(:)
+
+  ! Photoelectron contributions (Solomon and Qian [2005] for N2)
+  ! PE Ratio:  CH4 + e* -> No Reactions
+  pelecratio_CH4(:,1:4) = 0.0
+  ! PE Ratio:  CH4 + e* -> CH4+ + e-
+  pelecratio_CH4(:,5) = 5.0*PhotoElec_CH4_CH4Plus
+  ! PE Ratio:  CH4 + e- -> CH3+ + H + e-
+  pelecratio_CH4(:,6) = 20.0*PhotoElec_CH4_CH3Plus
+  ! Ignore other ions
+  pelecratio_CH4(:,7:11) = 0.0
+
+! Old Method
   photodis(1:NWH,iCH3_)=  QuantumYield_CH4_CH3(1:NWH) * &
                           PhotoAbs_CH4(1:NWH)
 
@@ -65,15 +116,89 @@ subroutine fill_photo(photoion, photoabs, photodis)
 
   photodis(1:NWH,iCH_)= QuantumYield_CH4_CH(1:NWH) * &
                           PhotoAbs_CH4(1:NWH)
-!
-  photoion(1:NWH,iNP_)=  QuantumYield_N2_NPlus(1:NWH)  * &
-                         PhotoAbs_N2(1:NWH) 
-
-  photoion(1:NWH,iN2P_)= QuantumYield_N2_N2Plus(1:NWH) * &
-                         PhotoAbs_N2(1:NWH) 
 
   photoion(1:NWH,iCH3P_)=   QuantumYield_CH4_CH3Plus(1:NWH)*  &
                             PhotoAbs_CH4(1:NWH)   
+
+!!! C2H2
+  ! Rxn15: hv + C2H2 -> C2H + H
+  photodiss_C2H2(1:NWH,1) =  QuantumYield_C2H2_C2H_H(1:NWH)*  &
+                            PhotoAbs_C2H2(1:NWH)   
+
+  ! Rxn16: hv + C2H2 -> C2 + H2
+  photodiss_C2H2(1:NWH,2) =  QuantumYield_C2H2_C2_H2(1:NWH)*  &
+                            PhotoAbs_C2H2(1:NWH)   
+
+  ! Rxn17: hv + C2H2 -> C2H2+ 
+  photodiss_C2H2(1:NWH,3) =  QuantumYield_C2H2_C2H2Plus(1:NWH)*  &
+                            PhotoAbs_C2H2(1:NWH)   
+
+  ! Rxn18: hv + C2H2 -> C2H+ + H 
+  photodiss_C2H2(1:NWH,4) =  QuantumYield_C2H2_C2HPlus_H(1:NWH)*  &
+                            PhotoAbs_C2H2(1:NWH)   
+
+  ! Rxn19: hv + C2H2 -> CH+ + CH 
+  photodiss_C2H2(1:NWH,5) =  QuantumYield_C2H2_CHPlus_CH(1:NWH)*  &
+                            PhotoAbs_C2H2(1:NWH)   
+
+  ! Rxn19: hv + C2H2 -> C+ + CH2 
+  photodiss_C2H2(1:NWH,6) =  QuantumYield_C2H2_CHPlus_CH(1:NWH)*  &
+                            PhotoAbs_C2H2(1:NWH)   
+
+  ! Rxn20: hv + C2H2 -> H+ + C2H
+  photodiss_C2H2(1:NWH,7) =  QuantumYield_C2H2_HPlus_C2H(1:NWH)*  &
+                            PhotoAbs_C2H2(1:NWH)   
+
+
+!!! C2H4
+  ! Rxn22: hv + C2H4 -> C2H2 + H2
+  photodiss_C2H4(1:NWH,1) =  QuantumYield_C2H4_C2H2_H2(1:NWH)*  &
+                            PhotoAbs_C2H4(1:NWH)   
+
+  ! Rxn23: hv + C2H4 -> C2H2 + 2H
+  photodiss_C2H4(1:NWH,2) =  QuantumYield_C2H4_C2H2_2H(1:NWH)*  &
+                            PhotoAbs_C2H4(1:NWH)   
+
+  ! Rxn24: hv + C2H4 -> C2H4+ 
+  photodiss_C2H4(1:NWH,3) =  QuantumYield_C2H4_C2H4Plus(1:NWH)*  &
+                            PhotoAbs_C2H4(1:NWH)   
+
+  ! Rxn25: hv + C2H4 -> C2H3+ + H 
+  photodiss_C2H4(1:NWH,4) =  QuantumYield_C2H4_C2H3Plus_H(1:NWH)*  &
+                            PhotoAbs_C2H4(1:NWH)   
+
+  ! Rxn26: hv + C2H4 -> C2H2+ + H2 
+  photodiss_C2H4(1:NWH,5) =  QuantumYield_C2H4_C2H2Plus_H2(1:NWH)*  &
+                            PhotoAbs_C2H4(1:NWH)   
+
+  ! Rxn27: hv + C2H4 -> C2H2+ + H2 
+  photodiss_C2H4(1:NWH,6) =  QuantumYield_C2H4_C2HPlus_H2_H(1:NWH)*  &
+                            PhotoAbs_C2H4(1:NWH)   
+
+
+!!! H Absorption
+  ! Rxn28: hv + H -> H+
+  photoion_H(1:NWH) = PhotoAbs_H(1:NWH)   
+
+!!! H2 Absorption
+!
+!  ! Rxn29: H2 -> 2 H
+!  photodis(1:NWH,iH_)= PhotoAbs_H2(1:NWH)*QuantumYield_H2_2H(1:NWH)
+!  ! Rxn30: H2 ->  H2+
+!  photoion(1:NWH,iH2P_)= PhotoAbs_H2(1:NWH)*QuantumYield_H2_H2P(1:NWH)
+!  ! Rxn31: H2 ->  H + H+
+!  photoion(1:NWH,iHP_)= PhotoAbs_H2(1:NWH)*QuantumYield_H2_H_HP(1:NWH)
+!
+  ! Rxn32: N + hv -> N+
+  Newphotoion_N(1:NWH) = PhotoAbs_N(1:NWH)   
+!!! HCN
+  ! Rxn33: HCN + hv -> H + CN
+  photodiss_HCN(1:NWH,1) =  QuantumYield_HCN_H_CN(1:NWH)*  &
+                            PhotoAbs_HCN(1:NWH)   
+
+  ! Rxn34: HCN + hv -> HCN+
+  photodiss_HCN(1:NWH,2) =  QuantumYield_HCN_HCNP(1:NWH)*  &
+                            PhotoAbs_HCN(1:NWH)   
 
 end subroutine fill_photo
 
@@ -81,9 +206,10 @@ subroutine calc_planet_sources(iBlock)
 
   use ModInputs
   use ModSources
+  use ModEUV
   use ModGITM
   use ModTime
-  use ModPlanet
+  use ModPlanet, only : HCNCoolRatio
   
   implicit none
 
@@ -91,58 +217,198 @@ subroutine calc_planet_sources(iBlock)
 
   integer :: iAlt, iError, iDir, iLat, iLon
 
+  real :: tmp2(nLons, nLats, nAlts)
+  real :: tmp3(nLons, nLats, nAlts)
+  real :: Omega(nLons, nLats, nAlts)
+  real :: CO2Cooling(nLons, nLats, nAlts)
+
   LowAtmosRadRate = 0.0
 
-  call calc_radcooling(iBlock)
-  call calc_aerosols(iBlock)
+  !\
+  ! Cooling ----------------------------------------------------------
+  !/
 
+!
+! Do Nothing
+  if( (floor((tSimulation - Dt)/dTCooling) .eq. floor(tSimulation/dTCooling)) ) then
+     if( (floor((tSimulation - Dt)/dTRatio) .eq. floor(tSimulation/dTRatio)) ) then
+       ! do Nothing
+     else
+        !write(*,*) 'Call cool to space'
+        call calc_cooltospace(iBlock)
+     endif
+  elseif(maxval(HCNCoolRatio) .eq. 0.0) then
+     call calc_radcooling(iBlock)
+  else
+     call calc_radcooling(iBlock)
+  endif
+  
 
   RadCooling(1:nLons,1:nLats,1:nAlts,iBlock) = &
     RadCoolingRate(1:nLons,1:nLats,1:nAlts,iBlock)/&
-    (  TempUnit(1:nLons,1:nLats,1:nAlts) * &
-       cp(1:nLons,1:nLats,1:nAlts,iBlock)*&
+      ( cp(1:nLons,1:nLats,1:nAlts,iBlock)*&
        rho(1:nLons,1:nLats,1:nAlts,iBlock)  )
 
+  RadCooling(1:nLons,1:nLats,1:nAlts,iBlock) = &
+     RadCooling(1:nLons,1:nLats,1:nAlts,iBlock)/&
+       TempUnit(1:nLons,1:nLats,1:nAlts) 
 
-  NOCooling = 0.0
-  OCooling = 0.0
+! call calc_saturn_tides(iBlock)
+  TideADep(:,:,:,:,iBlock) = 0.0
+  TideAIndp(:,:,:,:,iBlock)= 0.0
+!  RadCooling(1:nLons,1:nLats,1:nAlts,iBlock) = &
+!    0.001
+
+  if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
+  if (iDebugLevel > 4) write(*,*) "=====> HCN cooling", iproc, UseNOCooling
+
+
+  ! Residual Earth Stuff
+!  call calc_co2(iBlock)
+!
+!  if (UseCO2Cooling) then
+!
+!     ! The 0.165 is derived from the TIEGCM (2.65e-13 / 1.602e-12)
+!     ! multiplied by 1e6 for /cm2 to /m2
+!     CO2Cooling = 0.165e6 * NDensityS(1:nLons,1:nLats,1:nAlts,iCO2_,iBlock)*&
+!          exp(-960.0/( &
+!            Temperature(1:nLons,1:nLats,1:nAlts,iBlock)* &
+!            TempUnit(1:nLons,1:nLats,1:nAlts))) * &
+!          MeanMajorMass(1:nLons,1:nLats,1:nAlts) * ( &
+!           (NDensityS(1:nLons,1:nLats,1:nAlts,iO2_,iBlock)/Mass(iO2_) + &
+!            NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock)/Mass(iN2_)) * &
+!           2.5e-15 / 1e6 + &
+!           (NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock)/Mass(iO_3P_)) * &
+!           1.0e-12 / 1e6) * 1.602e-19
+!
+!  else
+!     CO2Cooling = 0.0
+!  endif
+!
+!  if (UseNOCooling) then
+!
+!     !  [NO] cooling 
+!     ! [Reference: Kockarts,G., G.R.L.,VOL.7, PP.137-140,Feberary 1980 ]
+! 
+!     Omega = 3.6e-17 * NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock) /      &
+!          (3.6e-17 * NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock) + 13.3)
+!
+!     ! We need to check this out. I don't like the first / sign....
+!
+!     NOCooling = Planck_Constant * Speed_Light / &
+!          5.3e-6 * &
+!          Omega * 13.3 *  &
+!          exp(- Planck_Constant * Speed_Light / &
+!          (5.3e-6 * Boltzmanns_Constant * &
+!          Temperature(1:nLons,1:nLats,1:nAlts,iBlock)* &
+!          TempUnit(1:nLons,1:nLats,1:nAlts))) * &
+!          NDensityS(1:nLons,1:nLats,1:nAlts,iNO_,iBlock)
+!
+!     NOCooling = NOCooling / TempUnit(1:nLons,1:nLats,1:nAlts) / &
+!          (Rho(1:nLons,1:nLats,1:nAlts,iBlock)*cp(:,:,1:nAlts,iBlock))
+!
+!  else
+!
+!     NOCooling = 0.0
+!
+!  endif
+!
+!  if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
+!  if (iDebugLevel > 4) write(*,*) "=====> UseOCooling", iproc, UseOCooling
+!
+!  if (UseOCooling) then 
+!
+!     ! [O] cooling 
+!     ! Reference: Kockarts, G., Plant. Space Sci., Vol. 18, pp. 271-285, 1970
+!     ! We reduce the LTE 63-um cooling rate by a factor of 2 for 
+!     ! the non-LTE effects.[Roble,1987]         
+!
+!     tmp2 = exp(-228./(Temperature(1:nLons,1:nLats,1:nAlts,iBlock)*&
+!          TempUnit(1:nLons,1:nLats,1:nAlts)))
+!     tmp3 = exp(-326./(Temperature(1:nLons,1:nLats,1:nAlts,iBlock)*&
+!          TempUnit(1:nLons,1:nLats,1:nAlts)))
+!
+!     ! In erg/cm3/s
+!     OCooling = (1.69e-18*tmp2 + 4.59e-20*tmp3) * &
+!          (NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock)/1.0e6) / &
+!          (1.0 + 0.6*tmp2 + 0.2*tmp3)
+!     ! In w/m3/3
+!     OCooling = OCooling/10.0
+!     ! In our special units:
+!     OCooling = OCooling/ TempUnit(1:nLons,1:nLats,1:nAlts) / &
+!          (Rho(1:nLons,1:nLats,1:nAlts,iBlock)*cp(:,:,1:nAlts,iBlock))
+!
+!  else
+!
+!     OCooling = 0.0
+!
+!  endif
+
+!  do iAlt = 1,15
+!     write(*,*) 'no, co2 : ',iAlt, Altitude_GB(1,1,iAlt,iBlock)/1e3, &
+!          NOCooling(1,1,iAlt), CO2Cooling(1,1,iAlt)
+!  enddo
+
+!  RadCooling(1:nLons,1:nLats,1:nAlts,iBlock) = &
+!       OCooling + NOCooling + CO2Cooling
+
+
+! Note: Photoelectron heating is basically
+!       Swartz and Nisbet [1972].
+! This could be updated with Smithro and Solomon
+!  PhotoElectronHeating(:,:,:,iBlock) = 0.0
+!  PhotoElectronHeating(:,:,:,iBlock) = &
+!       PhotoElectronHeatingEfficiency * &
+!       35.0*1.602e-19*&
+!       ( &
+!       EuvIonRateS(:,:,:,iO2P_,iBlock)* &
+!       NDensityS(1:nLons,1:nLats,1:nAlts,iO2_,iBlock) + &
+!       EuvIonRateS(:,:,:,iN2P_,iBlock)* &
+!       NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock) + &
+!       EuvIonRateS(:,:,:,iO_4SP_,iBlock)* &
+!       NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock) + &
+!       EuvIonRateS(:,:,:,iO_2DP_,iBlock)* &
+!       NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock) + &
+!       EuvIonRateS(:,:,:,iO_2PP_,iBlock)* &
+!       NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock))
+!  
+!  PhotoElectronHeating(:,:,:,iBlock) = &
+!       PhotoElectronHeating(:,:,:,iBlock) / &
+!       Rho(1:nLons,1:nLats,1:nAlts,iBlock) / &
+!       cp(1:nLons,1:nLats,1:nAlts,iBlock) / &
+!       TempUnit(1:nLons,1:nLats,1:nAlts)
+
+!--------------------------------------------------------------------
+! GLOW
+!--------------------------------------------------------------------
+
+if (UseGlow) then
+     if (dt < 10000.) then
+        if  (floor((tSimulation-dt)/DtGlow) /= &
+             floor(tsimulation/DtGlow)) then   
+
+           call start_timing("glow")
+           isInitialGlow = .True.
+
+           if (iDebugLevel > 4) write(*,*) "=====> going into get_glow", iproc
+
+           do iLat = 1, nLats
+              do iLon = 1, nLons
+
+                 call get_glow(iLon,iLat,iBlock)
+                 
+              enddo
+           enddo
+
+           call end_timing("glow")
+
+        endif
+     endif
+     PhotoElectronDensity(:,:,:,:,iBlock) = PhotoElectronRate(:,:,:,:,iBlock) * dt
+  endif
+
 
 end subroutine calc_planet_sources
-
-subroutine planet_limited_fluxes(iBlock)
-
-  use ModInputs
-  use ModSources
-  use ModGITM
-  use ModTime
-  use ModPlanet
-
-  implicit none
-  
-  integer, intent(in) :: iBlock
-
-  integer :: iAlt,iSpecies, iLon,iLat
-
-
-    do iLat = 1, nLats
-      do iLon = 1, nLons
-  
-  do iAlt = -1,4
-
-     VerticalVelocity(iLon,iLat,iAlt,iN2_,iBlock) = ((2575.0/3075.0)**2.0)*(2.5e+11)/NDensityS(iLon,iLat,iAlt,iN2_,iBlock)
-
-     VerticalVelocity(iLon,iLat,iAlt,iCH4_,iBlock) = ((2575.0/3075.0)**2.0)*(2.5e+13)/NDensityS(iLon,iLat,iAlt,iCH4_,iBlock)
-
-     VerticalVelocity(iLon,iLat,iAlt,iH2_,iBlock) = ((2575.0/3075.0)**2.0)*(3.0e+13)/NDensityS(iLon,iLat,iAlt,iH2_,iBlock)
-
-     VerticalVelocity(iLon,iLat,iAlt,iHCN_,iBlock) = -1.0*((2575.0/3075.0)**2.0)*(2.0e+12)/NDensityS(iLon,iLat,iAlt,iHCN_,iBlock)
-
-  enddo
-
-      enddo 
-    enddo 
-
-end subroutine planet_limited_fluxes
 
 !---------------------------------------------------------------------
 ! Initialize Heating Rates
@@ -150,45 +416,14 @@ end subroutine planet_limited_fluxes
 
 subroutine init_heating_efficiency
 
-  use ModPlanet
   use ModGITM, only: nLons, nLats, nAlts, nBlocks, Altitude_GB
   use ModEUV, only: HeatingEfficiency_CB, eHeatingEfficiency_CB
-  use ModIoUnit, only: UnitTmp_
+  use ModInputs, only: NeutralHeatingEfficiency
 
   implicit none
-
   integer :: iLon, iLat, iAlt
-  real, Dimension(-1:nAlts+2) :: Heffalt
-  real, Dimension(-1:nAlts+2) :: Heffin
-  real, Dimension(-1:nAlts+2) :: HeffPH
   !------------------------------------------------------------------
-
-  HeatingEfficiency_CB(:,:,:,1:nBlocks) = 0.05
-  eHeatingEfficiency_CB(:,:,:,1:nBlocks) = 0.05
-
-  open(UNIT = UnitTmp_,FILE = 'DataIn/Titan_Heff_500km_10km.txt',STATUS='OLD',ACTION='READ')
-135 FORMAT(F6.1,1X,ES10.3,1X,ES10.3)
-
-  do iAlt = -1,nAlts+2
-     read(UnitTmp_,135) &
-     Heffalt(iAlt),&
-     Heffin(iAlt), &
-     HeffPH(iAlt)
-  enddo
-
-  close(Unit = UnitTmp_)
-
-  do iLon = 1, nLons
-    do iLat = 1, nLats
-      do iAlt = 1, nAlts
-
-    HeatingEfficiency_CB(iLon,iLat,iAlt,1:nBlocks) = Heffin(iAlt)
-    eHeatingEfficiency_CB(iLon,iLat,iAlt,1:nBlocks) = Heffin(iAlt)
-
-      enddo 
-    enddo 
-  enddo
-
+  HeatingEfficiency_CB(:,:,:,1:nBlocks) = 0.22
 
 end subroutine init_heating_efficiency
 
@@ -199,7 +434,7 @@ end subroutine init_heating_efficiency
 subroutine calc_eddy_diffusion_coefficient(iBlock)
 
   use ModSizeGITM
-  use ModGITM, only: NDensity
+  use ModGITM, only: NDensity, Pressure
   use ModInputs, only: EddyDiffusionPressure0,EddyDiffusionPressure1, &
        EddyDiffusionCoef
   use ModSources, only: KappaEddyDiffusion
@@ -210,15 +445,26 @@ subroutine calc_eddy_diffusion_coefficient(iBlock)
   integer :: iAlt, iLat, iLon
 
   KappaEddyDiffusion=0.
-
-! 10.0e+03 seemed too high
-
   do iAlt = -1, nAlts+2
      do iLat = 1, nLats
         do iLon = 1, nLons
 
-          KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = EddyDiffusionCoef*&
-                 ( NDensity(iLon,iLat,1,iBlock)/NDensity(iLon,iLat,iAlt,iBlock) )**0.65
+           KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
+            EddyDiffusionCoef*&
+            sqrt(NDensity(iLon,iLat,1,iBlock)/NDensity(iLon,iLat,iAlt,iBlock))
+
+!           if (pressure(iLon,iLat,iAlt,iBlock) >EddyDiffusionPressure0) then
+!              KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = EddyDiffusionCoef
+!              
+!           else if (pressure(iLon,iLat,iAlt,iBlock) > &
+!                EddyDiffusionPressure1) then
+!
+!              KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = EddyDiffusionCoef * &
+!                   (pressure(iLon,iLat,iAlt,iBlock) - &
+!                   EddyDiffusionPressure1)/&
+!                   (EddyDiffusionPressure0 - EddyDiffusionPressure1)
+!
+!           endif
 
         enddo
      enddo
@@ -226,338 +472,11 @@ subroutine calc_eddy_diffusion_coefficient(iBlock)
 
 end subroutine calc_eddy_diffusion_coefficient
 
-!! Aerosol Calculations BEGIN
-
-subroutine init_aerosol
-
-  use ModPlanet
-  use ModConstants
-  use ModIoUnit, only:  UnitTmp_
-
-  real , Dimension(1:nAlts) :: AerosolDensity
-  real , Dimension(1:nAlts) :: ClassA
-  real , Dimension(1:nAlts) :: ClassB
-  real , Dimension(1:nAlts) :: ClassC
-  real , Dimension(1:nAlts) :: AeroAlt
-  integer :: iLon,iLat,iAlt,iSpecies,iIon
-
-  85 FORMAT(F7.2, 1X, ES10.3, 1X, ES10.3, 1X, ES10.3)
-  open(UNIT = UnitTmp_,FILE = 'DataIn/AerosolDensity_Akiva_10km.txt',STATUS='OLD',ACTION='READ')
-
-  do iAlt = 1,nAlts
-     read(UnitTmp_,85) &
-     AeroAlt(iAlt),&
-     ClassA(iAlt), &
-     ClassB(iAlt), &
-     ClassC(iAlt)
-  enddo
-
-  close(UNIT = UnitTmp_)
-
-  do iBlock = 1,nBlocks
-   do iLon = 1,nLons
-    do iLat = 1,nLats
-     do iAlt = 1,nAlts
-
-        AerosolClassA(iLon,iLat,iAlt,iBlock) = &
-           ClassA(iAlt)
-
-        AerosolClassB(iLon,iLat,iAlt,iBlock) = &
-           ClassB(iAlt)
-
-        AerosolClassC(iLon,iLat,iAlt,iBlock) = &
-           ClassC(iAlt)
-
-     enddo
-    enddo
-   enddo
-  enddo 
-
-!!! VERIFIED THAT THE AEROSOL VALUES ARE BEING READ CORRECLTY!!! JMB 9-17-2008
-
-  end subroutine init_aerosol
-
-
-  subroutine calc_aerosols(iBlock)
-
-
-  use ModPlanet
-  use ModConstants
-  use ModGITM
-
-  implicit none
-
-  integer,intent(in):: iBlock 
-
-  integer :: iLon,iLat,iAlt,iSpecies,iIon
-
-  real :: TrappingRate           !  The cross-section Frequency for CH4
-  real :: HeterogeneousRate       !  The cross-section Frequency for CH4
-
-  real :: SigmaH                 !  The cross-section for Hydrogen Abstraction
-  real :: NHaze                 !  The # of Haze Abstraction Sites available
-
-  real , Dimension(1:nLons,1:nLats,1:nAlts) :: Vth
-  real , Dimension(1:nLons,1:nLats,1:nAlts) :: TempLocal
-
-
-
-    do iLon = 1, nLons
-      do iLat = 1, nLats
-        do iAlt = 1, nAlts 
-
-            TrappingRate = 0.0
-
-! This is based on Gas-trapping by Aerosols (Akiva Bar-Nun et al (2008))
-!
-! First AerosolClassA, ClassB, and ClassC are the # of particles/m^3 of each
-! type of Aerosol Particle Group
-!
-! Class A:  Each as ~10-15 Polymeric Moecules
-!      Polymeric Moecule => C8H8
-!
-! Class B:  Each as ~500 Embryos (ClassA)
-!      Each ClassA Again consists of ~10 Polymeric Molecules 
-!      Polymeric Moecule => C8H8  => 8 Carbon Atoms
-!!
-! Class C:  Each consists of ~1,100 Class B Particles
-!           Each B has ~500 Embryos
-!           Each Embryo ~ 10 Polymeric Molecules
-!           Each Polymeric Molecule => 8 C atoms
-
-
-! Efficiency of trapping CH4 is roughly 7.0e-02 (same as Xe)
-
-! According to BAR-Nun
-! Efficiencies Based upon Amorphous Ice Trapping
-
-! Class A Loss Rates
-
-                        TrappingRate =   8.0 * &                       ! # C Atoms/Polymeric Molecule
-                                        20.0 * &                       ! # Polymeric Molecules/Embryo     
-      AerosolClassA(iLon,iLat,iAlt,iBlock)                           ! # of Embryos/m^3
-
-! Class B Loss Rates
-                TrappingRate =  TrappingRate + &
-                                         8.0 * &                       ! # C Atoms/Polymeric Molecule
-                                        20.0 * &                       ! # Polymeric Molecules/Embryo     
-                                       600.0 * &                       ! # Embryos /ClassB     
-      AerosolClassB(iLon,iLat,iAlt,iBlock)                           ! # of ClassB/m^3
-
-! Class C Loss Rates
-                TrappingRate =  TrappingRate + &
-                                         8.0 * &                       ! # C Atoms/Polymeric Molecule
-                                        20.0 * &                       ! # Polymeric Molecules/Embryo     
-                                       600.0 * &                       ! # Embryos /ClassB     
-                                      1800.0 * &                       ! # ClassB /ClassC     
-      AerosolClassC(iLon,iLat,iAlt,iBlock)                           ! # of ClassC / m^3
-
-          AerosolTrappingLoss(iLon,iLat,iAlt,iCH4_,iBlock) = &
-               TrappingRate*(7.0e-02)                                 ! CH4 Trapping Efficiency at Xenons (7.0e-02)
-
-          AerosolTrappingLoss(iLon,iLat,iAlt,i13CH4_,iBlock) = &
-               TrappingRate*(7.0e-02)*sqrt(Mass(i13CH4_)/Mass(iCH4_)) ! 13CH4 Trapping Efficiency at Xenons (7.0e-02) Scaled by Mass
-
-          AerosolTrappingLoss(iLon,iLat,iAlt,iN2_,iBlock) = &
-               TrappingRate*((1.0e-04)/70.0)                          ! N2 Trapping Efficiency at (1/70) Argons 
-
-          AerosolTrappingLoss(iLon,iLat,iAlt,i15N2_,iBlock) = &
-               TrappingRate*((1.0e-04)/70.0)*sqrt(Mass(i15N2_)/Mass(iN2_))   ! 15N2 Trapping Efficiency at Xenons (7.0e-02) Scaled by Mass
-
-          AerosolTrappingLoss(iLon,iLat,iAlt,iAr_,iBlock) = &
-               TrappingRate*(1.0e-04)                                 ! Ar Trapping Efficiency 
-
-          AerosolTrappingLoss(iLon,iLat,iAlt,iH2_,iBlock) =  0.0
-          AerosolTrappingLoss(iLon,iLat,iAlt,iHCN_,iBlock) =  0.0
-
-          AerosolTrappingLoss(iLon,iLat,iAlt,1:nSpecies,iBlock) =  0.0
-        enddo
-      enddo
-    enddo
-
-
-!! Heterogeneous Processes from the Study by Lebonnois et al (2003)
-
-Vth = 0.0
-TempLocal = 0.0
-SigmaH = 0.0
-NHaze = 0.0
-
-    do iLon = 1, nLons
-      do iLat = 1, nLats
-        do iAlt = 1, nAlts 
-
-            HeterogeneousRate = 0.0
-
-         TempLocal(iLon,iLat,iAlt) = &
-             Temperature(iLon,iLat,iAlt,iBlock)*TempUnit(iLon,iLat,iAlt)
-
-         SigmaH = (1.0e-15)*(1.0e-04)*  &           ! (1.0e-04) converts from cm^2 -> m^2
-                    exp(-1700.0/TempLocal(iLon,iLat,iAlt))                  
-
-         Vth(iLon,iLat,iAlt) = &
-               sqrt( (3.0*Boltzmanns_Constant/Mass(iH_) ) * TempLocal(iLon,iLat,iAlt) ) 
-
-!! Class A Species
-                NHaze = 4.0*PI*( (1.2e-09)**2)/(2.5e-20)     ! Bar-Nun (2008):  Radius of Particles A ~1.2 x 10^-9 m
-                                                             ! Lebonnios (2003) uses a surface area of 2.5e-16 cm^2
-            HeterogeneousRate = HeterogeneousRate + &
-                (0.5)*NDensityS(iLon,iLat,iAlt,iH_,iBlock)*&
-                Vth(iLon,iLat,iAlt)* &
-                AerosolClassA(iLon,iLat,iAlt,iBlock)*&
-                SigmaH * NHaze
-
-! Class B Species (R ~ 1.5e-8 m):  Bar-Nun (2008)
-                NHaze = 4.0*PI*( (1.5e-08)**2)/(2.5e-20)   
-
-            HeterogeneousRate = HeterogeneousRate + &
-                (0.5)*NDensityS(iLon,iLat,iAlt,iH_,iBlock)*&
-                Vth(iLon,iLat,iAlt)* &
-                AerosolClassB(iLon,iLat,iAlt,iBlock)*&
-                SigmaH * NHaze
-
-! Class C Species (R ~ 1.5e-8 m):  Bar-Nun (2008)
-                NHaze = 4.0*PI*( (2.5e-06)**2)/(2.5e-20)   
-
-            HeterogeneousRate = HeterogeneousRate + &
-                (0.5)*NDensityS(iLon,iLat,iAlt,iH_,iBlock)*&
-                Vth(iLon,iLat,iAlt)* &
-                AerosolClassC(iLon,iLat,iAlt,iBlock)*&
-                SigmaH * NHaze
-
-!! Total Heterogeneous Production Rate of H2
-
-           H2AerosolProduction(iLon,iLat,iAlt,iBlock) = HeterogeneousRate
-
-
-        enddo
-      enddo
-    enddo
-
-  end subroutine calc_aerosols
-
-subroutine init_isochem
-
-  use ModPlanet
-  use ModGITM
-  use ModInputs
-  use ModIoUnit, only : UnitTmp_
-
-  real , Dimension(1:nAlts) :: tempalt, IsoChem
-  integer :: iiAlt, iiBlock, iiLon, iiLat
-
-  open(UNIT = UnitTmp_, FILE = 'DataIn/IsoChem_10km.txt', STATUS='OLD',ACTION = 'READ')
-   165 FORMAT(F8.3,1X,F6.2)
-
-     do iiAlt = 1, nAlts
-          read(UnitTmp_,165)   tempalt(iiAlt), &
-                               IsoChem(iiAlt)
-      enddo
-
-    close(Unit = UnitTmp_)
-!
-    do iiBlock = 1, nBlocks
-       do iiAlt = 1, nAlts
-         do iiLon = 1, nLons
-           do iiLat = 1, nLats
-
-               IsotopeScaling(iiLon,iiLat,iiAlt,iiBlock) = IsoChem(iiAlt)
-
-           enddo 
-         enddo 
-       enddo
-    enddo
-
-
-end subroutine init_isochem
-
-subroutine init_magheat
-
-  use ModPlanet
-  use ModGITM
-  use ModEUV
-  use ModIoUnit, only : UnitTmp_
-
-  implicit none
-
-  integer :: iiLon,iiLat,iiAlt
-  integer :: iLon,iLat,iAlt,iSpecies,iBlock,iIon
-
-  real , Dimension(-1:nAlts + 2) :: eheatalt, eheat
-  real , Dimension(-1:nAlts + 2,nSpeciesTotal) :: InMagDiss 
-  real , Dimension(-1:nAlts + 2,nIons - 1) :: InMagIon
-
-
-  eheatalt = 0.0
-  eheat = 0.0
-  InMagDiss = 0.0
-  InMagIon = 0.0
-
-   open(UNIT = UnitTmp_, FILE = 'DataIn/MagForcing_500km_10km.txt', STATUS='OLD',ACTION = 'READ')
-   155 FORMAT(     F7.2, &
-                   1X,ES10.3, 1X,ES10.3, 1X,ES10.3, 1X,ES10.3, 1X,ES10.3, &
-                   1X,ES10.3, 1X,ES10.3, 1X,ES10.3, 1X,ES10.3 )
-
-     do iiAlt = 1, nAlts
-          read(UnitTmp_,155)   eheatalt(iiAlt), &
-                        InMagDiss(iiAlt,iN4S_), &
-                        InMagDiss(iiAlt,iCH_), &
-                        InMagDiss(iiAlt,i3CH2_), &
-                        InMagDiss(iiAlt,i1CH2_), &
-                        InMagDiss(iiAlt,iCH3_), &
-                         InMagIon(iiAlt,iNP_), &
-                         InMagIon(iiAlt,iN2P_), &
-                         InMagIon(iiAlt,iCH3P_), &
-                         eheat(iiAlt)
-      enddo
-    close(Unit = UnitTmp_)
-
-! Below, the 0.05 is the 5% of the equinox SLT = 12.00 solar EUV
-! value. 
-! Tom E. Cravens (2006, private communication).
-
-   do iBlock = 1,nBlocks 
-
-  MagDissRateS(1:nLons,1:nLats,1:nAlts,1:nSpeciesTotal,iBlock) = 0.0
-  MagIonRateS(1:nLons,1:nLats,1:nAlts,1:nIons - 1,iBlock) = 0.0
-
-    do iAlt = 1,nAlts 
-     do iLat = 1,nLats 
-      do iLon = 1,nLons 
-
-       EHeatingRate(iLon,iLat,iAlt,iBlock) = &
-           eheat(iAlt)*(0.05)*HeatingEfficiency_CB(iLon,iLat,iAlt,iBlock)
-
-         do iSpecies = 1,nSpeciesTotal
-           MagDissRateS(iLon,iLat,iAlt,iSpecies,iBlock) = &
-                     InMagDiss(iAlt,iSpecies)*(0.05)
-         enddo
-
-         do iIon = 1,nIons - 1
-           MagIonRateS(iLon,iLat,iAlt,iIon, iBlock) = &
-                     InMagIon(iAlt,iIon)*(0.05)
-         enddo
-
-
-      enddo
-     enddo
-    enddo
-   enddo
-
-end subroutine init_magheat
-
-
 subroutine set_planet_defaults
 
   use ModInputs
+end subroutine !set_planet_defaults
 
-  return
-
-end subroutine set_planet_defaults
-
-
-! \
-! BEGIN The HCN RADIATIVE COOLING CODE
 
       subroutine calc_radcooling(iBlock)
 !  ---------------------------------------------------------------------
@@ -582,6 +501,9 @@ end subroutine set_planet_defaults
 !  03-02-06           Jared Bell                 GITM                 
 !  0l-07-07           Jared Bell                 Computational Efficiency
 !                                                Update 
+!  05-28-11           Jared Bell                 Removed all 5-D Arrays 
+!                                                (nLon, nLat, nAlts, nLines, nFreqas)
+!                                                Implemented Loops Instead
 !  -----------------------------------------------------------------
 
       use ModPlanet
@@ -604,39 +526,41 @@ end subroutine set_planet_defaults
       integer :: i,j,l,m,k,n,ii,tj 
       integer :: iLat, iLon, iAlt, iLine, iFreq
 
-      integer, parameter :: NLVLS = nAlts
-      integer, parameter :: NLON = nLons
-      integer, parameter :: NLINES = rotlines 
-      integer, parameter :: NFREQ = rotfreqs 
-      integer, parameter :: NPTS = rotpts 
-      integer, parameter :: blon = 1 
-      integer, parameter :: elon = nLons 
-      integer, parameter :: blat = 1 
-      integer, parameter :: elat = nLats 
+      integer, parameter :: NLVLS = nAlts+4
 
-      real,dimension(1:nLons,1:nAlts) :: &
-       TCOOLa
+      integer, parameter :: NLINES = rotlines 
+
+!      integer, parameter :: NFREQ = rotfreqs 
+      integer, parameter :: NewNFREQ = newrotfreqs 
+      integer, parameter :: NPTS = rotpts 
+
+!      integer, parameter :: blon = 1 
+!      integer, parameter :: elon = nLons 
+!      integer, parameter :: blat = 1 
+!      integer, parameter :: elat = nLats 
+!
+!      real,dimension(-1:nAlts+2) :: &
+!       TCOOLa
 
       real ::   &
        FTH
 
-      real,dimension(1:nLons,1:nLats,1:nAlts) ::    &
+      real,dimension(-1:nAlts+2) ::    &
        T,       & 
        NHCN,    &
        fcp,     &
-       TCOOL2,  & 
-       TCOOL2a, & 
        COOL,    &
-       COOL2,   &
        HEAT1,   &
-       HEAT2
+       HEAT4
 
-      real,dimension(1:nLons,1:nLats,1:NLINES,1:nAlts) ::  &
+      real,dimension(1:NLINES,-1:nAlts+2) ::  &
        gcool,   &
        gheat1,  &
-       gheat2,  &
+       gheat4,  &
        INTEN,   &
        ALPHAD,  &
+       ALPHAV,  &
+       ALPHAL,  &    ! VOIGT
        DELTAV,  &
        VULIM,   &
        VLLIM,   &
@@ -644,539 +568,390 @@ end subroutine set_planet_defaults
        TM,      &
        ZM,      &
        VTH,     &
-       NHCNM
+       NHCNM,   &
+       GammaNew,  &   ! VOIGT
+       YRATIO         ! VOIGT
 
-      real,dimension(1:nLons,1:NLINES,1:nAlts) ::  &
+!!!! FWHM of the Doppler and Lorentz Profiles
+      real,dimension(1:NLINES,-1:nAlts+2) ::  &
+        FWHML, FWHMD, FWHMV
+
+!!! Coefficients for Combining Gaussian and Lorentz shapes
+!!! DRatio used by Liu et al. [2001] in JQSRT
+      real :: DRatio, CoefL, CoefG
+!      real,dimension(1:NLINES,-1:nAlts+2) ::  &
+!        CoefL, CoefG
+
+      real,dimension(1:NLINES,-1:nAlts+2) ::  &
        NEW, &
        OLD, &
        Y1,  &
        Y2,  &
        Y
 
-      real,dimension(1:nLons,1:NLINES,1:nAlts) ::  &
+      real,dimension(1:NLINES,-1:nAlts+2) ::  &
        PRODCOOL,   &
        PRODHEAT1,  &
-       PRODHEAT2
+       PRODHEAT4
 
-      real,dimension(1:nLons,1:nAlts) ::    &
+      real,dimension(-1:nAlts+2) ::    &
        SMCOOL,   &
        SMHEAT1,  &
-       SMHEAT2
+       SMHEAT4
 !
 !
-      real,dimension(1:nLons,1:nAlts) ::  &
-       NHCNT 
+
+!      real,dimension(-1:nAlts+2) ::  &
+!       NHCNT 
 !   
 ! --------------BEGIN TAU VARS--------------------------------------- 
 ! The Following Variables are used solely within the Tau Integration
 ! 
       real :: DFACT
-!
-      real,dimension(1:NFREQ,1:nLons,1:nLats,1:NLINES,1:nAlts) ::  &
-       TAU,  &
-       DOP,  &  ! the DOPPLER Lineshape
-       X,  &
-       V, &
-       DopFactor
+      real,dimension(1:NewNFREQ,1:NLINES,-1:nAlts+2) ::  &
+       NewTAU,  &
+       SumTAU,  &
+       NewDOP,  &  ! the DOPPLER Lineshape
+       NewLorentz,  &  ! the DOPPLER Lineshape
+       NewX,  &
+       NewV, &
+       NewYV,  &   ! VOIGT
+       NewVOI,  &  ! the VOIGT Lineshape
+       NewDopFactor
 
-!\
-! Used to calculate the Planck Blackbody function (Bv) at each
-! Gaussian Frequency Point
-!/
-      real,dimension(1:NFREQ,1:nLons,1:nLats,1:NLINES,1:nAlts) ::  &
-       Bv,  &
-       Balpha
+      real,dimension(1:NewNFREQ,1:NLINES,-1:nAlts+2) ::  &
+       NewBv,  &
+       NewBalpha
 
       real :: &
        Bfactor
-!
-!      VOI,  &  ! The VOIGT Lineshape
-!      Y,  &   ! Only for Vogit Profiles
-!
-! --------------END TAU VARS--------------------------------------- 
-! ----------------------------------------------------------------- 
-!\ ----------------------------------------------------- 
-!  Begin Substituting in for Local variables
-!/ ----------------------------------------------------- 
 
-      
-          if(floor((tSimulation - dT)/dTCooling) == floor(tSimulation/dTCooling)) return
-!\
-! This will shut down RadCooling For Testing
-!/
-!      RadCoolingRate(:,:,:,iBLock) = 0.0
-!      return
-!\
-! -------------------------------------------
-!/
+      real :: timestart, timeend
+
+      real :: &
+       NONLTEFACTOR, &
+       NONLTEPHI, &
+       NONLTEQUENCHING, &
+       NONLTEEINSTEIN
+
+      integer :: MiddleFreqIndex, FreqIndexMax
+
+      real ::  HCNTopsideScaleHeight
+
+      real    :: RadCoolWidth, RadCoolFlagValue
+      real    :: DeltaAlt, ExpArg
+      real    :: ScaleRadCool(1:nAlts)
+      integer :: iAltFlag
+      logical :: IsFound
+
+      real    :: TestX, TestAns
+      IsFound = .false.
+
+   MiddleFreqIndex = 5
+   FreqIndexMax = 4
+
   call start_timing("calc_radcooling")
 
       HEAT1 = 0.0D0
-      HEAT2 = 0.0D0
+      HEAT4 = 0.0D0
 
-      T(1:nLons,1:nLats,1:nAlts) = &
-       Temperature(1:nLons,1:nLats,1:nAlts,iBlock)*  &
-       TempUnit(1:nLons,1:nLats,1:nAlts)
+     do iLon = 1, nLons
+       do iLat = 1, nLats
 
-      NHCN(1:nLons,1:nLats,1:nAlts) = &
-       NDensityS(1:nLons,1:nLats,1:nAlts,iHCN_,iBlock)*1.0E-06 !m^3 to cm^3
+       T(-1:nAlts+2) = &
+        Temperature(iLon,iLat,-1:nAlts+2,iBlock)*TempUnit(iLon,iLat,-1:nAlts+2)
+
+       NHCN(-1:nAlts+2) = &
+        NDensityS(iLon,iLat,-1:nAlts+2,iHCN_,iBlock)*1.0e-06
+
+       HCNTopsideScaleHeight = &
+           -1.0*(T(nAlts+2)*Boltzmanns_Constant/&
+              (Mass(iHCN_)*Gravity_GB(iLon,iLat,nAlts+2,iBlock)))
 
 
 ! ------------------------------------------------------------------------
 ! INTERPOLATING INTENSITY DATA TO TEMPERATURE GRID -----------------------
 ! ------------------------------------------------------------------------
-
-! Define s(1:NLINES,1:nAlts), and inten(nlon,nlats,nlines,nlev)
-
-!      if(iDebugLevel > 4) then
-!      write(*,*) 'Begin Intensity Interoplations' 
-!      endif
-
-      do iAlt = 1, nAlts
-       do iLine = 1, NLINES
-        do iLat = 1, nLats 
-         do iLon = 1, nLons
+             do iAlt = -1, nAlts+2
+              do iLine = 1, NLINES
 !\
-! The factor of 100.0 converts speed of light in m/s to cm/s
-! this gives INTEN in SI units
-!/
-
-         INTEN(iLon,iLat,iLine,iAlt) =             &
-           ( Speed_Light*100.0)*(1.0e-4)*          &
-           ( pmat(iLine,9)                         &
-           + pmat(iLine,8)*T(iLon,iLat,iAlt)       &
-           + pmat(iLine,7)*(T(iLon,iLat,iAlt)**2)  &
-           + pmat(iLine,6)*(T(iLon,iLat,iAlt)**3)  &
-           + pmat(iLine,5)*(T(iLon,iLat,iAlt)**4)  &
-           + pmat(iLine,4)*(T(iLon,iLat,iAlt)**5)  &
-           + pmat(iLine,3)*(T(iLon,iLat,iAlt)**6)  &
-           + pmat(iLine,2)*(T(iLon,iLat,iAlt)**7)  & 
-           + pmat(iLine,1)*(T(iLon,iLat,iAlt)**8)  )   
+! Speed_Light*100.0:   Converts cm^-1 --> Hz 
+! 1.0e-04          : converts Sj from Hz*cm^2/molecule -> Hz*m^2/molecule
+                INTEN(iLine,iAlt) =             &
+                  ( Speed_Light*100.0)*(1.0e-4)*          &
+                  exp( pmat(iLine,1)                         &
+                  + pmat(iLine,2)*(T(iAlt)   )  &
+                  + pmat(iLine,3)*(T(iAlt)**2)  &
+                  + pmat(iLine,4)*(T(iAlt)**3)  &
+                  + pmat(iLine,5)*(T(iAlt)**4)  &
+                  + pmat(iLine,6)*(T(iAlt)**5)  &
+                  + pmat(iLine,7)*(T(iAlt)**6)  &
+                  + pmat(iLine,8)*(T(iAlt)**7)  & 
+                  + pmat(iLine,9)*(T(iAlt)**8)  )    
 
 
-          enddo
-         enddo
-        enddo
-       enddo
-!\
-!  INTENSITY is the Intensity (1:nlon,1:nlats,1:nlines,1:nAlts)
-!/
-
-     if(iDebugLevel > 4) then
-       write(*,*) '==> Finished with Intensity Interpolation'
-     endif
-
-!     if(iDebugLevel > 4) then
-!
-!       do k = 1,nAlts
-!       write(*,*) '==> Max(Inten(:,:,:',k,') = ', &
-!                 Maxval(Inten(1:nLons,1:nLats,1:NLINES,k)) 
-!       enddo
-!
-!     endif
-
-! ---------------
-! FOR LOOP BEGIN-
-! ---------------
-!      FACTOR1 = ATMTOPAS*KB*(Speed_Light*100.0)*(1.0D6)
-!      DO i = 1,NLVLS
-!         DO j = 1,NLINES
-!      SUBALPHL = FACTOR1*GAMMA(j)*T(i)*N(i)
-!      ALPHAL(j,i)= SUBALPHL*(1.0 - NHCN(i)/N(i))*SQRT(300./T(i))
-!         END DO
-!      END DO
-!-------------------I NEED TOTAL DENSITY SOMEHOW FOR THE VOIGT !!!!------
-! ---------------
-! END FOR LOOP --
-! ---------------
+              enddo! iLine = 1, NLINES
+             enddo !iAlt = -1, nAlts+2
 
 ! ------------------------------------------------------------------------
-! BUILDING FULL 4-D MATRICES TM,VJM,ZM,NHCNM (1:nLons,1:nLats,1:nlines,1:nAlts)
+! Frequency Integration Variables TM,VJM,ZM,NHCNM (1:nlines,1:nAlts)
 ! ------------------------------------------------------------------------
-! ---------------
-! FOR LOOP BEGIN-
-! ---------------
-!
-      do iAlt = 1, nAlts 
-       do iLine = 1, NLINES  
-        do iLat = 1, nLats 
-         do iLon = 1, nLons 
+             do iAlt = -1, nAlts+2 
+!              write(*,*) '=====> iAlt =', iAlt
+              do iLine = 1, NLINES  
 
-         VJM(iLon,iLat,iLine,iAlt) = freqhz(iLine)        ! Lines in Hz
-          ZM(iLon,iLat,iLine,iAlt) = Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0   ! km -> m
-          TM(iLon,iLat,iLine,iAlt) = T(iLon,iLat,iAlt)       ! Temp in  K
-       NHCNM(iLon,iLat,iLine,iAlt) = &
-             NDensityS(iLon,iLat,iAlt,iHCN_,iBlock)*1.0E-06     ! m^-3 -> cm^-3
+               VJM(iLine,iAlt) = freqhz(iLine)        ! Lines in Hz
+                ZM(iLine,iAlt) = Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0   ! m -> km
+                TM(iLine,iAlt) = T(iAlt)       ! Temp in  K
+            NHCNM(iLine,iAlt) = NDensityS(iLon,iLat,iAlt,iHCN_,iBlock)*1.0E-06  ! m^-3 -> cm^-3
 
-         enddo
-        enddo
-       enddo
-      enddo
-!
-! ---------------
-! END FOR LOOP --
-! ---------------
-! ------------------------------------------------------------------------
-! END BUILDING 4-D MATRICES ZM,TM,VJM,NHCNM 
-! ------------------------------------------------------------------------
-!
-!
+! These provide the Alpha_L in cm^-1 (we call this GammaNew)
+          GammaNew(iLine,iAlt) = &
+                    ALPHAL0(iLine)*&
+             (1.0 - NDensityS(iLon,iLat,iAlt,iHCN_,iBlock)/NDensity(iLon,iLat,iAlt,iBlock))*&
+             (Pressure(iLon,iLat,iAlt,iBlock)/(101325.00))*(298.0/T(iAlt))**ALPHALExp(iLine) + &
+                    ALPHAS0(iLine)*&
+             (NDensityS(iLon,iLat,iAlt,iHCN_,iBlock)/NDensity(iLon,iLat,iAlt,iBlock))*&
+             (Pressure(iLon,iLat,iAlt,iBlock)/(101325.00))*(298.0/T(iAlt))**ALPHALExp(iLine)
+
+!! AlphaL is the Half-width of the Lorentz profile (pressure-broadening) in Hz
+          ALPHAL(iLine,iAlt) = &
+                 GammaNew(iLine,iAlt)*(Speed_Light*100.0)   !! This is AlphaL in Hz
+
+              enddo  ! End iLine
+             enddo ! End iAlt
+
 ! ------------------------------------------------------------------------
 ! DOPPLER HALFWIDTHS AT GIVEN TEMPERATURES -------------------------------
 ! ------------------------------------------------------------------------
+           FTH = SQRT(2.0*(Boltzmanns_Constant/Mass(iHCN_)))
+           VTH = FTH*SQRT(TM)
+           ALPHAD = (VJM*(VTH/(Speed_Light)))  !!! Our Doppler (Gaussian) half-width
+           DELTAV = 5.0*ALPHAD
+           VULIM = VJM + DELTAV
+           VLLIM = VJM - DELTAV
 
-        FTH = SQRT(2.0*(Boltzmanns_Constant/Mass(iHCN_)))
-        VTH = FTH*SQRT(TM)
-        ALPHAD = (VJM*(VTH/(Speed_Light)))
-        DELTAV = 5.0*ALPHAD
-        VULIM = VJM + DELTAV
-        VLLIM = VJM - DELTAV
+! =================================================>
+! Calculate the FWHM of the Convolved Voigt Profile
+! Use the form taken from Olivier and Longbothom
 
-! ------------------------------------------------------------------------
-! END DOPPLER HALFWIDTHS AT GIVEN TEMPERATURES ---------------------------
-! ------------------------------------------------------------------------
-!
-! ------------------------------------------------------------------------
-! BEGIN CALCULATING TAU 
-! ------------------------------------------------------------------------
-!
+           FWHMD = ALPHAD*(2.0*sqrt(2.0*alog(2.0)))  !! Our FUllWidth at Half-Max of Doppler
+           FWHML = 2.0*ALPHAL
 
- 
+           FWHMV = 0.5346*FWHML + &
+              sqrt(0.2166*FWHML**2.0 + FWHMD**2.0)
+
+           ALPHAV = FWHMV/2.0  ! Our Voigt Half-width
+
 !----------------
 !WHILE LOOP BEGIN
 !----------------
-      m = 1
-      do 
-      if (2**m .EQ. NFREQ) exit
-         m = m + 1
-      enddo
+!
+!      m = 1
+!      do 
+!      if (2**m .EQ. NFREQ) exit
+!         m = m + 1
+!      enddo
 !----------------
 !END WHILE LOOP 
 !---------------
 
-! ---------------
-! FOR LOOP BEGIN-
-! ---------------
-      do k = 1 , NFREQ/2
+         NewV(MiddleFreqIndex,:,:) = &
+                  (FreqQuadAbscissas(1)*(VULIM - VLLIM) + VULIM + VLLIM)*.5
 
-      V(2*k - 1,:,:,:,:)=(Qf(k,m)*(VULIM - VLLIM) + VULIM + VLLIM)*.5
-      V(2*k,:,:,:,:)=(-1.0D0*Qf(k,m)*(VULIM-VLLIM) + VULIM+ VLLIM)*.5
+       do k = 1 , FreqIndexMax
+         NewV(MiddleFreqIndex - k,:,:)= &
+              (FreqQuadAbscissas(k+1)*(VULIM - VLLIM) + VULIM + VLLIM)*.5
+         NewV(MiddleFreqIndex + k,:,:)=&
+              (-1.0*FreqQuadAbscissas(k+1)*(VULIM - VLLIM) + VULIM + VLLIM)*.5
+       enddo
 
-      enddo
+         DFACT = SQRT(alog(2.0)/PI)
 
-! ---------------
-! END FOR LOOP --
-! ---------------
+        do iAlt = -1, nAlts+2
+           do iLine = 1, NLINES
+              ! Note that DRatio will vary 
+              ! from -1.0 ( Pure Doppler)
+              ! to 1.0 (Pure Lorentz)
+              DRatio = (FWHML(iLine,iAlt) - FWHMD(iLine,iAlt))/&
+                       (FWHML(iLine,iAlt) + FWHMD(iLine,iAlt))
+ 
+              ! Coef L and CoefD determine the "relative mixing"
+              ! Of our line shapes into the combined Voigt Shape
+              CoefL = 0.68188 + 0.61293*DRatio - &
+                      0.18384*DRatio**2.0 - &
+                      0.11568*DRatio**3.0 
 
-      DFACT = SQRT(log(2.0)/PI)
+              CoefG = 0.32460 - 0.61825*DRatio + &
+                      0.17681*DRatio**2.0 + &
+                      0.12109*DRatio**3.0 
 
-! Now Begin The Line Shape Calculations:---------------------------------
-!      DO k = 1, NFREQ
-!         X(k,:,:,:,:) = SQRT(log(2.0))*((V(k,:,:,:,:) - VJM)/ALPHAD) 
-!         DOP(k,:,:,:,:) = DFACT*(EXP(-( X(k,:,:,:,:)**2 ))/ALPHAD)
-!         DopFactor(k,:,:,:,:) = &
-!             1.0/(sqrt(PI)*ALPHAD(:,:,:,:) )
-!      END DO
-! END Line Shape Calculations:---------------------------------
+              do iFreq = 1, NewNFREQ
 
+              ! Calculate the Doppler contribution
+              
+              NewX(iFreq,iLine,iAlt) =  &
+                  SQRT( alog(2.0) )*  (  ( NewV(iFreq,iLine,iAlt)  - VJM(iLine,iAlt) )/ & 
+                   ALPHAV(iLine,iAlt) ) 
 
-   do iAlt = 1, nAlts
-      do iLine = 1, NLINES
-         do iLat = 1, nLats
-            do iLon = 1, nLons
-               do iFreq = 1, NFREQ
+              NewDOP(iFreq,iLine,iAlt) =  &
+                    (DFACT/ALPHAV(iLine,iAlt))*    & 
+                    EXP( -( NewX(iFreq,iLine,iAlt)**2.0) ) 
 
-         X(iFreq,iLon,iLat,iLine,iAlt) =  &
-             SQRT( log(2.0) )*  &
-         (    &
-           ( V(iFreq,iLon,iLat,iLine,iAlt)  - VJM(iLon,iLat,iLine,iAlt) )/ & 
-              ALPHAD(iLon,iLat,iLine,iAlt)    &
-          ) 
+              NewYV(iFreq,iLine,iAlt) =  &
+                    ( NewV(iFreq,iLine,iAlt)  - VJM(iLine,iAlt) )
 
-         DOP(iFreq,iLon,iLat,iLine,iAlt) =  &
-               (DFACT/ALPHAD(iLon,iLat,iLine,iAlt))*    & 
-               EXP( -( X(iFreq,iLon,iLat,iLine,iAlt)**2) ) 
-                   
+              NewLorentz(iFreq,iLine,iAlt) =  &
+                    (1.0/PI)*ALPHAV(iLine,iAlt)/    & 
+                    ( NewYV(iFreq,iLine,iAlt)**2.0 + ALPHAV(iLine,iAlt)**2.0)
 
-         DopFactor(iFreq,iLon,iLat,iLine,iAlt) =  1.0/ &
-             (  sqrt(PI) * &
-               ALPHAD(iLon,iLat,iLine,iAlt) &
-              )
+              NewVOI(iFreq,iLine,iAlt) = &
+                   CoefL*NewLorentz(iFreq,iLine,iAlt) + &
+                   CoefG*NewDOP(iFreq,iLine,iAlt) 
 
-       Balpha(iFreq,iLon,iLat,iLine,iAlt)  =             &
-               (  Planck_Constant/Boltzmanns_Constant)*  &
-               (  V(ifreq,iLon,iLat,iLine,iAlt) /        &
-                       TM(iLon,iLat,iLine,iAlt)  )
+ !             write(*,*) '===============> iFreq', iFreq, NewVOI(iFreq,iLine,iAlt) 
 
-       Bfactor = 1.0/ &
-                 ( EXP(Balpha(iFreq,iLon,iLat,iLine,iAlt) ) - 1.0 ) 
+              NewBalpha(iFreq,iLine,iAlt)  =             &
+                    (  Planck_Constant/Boltzmanns_Constant)*  &
+                    (  NewV(iFreq,iLine,iAlt) /        &
+                            TM(iLine,iAlt)  )
 
-       Bv(iFreq,iLon,iLat,iLine,iAlt) =                   &
-              ( ( 2.0*Planck_Constant ) / 	          & 
-              ( (Speed_Light)**2 )  ) *                   &
-              ( V(iFreq,iLon,iLat,iLine,iAlt)**3 )*Bfactor
+              Bfactor = 1.0/ &
+                        ( EXP(NewBalpha(iFreq,iLine,iAlt) ) - 1.0 ) 
 
-               enddo
-             enddo
-          enddo
+              NewBv(iFreq,iLine,iAlt) =                   &
+                     ( ( 2.0*Planck_Constant ) /        & 
+                     ( (Speed_Light)**2 )  ) *                   &
+                     ( NewV(iFreq,iLine,iAlt)**3 )*Bfactor
+
+         enddo
        enddo
     enddo
 
-   do iLat = 1,nLats   ! Major Outer Latitude Loop
-
-!\
-! Calculate Optical Depth Profiles at each Frequency:--------------------
-! We send in INTEN:  Svj
-!            NHCNM:  nHCN
-!              DOP:  Phi (line shape)
-! We get out Optical Depth:  Tau (freqency gausspts, lons, lats, lines, alts)
-! /
-
-      CALL fgausstau(INTEN(1:nLons,iLat,1:NLINES,1:nAlts), &
-                     NHCNM(1:nLons,iLat,1:NLINES,1:nAlts), &
-                     ZM(1:nLons,iLat,1,1:nAlts), &
-                     DOP(1:NFREQ,1:nLons,iLat,1:NLINES,1:nAlts), &
-                     TAU(1:NFREQ,1:nLons,iLat,1:NLINES,1:nAlts) )
-
-     if(iDebugLevel > 4) then
-       write(*,*) '==> Finished Calculating TAU !'
-     endif
-
-
-! END Calculate Optical Depth Profiles at each Frequency:----------------
-
-! ------------------------------------------------------------------------
-! Cooling CALCULATIONS
-! ------------------------------------------------------------------------
-
-   !   CALL fgausscool(VLLIM(1:nLons,iLat,1:NLINES,1:nAlts), &
-   !                   VULIM(1:nLons,iLat,1:NLINES,1:nAlts), &
-   !                   Bv(1:NFREQ,1:nLons,iLat,1:NLINES,1:nAlts), &
-   !                   DOP(1:NFREQ,1:nLons,iLat,1:NLINES,1:nAlts), &
-   !                    gcool(1:nLons,iLat,1:NLINES,1:nAlts) )
-! \
 ! ------------------------------------------------------------------------
 ! Cooling CALCULATIONS
 ! Cool-To-Space Portion: 
 ! ------------------------------------------------------------------------
-!/
 
-      NEW = 0.0
-      OLD = 0.0
+       OLD = 0.0
+       NEW = 0.0
+       NEW = NEW + FreqQuadWeights(1)*(NewBv(MiddleFreqIndex, :, :)*NewVOI(MiddleFreqIndex, :, :))
 
-      j = 1
-
-      DO 
-        IF (2**j .EQ. NFREQ) EXIT
-        j = j + 1
-      END DO
-
-      do iFreq = 1 , NFREQ/2
-        Y1 = Bv(2*iFreq - 1,:,iLat,:,:)*DOP(2*iFreq - 1,:,iLat,:,:)
-        Y2 = Bv(2*iFreq,:,iLat,:,:)*DOP(2*iFreq,:,iLat,:,:) 
-        Y = Y1 + Y2
-        OLD = NEW 
-        NEW = OLD + Qd(iFreq,j)*Y
+      do iFreq = 1 , FreqIndexMax
+        Y1 = NewBv(MiddleFreqIndex - iFreq,:,:)*NewVOI(MiddleFreqIndex - iFreq,:,:)
+        Y2 = NewBv(MiddleFreqIndex + iFreq,:,:)*NewVOI(MiddleFreqIndex + iFreq,:,:) 
+        NEW = NEW + FreqQuadWeights(iFreq + 1)*(Y1 + Y2)
       enddo
 
-      gcool(:,iLat,:,:) = (VULIM(:,iLat,:,:) - VLLIM(:,iLat,:,:) )*NEW*0.5
-
-
-!\
+      gcool(:,:) = (VULIM(:,:) - VLLIM(:,:) )*NEW*0.5
 ! Multiply by the Intensity of the lines and a geometric factor of 4pi
-!/
-      PRODCOOL(1:nLons,1:NLINES,1:nAlts) =  &
-                       gcool(1:nLons,iLat,1:NLINES,1:nAlts)* &
-                       INTEN(1:nLons,iLat,1:NLINES,1:nAlts)*(4.0D0*PI)
-!\
-! Sum over the lines
-!/
-      SMCOOL(1:nLons,1:nAlts) = &
-                SUM(PRODCOOL(1:nLons,1:NLINES,1:nAlts),2)
-!\
-! Multiply by HCN density 
-!/
-
-      COOL(1:nLons,iLat,1:nAlts)  =  &
-                      SMCOOL(1:nLons,1:nAlts)* &
-                        NHCN(1:nLons,iLat,1:nAlts)*1.0e+06   ! J/(m^3 s) 
-
-!      COOL(1:nLons,iLat,1:nAlts)  =  &
-!                      SMCOOL(1:nLons,1:nAlts)* &
-!                        NHCN(1:nLons,iLat,1:nAlts)      ! J/(cm^3 s) 
 !
-!      COOL(1:nLons,iLat,1:nAlts)  =  &
-!                      SMCOOL(1:nLons,1:nAlts)* &
-!                        NHCN(1:nLons,iLat,1:nAlts)*1.0e7   ! ergs/(cm^3 s) 
-
-! \
+      PRODCOOL(1:NLINES,-1:nAlts+2) =  &
+                       gcool(1:NLINES,-1:nAlts+2)* &
+                       INTEN(1:NLINES,-1:nAlts+2)*(4.0D0*PI)
+! Sum over the lines
+      SMCOOL(-1:nAlts+2) = &
+                SUM(PRODCOOL(1:NLINES,-1:nAlts+2),1)
+! Multiply by HCN density 
+      COOL(-1:nAlts+2)  =  &
+                      SMCOOL(-1:nAlts+2)* &
+                        NHCN(-1:nAlts+2)*1.0e+06   ! J/(m^3 s) 
 ! ------------------------------------------------------------------------
 ! END The Cool-To-Space Calculation: 
 ! ------------------------------------------------------------------------
-!/
-      CALL heat1gauss(Bv(1:NFREQ,1:nLons,iLat,1:NLINES,1:nAlts), &
-                  INTEN(1:nLons,iLat,1:NLINES,1:nAlts), &
-                  NHCNM(1:nLons,iLat,1:NLINES,1:nAlts), &
-                 gheat1(1:nLons,iLat,1:NLINES,1:nAlts), &
-            TAU(1:NFREQ,1:nLons,iLat,1:NLINES,1:nAlts), &
-            DOP(1:NFREQ,1:nLons,iLat,1:NLINES,1:nAlts), &
-                  VULIM(1:nLons,iLat,1:NLINES,1:nAlts), &
-                  VLLIM(1:nLons,iLat,1:NLINES,1:nAlts) )
+      CALL Sumfgausstau(INTEN(1:NLINES,-1:nAlts+2), &
+                        NHCNM(1:NLINES,-1:nAlts+2), &
+                               ZM(1,-1:nAlts+2), &
+               NewVOI(1:NewNFREQ,1:NLINES,-1:nAlts+2), &
+               SumTAU(1:NewNFREQ,1:NLINES,-1:nAlts+2), &
+              HCNTopsideScaleHeight )
 
-      PRODHEAT1(1:nLons,1:NLINES,1:nAlts) =  &
-                       gheat1(1:nLons,iLat,1:NLINES,1:nAlts)* &
-                       INTEN(1:nLons,iLat,1:NLINES,1:nAlts)*(2.0D0*PI)
+      NewTAU = SumTAU
 
-      SMHEAT1(1:nLons,1:nAlts) = &
-                SUM(PRODHEAT1(1:nLons,1:NLINES,1:nAlts),2)
-
-      HEAT1(1:nLons,iLat,1:nAlts)  =  &
-                      SMHEAT1(1:nLons,1:nAlts)* &
-                         NHCN(1:nLons,iLat,1:nAlts)*1.0e+06  ! J/(m^3 s) 
-
-!      HEAT1(1:nLons,iLat,1:nAlts)  =  &
-!                      SMHEAT1(1:nLons,1:nAlts)* &
-!                         NHCN(1:nLons,iLat,1:nAlts)      ! J/(cm^3 s) 
 !
-!
-!      HEAT1(1:nLons,iLat,1:nAlts)  =  &
-!                      SMHEAT1(1:nLons,1:nAlts)* &
-!                         NHCN(1:nLons,iLat,1:nAlts)*1.0e7   ! ergs/(cm^3 s) 
-!
-      CALL heat2gauss( &
-              V(1:NFREQ,1:nLons,iLat,1:NLINES,1:nAlts), &
-                  INTEN(1:nLons,iLat,1:NLINES,1:nAlts), &
-                 ALPHAD(1:nLons,iLat,1:NLINES,1:nAlts), &
-                  NHCNM(1:nLons,iLat,1:NLINES,1:nAlts), &
-                 gheat2(1:nLons,iLat,1:NLINES,1:nAlts), &
-                     TM(1:nLons,iLat,1:NLINES,1:nAlts), &
-                     ZM(1:nLons,iLat,1:NLINES,1:nAlts), &
-                    VJM(1:nLons,iLat,1:NLINES,1:nAlts), &
-            TAU(1:NFREQ,1:nLons,iLat,1:NLINES,1:nAlts), &
-            DOP(1:NFREQ,1:nLons,iLat,1:NLINES,1:nAlts), &
-                  VULIM(1:nLons,iLat,1:NLINES,1:nAlts), &
-                  VLLIM(1:nLons,iLat,1:NLINES,1:nAlts), &
-                  NLON,NLVLS,                           &
-                  Bv(1:NFREQ,1:nLons,iLat,1:NLINES,1:nAlts) )
+       CALL Newheat1gauss(NewBv(1:NewNFREQ,1:NLINES,-1:nAlts+2), &
+                   INTEN(1:NLINES,-1:nAlts+2), &
+                   NHCNM(1:NLINES,-1:nAlts+2), &
+                  gheat1(1:NLINES,-1:nAlts+2), &
+             NewTAU(1:NewNFREQ,1:NLINES,-1:nAlts+2), &
+             NewVOI(1:NewNFREQ,1:NLINES,-1:nAlts+2), &
+                   VULIM(1:NLINES,-1:nAlts+2), &
+                   VLLIM(1:NLINES,-1:nAlts+2) )
 
-      PRODHEAT2(1:nLons,1:NLINES,1:nAlts) =  &
-                       gheat2(1:nLons,iLat,1:NLINES,1:nAlts)* &
-                       INTEN(1:nLons,iLat,1:NLINES,1:nAlts)*(2.0D0*PI)
-      SMHEAT2(1:nLons,1:nAlts) = &
-                SUM(PRODHEAT2(1:nLons,1:NLINES,1:nAlts),2)
+       PRODHEAT1(1:NLINES,-1:nAlts+2) =  &
+                        gheat1(1:NLINES,-1:nAlts+2)* &
+                        INTEN(1:NLINES,-1:nAlts+2)*(2.0*PI)
+ 
+       SMHEAT1(-1:nAlts+2) = &
+                 SUM(PRODHEAT1(1:NLINES,-1:nAlts+2),1)
+ 
+       HEAT1(-1:nAlts+2)  =  &
+                       SMHEAT1(-1:nAlts+2)* &
+                          NHCN(-1:nAlts+2)*1.0e+06  ! J/(m^3 s) 
 
-      HEAT2(1:nLons,iLat,1:nAlts)  =  &
-                      SMHEAT2(1:nLons,1:nAlts)* &
-                         NHCN(1:nLons,iLat,1:nAlts)*1.0E+06      ! J/(m^3 s) 
-!
-!
-!      HEAT2(1:nLons,iLat,1:nAlts)  =  &
-!                      SMHEAT2(1:nLons,1:nAlts)* &
-!                         NHCN(1:nLons,iLat,1:nAlts)      ! J/(cm^3 s) 
-!      HEAT2(1:nLons,iLat,1:nAlts)  =  &
-!                      SMHEAT2(1:nLons,1:nAlts)* &
-!                         NHCN(1:nLons,iLat,1:nAlts)*1.0E+07      ! Ergs/(cm^3 s) 
-!
+        CALL Newheat4gauss( &
+                NewV(1:NewNFREQ,1:NLINES,-1:nAlts+2), &
+                    INTEN(1:NLINES,-1:nAlts+2), &
+                   ALPHAD(1:NLINES,-1:nAlts+2), &
+                    NHCNM(1:NLINES,-1:nAlts+2), &
+                   gheat4(1:NLINES,-1:nAlts+2), &
+                       TM(1:NLINES,-1:nAlts+2), &
+                       ZM(1:NLINES,-1:nAlts+2), &
+                      VJM(1:NLINES,-1:nAlts+2), &
+              NewTAU(1:NewNFREQ,1:NLINES,-1:nAlts+2), &
+              NewVOI(1:NewNFREQ,1:NLINES,-1:nAlts+2), &
+                    VULIM(1:NLINES,-1:nAlts+2), &
+                    VLLIM(1:NLINES,-1:nAlts+2), &
+                    NewBv(1:NewNFREQ,1:NLINES,-1:nAlts+2) )
+     !  call cpu_time(timeend)
+!     !  print '("New Heat 4 Time=",f6.3,"seconds.")',timeend - timestart
+!  
+        PRODHEAT4(1:NLINES,-1:nAlts+2) =  &
+                         gheat4(1:NLINES,-1:nAlts+2)* &
+                         INTEN(1:NLINES,-1:nAlts+2)*(2.0*PI)
+ 
+        SMHEAT4(-1:nAlts+2) = &
+                  SUM(PRODHEAT4(1:NLINES,-1:nAlts+2),1)
 
-    RadCoolingRate(1:nLons,iLat,1:nAlts,iBlock) = &
-               COOL(1:nLons,iLat,1:nAlts) - &
-               HEAT1(1:nLons,iLat,1:nAlts) - &
-               HEAT2(1:nLons,iLat,1:nAlts) 
+        HEAT4(-1:nAlts+2)  =  &
+                        SMHEAT4(-1:nAlts+2)* &
+                           NHCN(-1:nAlts+2)*1.0E+06      ! J/(m^3 s) 
 
-   enddo  ! End Outer Latitude-Loop
+     RadCoolingRate(iLon,iLat,1:nAlts,iBlock) = &
+                 COOL(1:nAlts) - &
+                HEAT1(1:nAlts) - &
+                HEAT4(1:nAlts) 
 
-!open(Unit = 16, file = 'radcool.txt',status = 'new')
-!      do i = 1,nAlts
-!       write(16,*) RadCoolingRate(1,1,i,iBlock)*10.0  ! in Ergs/cm^3/s
-!      enddo
-!close(Unit = 16)
+     HCNCoolRatio(iLon,iLat,1:nAlts,iBlock) = &
+            RadCoolingRate(iLon,iLat,1:nAlts,iBlock)/COOL(1:nAlts)
 
-   if(iDebugLevel > 4) then
+!   real , Dimension(1:nLons,1:nLats,1:nAlts,nBlocksMax) :: HCNCoolRatio
 
-       	  do k = 1,nAlts
-              write(*,*) '==> Max(TAU(:,:,:,:',k,'), Min = ', &
-                   Maxval(TAU(1:NFREQ,1:nLons,1:nLats,1:NLINES,k)), & 
-                   Minval(TAU(1:NFREQ,1:nLons,1:nLats,1:NLINES,k))
-          enddo
-
-      do i = 1,nAlts
-       write(*,*) 'Maxval(COOL(1:nLons,1:nLats,i)) =', &
-                   Maxval(COOL(1:nLons,1:nLats,i)), 'J/m^3/s'
-      enddo
-
-      do i = 1,nAlts
-       write(*,*) 'Maxval(HEAT1(1:nLons,1:nLats,i)) =', &
-                   Maxval(HEAT1(1:nLons,1:nLats,i)), 'J/m^3/s'
-      enddo
-
-      do i = 1,nAlts
-       write(*,*) 'Maxval(HEAT2(1:nLons,1:nLats,i)) =', &
-                   Maxval(HEAT2(1:nLons,1:nLats,i)), 'J/m^3/s'
-      enddo
-
-    endif
-
-!      do i = 1,nAlts
-!       write(*,*) 'Heat1 =', &
-!       Heat1(1,1,i), 'J/m^3/s'
-!      enddo
-!      do i = 1,nAlts
-!       write(*,*) 'Heat2 =', &
-!       Heat2(1,1,i), 'J/m^3/s'
-!      enddo
-!      do i = 1,nAlts
-!       write(*,*) 'RadCoolingRate =', &
-!       RadCoolingRate(1,1,i,iBlock), 'J/m^3/s'
-!      enddo
-!      do i = 1,nAlts
-!       write(*,*) 'Log10(RadCoolingRate) =', &
-!       Log10(10.0*RadCoolingRate(1,1,i,iBlock)), 'Log(Ergs/cm^3/s)'
-!      enddo
-!    do i = 1,nLons
-!     do j = 1,nLats
-!      do k = 1,nAlts
-!             write(*,*) 'Cool, Heat1, Heat2, TOTAL =', &
-!             Cool(i,j,k),HEAT1(i,j,k),HEAT2(i,j,k), &
-!             Cool(i,j,k) - HEAT1(i,j,k) - HEAT2(i,j,k)
-!        write(*,*) 'Log10(TOTAL) =', &
-!        LOG10(Cool(i,j,k) - HEAT1(i,j,k) - HEAT2(i,j,k))
-!
-!             write(*,*) 'RadCoolingRate =', &
-!                  RadCoolingRate(1,1,k,iBlock), 'J/m^3/s'
-!
-!      enddo
-!     enddo
-!    enddo
-
-
+     enddo  ! End Outer Latitude-Loop
+   enddo  ! End Outer Longitude-Loop
 
   call end_timing("calc_radcooling")
 
       contains
 
-
-!---------------------------------------------------------------------------
-! HEAT1GAUSS DECLARATION
-!---------------------------------------------------------------------------
-!
-      subroutine heat1gauss(Planck,SJ,NHCNM,gheat1,TAU2,PHI,B,A)
+  subroutine Newheat1gauss(Planck,SJ,NHCNM,gheat1,TauIn,PHI,B,A)
 
       implicit none
 !
 ! INPUT Variables:------------------------------------------
 !
-      REAL, INTENT(IN), DIMENSION(nLons,NLINES,nAlts) ::   &
+      REAL, INTENT(IN), DIMENSION(NLINES,-1:nAlts+2) ::   &
        SJ,      &
        NHCNM,   &
        B,       &
        A  
 !
-      REAL,INTENT(IN),DIMENSION(NFREQ,nLons,NLINES,nAlts) ::  &
+      REAL,INTENT(IN),DIMENSION(NewNFREQ,NLINES,-1:nAlts+2) ::  &
        Planck,  &
-       TAU2,  &
+       TauIn,  &
        PHI
 !
-      REAL, INTENT(OUT), DIMENSION(nLons,NLINES,nAlts) ::   &
+      REAL, INTENT(OUT), DIMENSION(NLINES,-1:nAlts+2) ::   &
        gheat1
 !
 ! LOCAL Variables:------------------------------------------
@@ -1185,23 +960,26 @@ end subroutine set_planet_defaults
       INTEGER :: iAlt,iLine,iLon,iFreq
       INTEGER :: iiAlt
 !
-      REAL, DIMENSION(NFREQ,nLons,NLINES,nAlts) ::   &
+      REAL, DIMENSION(NewNFREQ,NLINES,-1:nAlts+2) ::   &
        TOTAL
 
       REAL ::   &
        TOL
 !
-      REAL, DIMENSION(nLons,NLINES,nAlts) ::   &
+      REAL, DIMENSION(NLINES,-1:nAlts+2) ::   &
        TOTAL0,  &
        FACTOR20
 !
-      REAL, DIMENSION(nLons,NLINES,nAlts - 1) ::   &
+!!!! THESE VARIALBES LOSE ONE ALT INDEX
+
+      REAL, DIMENSION(NLINES,-1:nAlts + 2) ::   &  
        TAUUP,  &
        TAUDWN,  &
-       DTAU,  &
+       DTau,  &
+       TauMax, &
        EXPTAU
 
-      REAL, DIMENSION(nLons,NLINES,nAlts) ::  &
+      REAL, DIMENSION(NLINES,-1:nAlts+2) ::  &
         S,  &
         OLD 
 
@@ -1216,107 +994,73 @@ end subroutine set_planet_defaults
       iiAlt = 1
       TOL = 1.0e-5
 
-      FACTOR20 = 0.0D0
-      FACTOR20(:,:,1) = 1.0D0
+      FACTOR20       = 0.0
+      FACTOR20(:,-1) = 1.0
 
-      do iFreq = 1, NFREQ   ! Outer Most Loop over Frequencies
+      do iFreq = 1, NewNFREQ   ! Outer Most Loop over Frequencies
 
-          do iAlt = 1, nAlts
-           do iLine = 1, NLINES 
-            do iLon = 1,nLons 
-
-              TOTAL0(iLon,iLine,iAlt) =  &
-                 Planck(iFreq,iLon,iLine,iiAlt)* &
-                    PHI(iFreq,iLon,iLine,iAlt)
-
-             enddo ! iLon
-            enddo ! iLine
-           enddo ! iAlt
+          do iAlt = -1, nAlts + 2
+            TauMax(1:NLINES,iAlt) = TauIn(iFreq,1:NLINES,-1)   
+          enddo 
+          DTAU(:,:) = TauMax(:,:) - TauIn(iFreq,:,:)  
+          call expint1(DTau(:,0:nAlts+2),EXPTAU(:,0:nAlts+2),nAlts)
 !
-           do iAlt = 1, nAlts - 1
-             do iLine = 1, NLINES 
-               do iLon = 1,nLons 
+          FACTOR20(:,-1) = 1.0
+          do iAlt =  0, nAlts + 2
+               FACTOR20(:,iAlt) =    &
+                EXP(-DTAU(:,iAlt) ) -  &
+                     DTAU(:,iAlt)*EXPTAU(:,iAlt) 
+          enddo 
 
-            TAUUP(iLon,iLine,iAlt) = TAU2(iFreq,iLon,iLine,1)
-
-            TAUDWN(iLon,iLine,iAlt) = TAU2(iFreq,iLon,iLine,iAlt + 1)
-
-!            DTAU(iLon,iLine,iAlt) =  ABS(TAUUP(iLon,iLine,iAlt) - TAUDWN(iLon,iLine,iAlt) )
-
-            DTAU(iLon,iLine,iAlt) =   &
-                  max( TOL, TAUUP(iLon,iLine,iAlt) - TAUDWN(iLon,iLine,iAlt) )
-
-               enddo
-             enddo
-           enddo 
-
-      CALL expint1(DTAU,EXPTAU,nLons,nAlts - 1)
-
-           do iAlt = 1, nAlts - 1
-             do iLine = 1, NLINES 
-               do iLon = 1,nLons 
-
-             FACTOR20(iLon,iLine,iAlt + 1) =    &
-            EXP(-DTAU(iLon,iLine,iAlt) ) -  &
-                 DTAU(iLon,iLine,iAlt)*EXPTAU(iLon,iLine,iAlt) 
-
-
-               enddo
-             enddo
-           enddo 
-
-           do iAlt = 1, nAlts - 1
-             do iLine = 1, NLINES 
-               do iLon = 1,nLons 
-
-                  TOTAL(iFreq,iLon,iLine,iAlt) =  &
-                     FACTOR20(iLon,iLine,iAlt)*  &
-                       TOTAL0(iLon,iLine,iAlt)
-
-               enddo
-             enddo
-           enddo 
-!
+          do iAlt = -1, nAlts + 2
+                 TOTAL(iFreq,:,iAlt) =  &
+                    FACTOR20(:,iAlt)*  &
+                    PHI(iFreq,:,iAlt)
+          enddo 
       enddo ! Outer iFreq loop
 
-      S = 0.0D0
-      OLD = 0.0D0
-      m = 1
+      S = 0.0   ! This is our Integral Sum
+      S = S + FreqQuadWeights(1)*&
+          (Planck(MiddleFreqIndex,:,:)*TOTAL(MiddleFreqIndex,:,:))
+      ! We assume that the line-shape is symmetric in Frequency
 
-      DO 
-        IF (2**m .EQ. NFREQ) EXIT
-        m = m + 1
-      END DO
-
-      DO k = 1 , NFREQ/2
-        S = OLD + Qd(k,m)*(TOTAL(2*k,:,:,:) + TOTAL(2*k - 1,:,:,:))
-        OLD = S
-      END DO
+      do iFreq = 1, FreqIndexMax
+          S = S + FreqQuadWeights(iFreq + 1)*&
+             (Planck(MiddleFreqIndex+iFreq,:,:)*TOTAL(MiddleFreqIndex+iFreq,:,:) + &
+              Planck(MiddleFreqIndex-iFreq,:,:)*TOTAL(MiddleFreqIndex-iFreq,:,:))
+      enddo 
 
       gheat1 = (0.5)*(B-A)*S
 
-      end subroutine heat1gauss
+  end subroutine Newheat1gauss
+
+
 ! --------------------------------------------------------------------------
-! FGAUSSTAU DECLARATION
+! Sumfgausstau declaration
 !---------------------------------------------------------------------------
-      subroutine fgausstau(SJ,NHCNM,Z,SHAPE,ITAU)
+
+      subroutine Sumfgausstau(SJ,NHCNM,Z,PHI,ITAU,H_HCN)
 
       IMPLICIT NONE
+
+!
 ! INPUTS ----------------------------------------------
 !
-      REAL,INTENT(IN),DIMENSION(nLons,nAlts) ::  &
+      REAL,INTENT(IN),DIMENSION(-1:nAlts+2) ::  &
        Z
 !
-      REAL,INTENT(IN),DIMENSION(nLons,NLINES,nAlts) ::  &
+      REAL,INTENT(IN),DIMENSION(1:NLINES,-1:nAlts+2) ::  &
        SJ,  &
        NHCNM
 !
-      REAL,INTENT(IN),DIMENSION(NFREQ,nLons,NLINES,nAlts) ::  &
-       SHAPE
-!
-      REAL,INTENT(OUT),DIMENSION(NFREQ,nLons,NLINES,nAlts)::  &
+      REAL,INTENT(IN),DIMENSION(1:NewNFREQ,1:NLINES,-1:nAlts+2) ::  &
+       PHI
+
+      REAL,INTENT(OUT),DIMENSION(1:NewNFREQ,1:NLINES,-1:nAlts+2)::  &
        ITAU 
-!
+
+      real, intent(in) :: H_HCN
+
 ! END INPUTS ----------------------------------------------
 !
 ! Local Vars ----------------------------------------------
@@ -1334,126 +1078,174 @@ end subroutine set_planet_defaults
        iLine
 
       INTEGER ::   &
-       start,  &
-       end,  &
-       rate
+       istart,  &
+       iend,  &
+       irate
 
+      REAL,DIMENSION(NLINES,-1:nAlts+2) ::  &
+       TOTAL, LnTotal
+
+      REAL,DIMENSION(NLINES) ::  &
+       NewTOTALAbove, NewLnTotalAbove, &
+       NewTOTALBelow, NewLnTotalBelow
+
+      REAL,DIMENSION(NLINES) ::  &
+       InterpLnTotal
 !
-      REAL,DIMENSION(NFREQ,nLons,NLINES,nAlts) ::  &
-       S,  &
-       OLD,  &
-       BF,  &
-       AF
-!
-      REAL,DIMENSION(nLons,NLINES,nAlts) ::  &
-       TOTAL
-!
-      REAL,DIMENSION(NLINES,nAlts) ::  &
+      REAL,DIMENSION(NLINES,-1:nAlts+2) ::  &
        ITERP2 
-!
-      REAL,DIMENSION(NPTS,NFREQ,nLons,NLINES,nAlts) ::  &
+
+      REAL,DIMENSION(NPTS,NewNFREQ,NLINES,-1:nAlts+2) ::  &
        DEPTH
 !
-      REAL,DIMENSION(NPTS,nLons,nAlts) ::  &
-        x
+      real,dimension(NPTS) :: x
 !
-      REAL,DIMENSION(nLons,nAlts) ::   &
-       A,  &
-       B
+      real :: A, B
+      real :: TopDepth(NewNFREQ,NLINES)   !!! TAU At the top
+      real :: Old(1:NLINES), TauSum(1:NLINES)
 !
 !----------END Local Vars-----------------------
-
-!----------------
-!WHILE LOOP BEGIN
-!----------------
       m = 1
       DO 
       IF (2**m .EQ. NPTS) EXIT
          m = m + 1
       END DO
-!----------------
-!END WHILE LOOP 
-!---------------
-
-      A = Z
-      do iAlt = 1, nAlts
-         B(:,iAlt) = Z(:,nAlts) 
-      enddo
-!
-
-      DO k = 1,NFREQ
-        DO j = 1, NLINES
-         AF(k,:,j,:) = A
-         BF(k,:,j,:) = B
-        END DO
-      END DO
-!
-! Now Our Endpoints are B, A which are NLON,NLVLS in Size
-!
-      DO k = 1 , NPTS/2
-
-      x(2*k - 1,:,:)= 0.5*(Qf(k,m)*(B - A) + B + A)
-      x(2*k,:,:)= 0.5*(-Qf(k,m)*(B - A) + B + A)
-
-      END DO
-
-      DO k = 1, NFREQ/2
-           TOTAL = (SHAPE(2*k - 1,:,:,:)*SJ*NHCNM)*1.0D9
-         DO i = 1,nLons
-            DO j = 1,nAlts
-
-! x(:,i,j) is size NLVLS
-! Z(i,:) is size NLVLS
-! TOTAL(i,:,:) is size NLINES, NLVLS
-
-! Linear Interpolation of Variables to the Gaussian Quadrature points:
-
-              DO n = 1,NPTS
-
-               CALL locate(Z(i,:),x(n,i,j),loc,NLON,NLVLS)
-      DEPTH(n,2*k - 1,i,:,j) = TOTAL(i,:,loc) +  &
-       (x(n,i,j) - Z(i,loc))* &
-       ((TOTAL(i,:,loc+1) - TOTAL(i,:,loc))/(Z(i,loc+1) - Z(i,loc)))  
-
-      DEPTH(n,2*k,i,:,j) = DEPTH(n,2*k - 1,i,:,j) 
-
-              END DO ! n loop
-            END DO ! j loop
-         END DO ! i loop
-      END DO !k loop
+!      write(*,*) 'm = ', m
+!!!! We integrate from the top downward
+!!!! We can then add each increment to the next
+!!!! to get the total
+      ITAU = 0.0
+      do iFreq = 1, NewNFREQ
+        do iLine = 1, NLINES
+           TopDepth(iFreq,iLine) = &   !!! TAU At the top
+                PHI(iFreq,iLine,nAlts+2)*&   ! 1/Hz
+                       SJ(iLine,nAlts+2)*&   ! Hz*m^2/molecules
+                    NHCNM(iLine,nAlts+2)*(1.0e+06)*& ! Convert NHCN from (cm^-3) -> m^-3
+                    H_HCN  ! in m
+!!! Store TopDepth in our Optical Depth Array
+            ITAU(iFreq,iLine,nAlts+2) = TopDepth(iFreq,iLine)  !! Top Optical Depth
+!            write(*,*) 'iFreq, iLine, TopDepth = ', iFreq, iLine, TopDepth(iFreq,iLine)
+        enddo  ! Rotational Lines Loop
+      enddo  ! Frequency Gaussian Points Loop 
 
 
-! END Linear Interpolation 
+!!!! Begin Altitude Loop -------- Integrate Downward
+     do iAlt = nAlts+1, -1, -1
+        A = Z(iAlt  )*1000.0   !!! Convert to m
+        B = Z(iAlt+1)*1000.0   !!! Convert to m
+! Now Our Endpoints are B, A which are NLVLS in Size
+!        write(*,*) 'iAlt, Bottom(A), and Top (B) = ',&
+!                    iAlt, A, B
+! These Quadruature Points do not depend upon 
+! Frequency or Line number
+! They only depend upon the physical space we sample
+        do k = 1 , NPTS/2
+           x(2*k - 1)= 0.5*( Qf1(k,m)*(B - A) + B + A)
+           x(2*k    )= 0.5*(-Qf1(k,m)*(B - A) + B + A)
+        enddo 
 
-      OLD = 0.0D0
-      DO k = 1, NPTS/2
+        ! Do the Middle Frequency (the core of the lineshape)
+        NewTotalAbove(1:NLINES) = PHI(MiddleFreqIndex,1:NLINES,iAlt+1)*&
+                                                   SJ(1:NLINES,iAlt+1)*&
+                                                NHCNM(1:NLINES,iAlt+1)*1.0e+06
+        NewLnTotalAbove(1:NLINES) = alog(NewTotalAbove)
 
-        S = OLD + Qd(k,m)*(DEPTH(2*k - 1,:,:,:,:) +  &
-        DEPTH(2*k,:,:,:,:))
-
-        OLD = S
-      END DO
-
-      ITAU = 0.5*(BF-AF)*S
+        NewTotalBelow(1:NLINES) = PHI(MiddleFreqIndex,1:NLINES,iAlt)*&
+                                                   SJ(1:NLINES,iAlt)*&
+                                                NHCNM(1:NLINES,iAlt)*1.0e+06
+        NewLnTotalBelow(1:NLINES) = alog(NewTotalBelow)
 
 
-      end subroutine fgausstau
-!---------------------------------------------------------------------------
-! FGAUSSHEAT2 DECLARATION
-!---------------------------------------------------------------------------
-!
-      subroutine heat2gauss(V,SJ,ALPHAD,NHCNM,gheat2,TM,  &
-                           ZM,VJM,TAU,PHI,VULIM,VLLIM,NLON,NLVLS, &
+!          write(*,*) 'Testing the Interpolation for Gaussian Points'
+
+! Factors of 1000.0 convert km -> m
+        do n = 1, NPTS
+           InterpLnTotal(1:NLINES) = NewLnTotalBelow(1:NLINES) + &
+             (x(n) - Z(iAlt)*1000.0)* &
+             ((NewLnTotalAbove(:) - NewLnTotalBelow(:))/&
+             (Z(iAlt+1)*1000.0 - Z(iAlt)*1000.0))  
+
+           DEPTH(n,MiddleFreqIndex,1:NLINES,iAlt) = &
+                 exp(InterpLnTotal(1:NLINES))
+        enddo 
+
+!!! Optical Depth of the Line Center
+        TauSum(1:NLINES) = 0.0
+        do k = 1, NPTS/2
+          TauSum(1:NLINES) = &
+             TauSum(1:NLINES) + &
+             Qd(k,m)*(DEPTH(2*k - 1,MiddleFreqIndex,1:NLINES,iAlt) +  &
+                      DEPTH(2*k    ,MiddleFreqIndex,1:NLINES,iAlt))
+        enddo ! Loop over Altitude Points
+            TauSum(1:NLINES) = 0.5*TauSum(1:NLINES)*(B - A)
+      
+        ITAU(MiddleFreqIndex,1:NLINES,iAlt  ) = &
+        ITAU(MiddleFreqIndex,1:NLINES,iAlt+1) + &
+                      TauSum(1:NLINES)
+
+!!! Iterate over the different Frequencies
+!!! We assume symmetry about the central Index
+!!! Due to the symmetry in the lineshapes.
+!!! The Central Index is MiddleFreqIndex
+
+        do iFreq = 1, FreqIndexMax
+           NewTotalAbove(1:NLINES) = PHI(MiddleFreqIndex+iFreq,1:NLINES,iAlt+1)*&
+                                     SJ(1:NLINES,iAlt+1)*&
+                                  NHCNM(1:NLINES,iAlt+1)*1.0e+06
+           NewLnTotalAbove(1:NLINES) = alog(NewTotalAbove)
+
+           NewTotalBelow(1:NLINES) = PHI(MiddleFreqIndex+iFreq,1:NLINES,iAlt)*&
+                                     SJ(1:NLINES,iAlt)*&
+                                  NHCNM(1:NLINES,iAlt)*1.0e+06
+           NewLnTotalBelow(1:NLINES) = alog(NewTotalBelow)
+
+           do n = 1, NPTS
+              InterpLnTotal(1:NLINES) = NewLnTotalBelow(1:NLINES) + &
+                (x(n) - Z(iAlt)*1000.0)* &
+                ((NewLnTotalAbove(:) - NewLnTotalBelow(:))/&
+                (Z(iAlt+1)*1000.0 - Z(iAlt)*1000.0))  
+
+!!! The Function is Symmetric about the Middle Frequency
+              DEPTH(n,MiddleFreqIndex + iFreq,1:NLINES,iAlt) = &
+                exp(InterpLnTotal(1:NLINES))
+
+!! Now we have our Depth Gaussian point
+              DEPTH(n,MiddleFreqIndex - iFreq,1:NLINES,iAlt) = &
+                exp(InterpLnTotal(1:NLINES))
+
+           enddo  ! Loop over Altitude Gaussian Points
+
+!!! Now Calculate the Optical Depth of the new layer (iAlt)
+!!! And add the layer above it (iAlt + 1)
+           TauSum(1:NLINES) = 0.0
+           do k = 1, NPTS/2
+             TauSum(1:NLINES) = &
+                TauSum(1:NLINES) + &
+                Qd(k,m)*(DEPTH(2*k - 1,MiddleFreqIndex + iFreq,1:NLINES,iAlt) +  &
+                         DEPTH(2*k    ,MiddleFreqIndex + iFreq,1:NLINES,iAlt))
+           enddo ! Loop over Altitude Points
+               TauSum(1:NLINES) = 0.5*TauSum(1:NLINES)*(B - A)
+         
+           ITAU(MiddleFreqIndex + iFreq,1:NLINES,iAlt  ) = &
+           ITAU(MiddleFreqIndex + iFreq,1:NLINES,iAlt+1) + &
+                  TauSum(1:NLINES)
+
+           ITAU(MiddleFreqIndex - iFreq,1:NLINES,iAlt  ) = &
+           ITAU(MiddleFreqIndex - iFreq,1:NLINES,iAlt+1) + &
+                  TauSum(1:NLINES)
+        enddo !k = 1, iFreq, FreqIndexMax
+     enddo !iAlt = nAlts+1, -1, -1
+    end subroutine Sumfgausstau
+
+      subroutine Newheat4gauss(V,SJ,ALPHAD,NHCNM,gheat4,TM,  &
+                           ZM,VJM,TAU,PHI,VULIM,VLLIM, &
                            Planck)
 
       IMPLICIT NONE
 !
 ! INPUT Variables:------------------------------------------
 !
-      INTEGER, INTENT(IN) :: NLVLS 
-      INTEGER, INTENT(IN) :: NLON 
-!
-      REAL, INTENT(IN), DIMENSION(NLON,NLINES,NLVLS) ::  &
+      REAL, INTENT(IN), DIMENSION(NLINES,-1:nAlts+2) ::  &
        ALPHAD,  &
        SJ,  &
        NHCNM,  &
@@ -1463,31 +1255,32 @@ end subroutine set_planet_defaults
        VULIM,  &
        VLLIM  
 !
-      REAL,INTENT(IN),DIMENSION(NFREQ,NLON,NLINES,NLVLS) ::  &
+      REAL,INTENT(IN),DIMENSION(NewNFREQ,NLINES,-1:nAlts+2) ::  &
        V,  &
        TAU,  &
        Planck,  &
        PHI
 !
-      REAL, INTENT(OUT), DIMENSION(NLON,NLINES,NLVLS) ::  &
-       gheat2
+      REAL, INTENT(OUT), DIMENSION(NLINES,-1:nAlts+2) ::  &
+       gheat4
 !
 ! LOCAL Variables:------------------------------------------
 
-      INTEGER :: i,j,k,m,p,t,loc,ilon,iline
+      INTEGER :: i,j,k,m,p,t,&
+                 loc,ilon,iline
 
       INTEGER ::  & 
        start,  &
        end,  &
        rate 
 
-      REAL,DIMENSION(NLON,NLINES,NLVLS) ::  &
+      REAL,DIMENSION(NLINES,-1:nAlts+2) ::  &
        ATAU,  &
        BTAU,  &
        A1TAU,  &
        B1TAU
 
-      REAL,DIMENSION(NLON,NLINES,NLVLS) ::   &
+      REAL,DIMENSION(NLINES,-1:nAlts+2) ::   &
        ALPHA,   &
        B,   &
        FACTOR,   &
@@ -1500,7 +1293,7 @@ end subroutine set_planet_defaults
        S,   &
        OLD
 !
-      REAL,DIMENSION(NPTS,NLON,NLINES,NLVLS) ::  &
+      REAL,DIMENSION(NPTS,NLINES,-1:nAlts+2) ::  &
        XH,  & ! Higher Integral (above the value of Z)
        XL,  &  ! Lower Integral (below the value of Z)
        TOTH,  & ! Higher Integral (above the value of Z)
@@ -1511,276 +1304,291 @@ end subroutine set_planet_defaults
        EXPH,  &
        EXPL
 !
-      REAL,DIMENSION(NFREQ,NLON,NLINES,NLVLS) ::  &
+      REAL,DIMENSION(NewNFREQ,NLINES,-1:nAlts+2) ::  &
        QTOT 
 
-     ilon = 1
-     iline = 1
-     i = 1
+      REAL,DIMENSION(NewNFREQ,NLINES,-1:nAlts+2) ::  &
+       ContFuncBelow, &  
+       ContFuncAbove, &
+       TauMax,        &
+       LnTau,         &
+       LnBv,         &
+       IntTauBelow,   &
+       IntTauAbove  
 
+      REAL,DIMENSION(NPTS) ::  &
+       LocalXH
+
+      REAL,DIMENSION(NLINES) ::  &
+       InterpLnTau, &
+       InterpLnBv,  &
+       InterpTau, &
+       DInterpTau, &
+       E1Tau, &
+       InterpBv
+
+      REAL,DIMENSION(-1:nAlts+2) ::  &
+       Zloc
+
+      REAL,DIMENSION(NPTS,NLINES) ::  &
+       Integrand
+
+      integer :: iAlt, jAlt, kAlt
+
+      iline = 1
+      i = 1
+      Zloc = ZM(35,-1:nAlts+2)
+!      write(*,*) 'Zloc = ', Zloc
+
+!! Pick out the Proper Quadrature Points
       m = 1
-!----------------
-!WHILE LOOP BEGIN
-!----------------
       DO 
         IF (2**m .EQ. NPTS) EXIT
         m = m + 1
       END DO
-!----------------
-!END WHILE LOOP 
-!---------------
-!
+
 ! ---------------
 ! FOR LOOP BEGIN-
 ! ---------------
-! BEGIN OUTER FREQUENCY LOOPING----------------------------------
-! CAVEAT:  Note Problems associateed with moving m, loop above
-! outside of k-loop below!!  
-!
-!       ALPHA = (Planck_Constant/Boltzmanns_Constant)*&
-!               (V(1,:,:,:)/TM)
-!       FACTOR = 1.0D0/(EXP(ALPHA) - 1.0D0) 
-!       B = ((2.0D0*Planck_Constant)/((Speed_Light)**2))*&
-!            (V(1,:,:,:)**3.0D0)*FACTOR
+!!! Need two integrations for this term
+!!! One over altitude--(inner integration)
+!!! Outer one over frequency
 
-      B = Planck(1,:,:,:)
+   LnTau = alog(TAU)
+    LnBv = alog(Planck)
+   ContFuncAbove(:,:,:) = 0.0
+   ContFuncBelow(:,:,:) = 0.0
 
-      DO k = 1,NFREQ/2
+   ! First, Grab the Core Frequency
 
-       TOTH = 0.0D0
-       TOTL = 0.0D0
+   do k = 0, FreqIndexMax
+      iFreq = MiddleFreqIndex + k
 
+      ! Outer Altitude Loop (the Z in our Integral)
+      ! We don't need to iterate over -1 or nAlts + 2
+      ! Just go from 0:nAlts+1
+      do iAlt =  1, nAlts 
+!         write(*,*) 'Outer Alt Loop = ', iAlt, Zloc(iAlt)
+         Integrand(:,:) = 0.0
+         ContFuncBelow(MiddleFreqIndex + k,:,iAlt) = 0.0
+         ContFuncBelow(MiddleFreqIndex - k,:,iAlt) = 0.0
+         ContFuncAbove(MiddleFreqIndex + k,:,iAlt) = 0.0
+         ContFuncAbove(MiddleFreqIndex - k,:,iAlt) = 0.0
 
-       BTAU = TAU(k,:,:,:)
-       A1TAU = TAU(k,:,:,:)
+         do jAlt = -1, iAlt-1   ! This is our Z''
+            !if (iAlt .eq. -1) exit 
+            ! We don't execute this at all for iAlt = -1 
+            ! Gives the Gaussain Points in terms of TAU Values
 
-       DO ilon = 1,NLON
-          DO iline = 1,NLINES
-             DO i = 1,NLVLS
-        ATAU(ilon,iline,i) = TAU(k,ilon,iline,1)
-        B1TAU(ilon,iline,i) = TAU(k,ilon,iline,NLVLS)
-             END DO
-          END DO
-       END DO
+            !write(*,*) 'Contribution Below You, jAlt = ', jAlt
+            !write(*,*) 'Zloc(jAlt), Zloc(iAlt-1)= ', &
+            !            Zloc(jAlt), Zloc(jAlt+1)
+            do p = 1 , NPTS/2
+               ! Get integration points in the slab of atmosphere below us.
+               ! Should be (NPTS,1:NLINES) in Size 
+               ! Exploit the Symmetry of the X(2*p) and X(2*p - 1)
+               LocalXH(2*p - 1) = &
+                 0.5*( Qf1(p,m)*(Zloc(jAlt+1) - Zloc(jAlt))&
+                   + Zloc(jAlt) + Zloc(jAlt+1) )
 
-! Gives the Gaussain Points in terms of TAU Values
+               LocalXH(2*p    ) = &
+                 0.5*(-Qf1(p,m)*(Zloc(jAlt+1) - Zloc(jAlt))&
+                   + Zloc(jAlt) + Zloc(jAlt+1) )
+               !write(*,*) 'GaussPoint(2p), GaussPoint(2p-1)  = ', &
+               !           p, LocalXH(2*p-1), LocalXH(2*p)
 
-      DO p = 1 , NPTS/2
-      XH(2*p - 1,:,:,:) = (Qf(p,m)*(A1TAU - B1TAU) + A1TAU + B1TAU)/2.0D0 
-      XH(2*p,:,:,:) = (-Qf(p,m)*(A1TAU - B1TAU) + A1TAU + B1TAU) &
-          /2.0D0
-      XL(2*p - 1,:,:,:) = (Qf(p,m)*(ATAU - BTAU) + ATAU + BTAU)/2.0D0 
-      XL(2*p,:,:,:) = (-Qf(p,m)*(ATAU - BTAU) + ATAU + BTAU) &
-       /2.0D0
-      END DO
+            enddo
+          ! At each Gausspoint, we need to do a linear interpolation:
+!              write(*,*) 'Tau(jAlt) and Tau(jAlt+1) = ', &
+!                  TAU(iFreq,35,jAlt), TAU(iFreq,35,jAlt+1)
 
-! XH, XL CHECK OUT !
+!             write(*,*) 'Planck(jAlt) and Planck(jAlt+1) = ', &
+!                 Planck(iFreq,35,jAlt), Planck(iFreq,35,jAlt+1)
 
+            do p = 1 , NPTS
+               InterpLnTau = LnTau(iFreq,1:NLINES,jAlt) + &
+                        (LocalXH(p) - Zloc(jAlt))*&
+                        (LnTau(iFreq,1:NLINES,jAlt+1) - LnTau(iFreq,1:NLINES,jAlt))/&
+                        (Zloc(jAlt+1) - Zloc(jAlt))
+               InterpTau = exp(InterpLnTau)   ! 1:NLINES Long
 
-! Linear Interpolation of the Black Body Function:---------------------
-! N.B. Below, we do not explicitly call or loop over NLINES variable for
-! the location variable, loc.  It was found that (to a very good approximation)
-! that all key variables depended on the variable NLINES in exactly the same
-! fashion.  Thus, a loop over NLINES was redundant and only cost us
-! CPU time.  However, this trend is violated near the top of the model. 
-! However, the heating function is less important up at these altitudes and
-! so represents a minor error, if any at all.
-! 
-      DO p = 1 , NPTS
-         DO i = 1,NLON 
-             DO t = 1,NLVLS
-
-               CALL locate(TAU(k,i,1,:),XH(p,i,1,t),loc,NLON,NLVLS)
-      BH(i,:,t) = B(i,:,loc) +  &
-       (XH(p,i,:,t) - TAU(k,i,:,loc))* &
-       ((B(i,:,loc+1) - B(i,:,loc))/(TAU(k,i,:,loc+1) - TAU(k,i,:,loc)))  
-
-               CALL locate(TAU(k,i,1,:),XL(p,i,1,t),loc,NLON,NLVLS)
-      BL(i,:,t) = B(i,:,loc) +  &
-       (XL(p,i,:,t) - TAU(k,i,:,loc))* &
-       ((B(i,:,loc+1) - B(i,:,loc))/(TAU(k,i,:,loc+1) - TAU(k,i,:,loc)))  
-
-                END DO ! t loop
-            END DO ! i loop
-         END DO ! p loop
+               DInterpTau = InterpTau(1:NLINES) - TAU(iFreq,1:NLINES,iAlt) 
 
 
-! END Linear Interpolation of the Black Body Function:---------------------
+               InterpLnBv = LnBv(iFreq,1:NLINES,jAlt) + &
+                        (LocalXH(p) - Zloc(jAlt))*&
+                        (LnBv(iFreq,1:NLINES,jAlt+1) - LnBv(iFreq,1:NLINES,jAlt))/&
+                        (Zloc(jAlt+1) - Zloc(jAlt))
 
-      EXPH = 0.0D0 
-      EXPL = 0.0D0 
+               InterpBv = exp(InterpLnBv)   ! 1:NLINES Long
 
-      DO p = 1 , NPTS
-      TAUV(p,:,:,:) = TAU(k,:,:,:)
-      END DO ! p loop
-
-      TESTH = ABS(TAUV - XH)  
-      TESTL = ABS(TAUV - XL)  
-
-      CALL expint2(TESTL(:,:,:,2:NLVLS),EXPL(:,:,:,2:NLVLS), &
-                   NLON,NLVLS - 1)
-      CALL expint2(TESTH(:,:,:,1:NLVLS-1),EXPH(:,:,:,1:NLVLS-1), &
-                   NLON,NLVLS - 1)
-  
-      DO p = 1 , NPTS
-      TOTH(p,:,:,:) = BH*EXPH(p,:,:,:)
-      TOTL(p,:,:,:) = BL*EXPL(p,:,:,:)
-      END DO ! p loop
+!              write(*,*) 'p, InterpBv = ', p, InterpBv(35)
 
 
-! Testing the New Expint Function----------------------------------
+!              write(*,*) 'p, DInterpTau = ', p, DInterpTau(35)
+               CALL expint4(DInterpTau(:),E1Tau(:))
+!              write(*,*) 'p, DTau, ExpInt(DTau) = ',p,DInterpTau(35),E1Tau(35) 
+
+!               Integrand(p,1:NLINES) = &
+!                    E1Tau(:)*InterpBv(:)*(&
+!                    TAU(iFreq,1:NLINES,jAlt) - TAU(iFreq,1:NLINES,jAlt+1))
+
+               Integrand(p,1:NLINES) = &
+                    E1Tau(:)*InterpBv(:)
+
+               ! The Integrand is Bv*E1(Tau(z) - Tau(z'))*dTau
+               ! The dTAu is the size of the "slab" of atmosphere between
+               ! jAlt + 1 and jAlt
+            enddo 
+
+            !! Add the Altitudes together to get a total contribution from the slab
+            ! We need to keep adding each slab to this ConFuncBelow Variable
+            do p = 1 , NPTS/2
+               ContFuncBelow(iFreq,:,iAlt) =  &
+                  ContFuncBelow(iFreq,:,iAlt) + &
+                  0.5*Qd(p,m)*(Integrand(2*p  ,1:NLINES) + &
+                           Integrand(2*p-1,1:NLINES))*&
+                    (TAU(iFreq,1:NLINES,jAlt) - TAU(iFreq,1:NLINES,jAlt+1))
+            enddo ! p loop
+
+               ! Assume Symmetry around the Central Frequency
+               ContFuncBelow(MiddleFreqIndex - k,:,iAlt) =  &
+               ContFuncBelow(iFreq,:,iAlt) 
+            ! This Loop integrates over the Interpolation points, 
+            ! Which completely accounts for the atmospheric slab
+            ! Between jAlt and jAlt+1
+        enddo ! Loop over jAlt (Z') Bell et al. [2008] 
 
 
-! Summing over Gauss Altitude Points-----------------------
-!
-      OLDH = 0.0D0
-      OLDL = 0.0D0
-      DO p = 1 , NPTS/2
-        SH = OLDH + Qd(p,m)*(TOTH(2*p,:,:,:) + TOTH(2*p - 1,:,:,:)) 
-        SL = OLDL + Qd(p,m)*(TOTL(2*p,:,:,:) + TOTL(2*p - 1,:,:,:)) 
-        OLDH = SH
-        OLDL = SL
-      END DO ! p loop
+      ! Same as jAlt Loop above, but now for the 
+      ! Atmosphere above you
+        Integrand(:,:) = 0.0
+        ContFuncAbove(iFreq,:,iAlt) = 0.0
+        do jAlt = iAlt+1, nAlts+2 
+!           write(*,*) 'Contribution Above You, jAlt = ', jAlt
+!           write(*,*) 'Zloc(jAlt-1), Zloc(iAlt)= ', &
+!                       Zloc(jAlt-1), Zloc(jAlt)
+           do p = 1 , NPTS/2
+              ! Get integration points in the slab of atmosphere above us.
+              ! Should be (NPTS,1:NLINES) in Size 
+              ! Exploit the Symmetry of the X(2*p) and X(2*p - 1)
+              LocalXH(2*p - 1) = &
+                0.5*( Qf1(p,m)*(Zloc(jAlt) - Zloc(jAlt-1))&
+                  + Zloc(jAlt-1) + Zloc(jAlt) )
 
-      QTOT(2*k - 1,:,:,:) = (ABS(ATAU - BTAU))*(SL)/2.0D0 + &
-                      (ABS(A1TAU - B1TAU))*(SH)/2.0D0
+              LocalXH(2*p    ) = &
+                0.5*(-Qf1(p,m)*(Zloc(jAlt) - Zloc(jAlt-1))&
+                  + Zloc(jAlt-1) + Zloc(jAlt) )
 
-      QTOT(2*k,:,:,:) = QTOT(2*k - 1,:,:,:) 
+!              write(*,*) 'GaussPoint(2p), GaussPoint(2p-1)  = ', &
+!                         p, LocalXH(2*p-1), LocalXH(2*p)
 
-      END DO ! k loop End
+           enddo
 
-! END Altitude Integrations----------------------------------- 
+         ! At each Gausspoint, we need to do a linear interpolation:
 
-! Next, we need to sum over the FREQUENCY Gauss Points:-------
-      OLD = 0.0D0
-      DO k = 1 , NFREQ/2
-       S = OLD +  &
-           Qd(k,m)*QTOT(2*k,:,:,:)*PHI(2*k,:,:,:) +   &
-           Qd(k,m)*QTOT(2*k - 1,:,:,:)*PHI(2*k - 1,:,:,:) 
-       OLD = S
-      END DO ! k loop End
+!            write(*,*) 'Tau(jAlt-1) and Tau(jAlt) = ', &
+!                TAU(iFreq,35,jAlt-1), TAU(iFreq,35,jAlt)
+
+!           write(*,*) 'Planck(jAlt-1) and Planck(jAlt) = ', &
+!               Planck(iFreq,35,jAlt-1), Planck(iFreq,35,jAlt)
+
+           do p = 1 , NPTS
+              InterpLnTau = LnTau(iFreq,1:NLINES,jAlt-1) + &
+                       (LocalXH(p) - Zloc(jAlt-1))*&
+                       (LnTau(iFreq,1:NLINES,jAlt) - LnTau(iFreq,1:NLINES,jAlt-1))/&
+                       (Zloc(jAlt) - Zloc(jAlt-1))
+              InterpTau = exp(InterpLnTau)   ! 1:NLINES Long
 
 
-      gheat2 = 0.5D0*(VULIM-VLLIM)*S
-!
-      end subroutine heat2gauss
-! ---------------------------------------------------------------------
-      subroutine expint2(x,ans,NLON,NLVLS)
+ !             write(*,*) 'p, InterpTau = ', p, InterpTau(35)
+              DInterpTau = -1.0*(InterpTau(1:NLINES) - TAU(iFreq,1:NLINES,iAlt)) 
 
-      IMPLICIT NONE
+              InterpLnBv = LnBv(iFreq,1:NLINES,jAlt-1) + &
+                       (LocalXH(p) - Zloc(jAlt-1))*&
+                       (LnBv(iFreq,1:NLINES,jAlt) - LnBv(iFreq,1:NLINES,jAlt-1))/&
+                       (Zloc(jAlt) - Zloc(jAlt-1))
+              InterpBv = exp(InterpLnBv)   ! 1:NLINES Long
 
-      INTEGER, INTENT(IN) :: NLON 
-      INTEGER, INTENT(IN) :: NLVLS 
-!
-! Input Arguments:--------------------------------------
-!
-      REAL, INTENT(IN), DIMENSION(NPTS,NLON,NLINES,NLVLS) ::  & 
-        x
-      REAL, INTENT(OUT), DIMENSION(NPTS,NLON,NLINES,NLVLS) ::  &
-        ans
+!             write(*,*) 'p, DInterpTau = ', p, DInterpTau(35)
+             CALL expint4(DInterpTau(:),E1Tau(:))
+!             write(*,*) 'p, DTau, ExpInt(DTau) = ',p,DInterpTau(35),E1Tau(35) 
 
-! LOCAL Variables:---------------------------------------
-      
-!      INTEGER, PARAMETER :: MAXIT = 100 
-      INTEGER, PARAMETER :: MAXIT = 10
-!      INTEGER, PARAMETER :: MAXIT = 5 
-!      INTEGER, PARAMETER :: MAXIT = 2 
-!      INTEGER, PARAMETER :: MAXIT = 1 
-      INTEGER :: i,j,k 
+!             Integrand(p,1:NLINES) = &
+!                  E1Tau(:)*InterpBv(:)*(&
+!                  TAU(iFreq,1:NLINES,jAlt-1) - TAU(iFreq,1:NLINES,jAlt))
 
-      REAL, PARAMETER :: EULER = .577215664901532860D0 
-      REAL, PARAMETER :: EPS = epsilon(x(1,1,1,1)) 
-      REAL, PARAMETER :: BIG = huge(x(1,1,1,1))*EPS 
+             Integrand(p,1:NLINES) = &
+                  E1Tau(:)*InterpBv(:)
 
-      REAL, DIMENSION(NPTS,NLON,NLINES,NLVLS) ::  & 
-       ID
+              ! The Integrand is Bv*E1(Tau(z) - Tau(z'))*dTau
+              ! The dTAu is the size of the "slab" of atmosphere between
+              ! jAlt + 1 and jAlt
+           enddo 
 
-      REAL, DIMENSION(NPTS,NLON,NLINES,NLVLS) ::   &
-       a,  &
-       b,  &
-       c,  &
-       d,  &
-       h,  &
-       del,  &
-       fact,  &
-       EXPH,  &
-       EXPL
+           !! Add the Altitudes together to get a total contribution from the slab
+           ! We need to keep adding each slab to this ConFuncBelow Variable
+           do p = 1 , NPTS/2
+              ContFuncAbove(iFreq,:,iAlt) =  &
+                 ContFuncAbove(iFreq,:,iAlt) + &
+                 0.5*Qd(p,m)*(Integrand(2*p  ,1:NLINES) + &
+                          Integrand(2*p-1,1:NLINES))*&
+                ( TAU(iFreq,1:NLINES,jAlt-1) - TAU(iFreq,1:NLINES,jAlt))
+     
+           enddo ! p loop
+               ContFuncAbove(MiddleFreqIndex - k,:,iAlt) =  &
+               ContFuncAbove(iFreq,:,iAlt) 
+           ! This Loop integrates over the Interpolation points, 
+           ! Which completely accounts for the atmospheric slab
+           ! Between jAlt and jAlt+1
+       enddo ! Loop over jAlt (Z') Bell et al. [2008] 
 
-       ID = 1.0D0
+      enddo !iAlt  Outer Integration Loop
+   enddo !k = 0,FreqIndexMax
 
-! ---------------------------------------------------------
-! BEGIN CALCULATION:---------------------------------------
-! FORM FOR X >= 1.0 
-! ---------------------------------------------------------
-       b = x + ID
-       c = BIG*ID 
-       d = ID/b 
-       h = d 
-       DO i = 1,MAXIT
-          a = -1.0D0*i*i*ID
-          b = b + 2.0D0*ID
-          d = ID/(a*d + b) 
-          c = b + a/c
-          del = c*d
-          h = h*del
-       ENDDO
+   ! NewNFreqs, NLines, -1:nAlts+2
+   QTOT(:,:,1:nAlts) = &
+     ContFuncBelow(:,:,1:nAlts) + ContFuncAbove(:,:,1:nAlts)
 
-       EXPH = h*exp(-x)
+   QTOT(:,:, 0) = QTOT(:,:,1) 
+   QTOT(:,:,-1) = QTOT(:,:,1) 
+   QTOT(:,:,nAlts+1) = QTOT(:,:,nAlts) 
+   QTOT(:,:,nAlts+2) = QTOT(:,:,nAlts) 
 
-! ---------------------------------------------------------
-! BEGIN CALCULATION:---------------------------------------
-! FORM FOR X < 1.0 
-! ---------------------------------------------------------
+   S = 0.0
+   S = S + FreqQuadWeights(1)*(QTOT(MiddleFreqIndex,:,:)*PHI(MiddleFreqIndex,:,:) )
 
-       EXPL = -log(x) - EULER 
+   do iFreq = 1, FreqIndexMax
+      S = S + FreqQuadWeights(iFreq + 1)*&
+               (QTOT(MiddleFreqIndex + iFreq,:,:)*PHI(MiddleFreqIndex + iFreq,:,:) + &
+                QTOT(MiddleFreqIndex - iFreq,:,:)*PHI(MiddleFreqIndex - iFreq,:,:) )
+   enddo 
+   gheat4 = 0.5*(VULIM-VLLIM)*S
 
-       fact = 1.0D0 
-       del = 0.0D0 
-       DO i = 1, MAXIT
-          fact = -(fact*x)/i 
-          del = -fact/i
-          EXPL = EXPL + del
-       ENDDO
+   end subroutine Newheat4gauss
 
-       WHERE(x < 1.0D0)
-         ans = EXPL
-       ELSEWHERE
-         ans = EXPH
-       END WHERE
 
-      end subroutine expint2
-! ---------------------------------------------------------------------
-      subroutine expint1(x,ans,NLON,NLVLS)
-
+      subroutine expint1(x,ans,NLVLS)
       implicit none
 
-      INTEGER, INTENT(IN) :: NLON 
       INTEGER, INTENT(IN) :: NLVLS 
-!
-! Input Arguments:--------------------------------------
-!
-      REAL, INTENT(IN), DIMENSION(NLON,NLINES,NLVLS) ::  & 
-        x
-      REAL, INTENT(OUT), DIMENSION(NLON,NLINES,NLVLS) ::  &
-        ans
-
-! LOCAL Variables:---------------------------------------
+      REAL, INTENT(IN ), DIMENSION(NLINES, 0:NLVLS+2) ::  x
+      REAL, INTENT(OUT), DIMENSION(NLINES, 0:NLVLS+2) :: ans
       
-!      INTEGER, PARAMETER :: MAXIT = 100 
-      INTEGER, PARAMETER :: MAXIT = 10
+      INTEGER, PARAMETER :: MAXIT = 100 
+!      INTEGER, PARAMETER :: MAXIT = 10
 !      INTEGER, PARAMETER :: MAXIT = 5 
 !      INTEGER, PARAMETER :: MAXIT = 2 
 !      INTEGER, PARAMETER :: MAXIT = 1 
       INTEGER :: i,j,k 
 
       REAL, PARAMETER :: EULER = .577215664901532860D0 
-      REAL, PARAMETER :: EPS = epsilon(x(1,1,1)) 
-      REAL, PARAMETER :: BIG = huge(x(1,1,1))*EPS 
+      REAL, PARAMETER :: EPS = epsilon(x(1,1)) 
+      REAL, PARAMETER :: BIG = huge(x(1,1))*EPS 
 
-      REAL, DIMENSION(NLON,NLINES,NLVLS) ::  & 
-       ID
+      REAL, DIMENSION(NLINES, 0:NLVLS+2) ::  ID
 
-      REAL, DIMENSION(NLON,NLINES,NLVLS) ::   &
+      REAL, DIMENSION(NLINES, 0:NLVLS+2) ::   &
        a,  &
        b,  &
        c,  &
@@ -1791,8 +1599,7 @@ end subroutine set_planet_defaults
        EXPH,  &
        EXPL
 
-       ID = 1.0D0
-
+       ID = 1.0
 ! ---------------------------------------------------------
 ! BEGIN CALCULATION:---------------------------------------
 ! FORM FOR X >= 1.0 
@@ -1818,7 +1625,7 @@ end subroutine set_planet_defaults
 ! FORM FOR X < 1.0 
 ! ---------------------------------------------------------
 
-       EXPL = -log(x) - EULER 
+       EXPL = -alog(x) - EULER 
 
        fact = 1.0D0 
        del = 0.0D0 
@@ -1834,61 +1641,537 @@ end subroutine set_planet_defaults
        ELSEWHERE
          ans = EXPH
        END WHERE
-
       END subroutine expint1
-! ---------------------------------------------------------------------
-      subroutine locate(xx,x,loc,NLON,NLVLS)
-! ---------------------------------------------------------------------
-!  PURPOSE:
-!  =======
-!     This is a simple binary search algorithm to be used with splint 
-!     Code Adapted from the Press et al Text on Numerical Recipes.
-!
-!     Given array xx(1:n) and given a value, x, this routine returns the
-!     value j such that x lies between xx(j) and xx(j+1).  xx must be 
-!     monotonic. j = 0, N mean that x is out of range! 
-! ---------------------------------------------------------------------
-      IMPLICIT NONE
 
-      INTEGER, INTENT(IN) :: NLVLS 
-      INTEGER, INTENT(IN) :: NLON 
-      REAL, DIMENSION(NLVLS), INTENT(IN) :: xx
-      REAL, INTENT(IN) :: x
-      INTEGER, INTENT(OUT) :: loc 
 
-      INTEGER :: n, jl, jm, ju 
+      subroutine expint4(x,ans)
+      implicit none
 
-      LOGICAL :: ascnd
-! ---------------------------------------------------------------------
-      n = size(xx)
-      ascnd = (xx(n) >= xx(1))
-      jl = 0
-      ju = n+1
-      DO
-         IF(ju - jl <= 1) EXIT
-         jm = (ju + jl)/2
-         IF (ascnd .EQV. (x >= xx(jm))) THEN
-               jl = jm
-         ELSE 
-               ju = jm
-         END IF
-      END DO
+      REAL, INTENT(IN), DIMENSION(NLINES) ::  x
+      REAL, INTENT(OUT), DIMENSION(NLINES) :: ans
+      
 
-      IF ( x == xx(1)) THEN
-          loc = 1
-      ELSE IF ( x == xx(n)) THEN
-          loc = n - 1
-      ELSE
-          loc = jl
-      END IF
+!      INTEGER, PARAMETER :: MAXIT = 1 
+!      INTEGER, PARAMETER :: MAXIT = 10
+      INTEGER, PARAMETER :: MAXIT = 5 
+!     INTEGER, PARAMETER :: MAXIT = 2 
+!      INTEGER, PARAMETER :: MAXIT = 1 
+      INTEGER :: i,j,k 
 
-      end subroutine locate
+      REAL, PARAMETER :: EULER = .577215664901532860D0 
+      REAL, PARAMETER :: EPS = epsilon(x(1)) 
+      REAL, PARAMETER :: BIG = huge(x(1))*EPS 
 
-!----------------------------------------------------------------------
-!----------------------------------------------------------------------
+      REAL, DIMENSION(NLINES) ::  ID
+
+      REAL, DIMENSION(NLINES) ::   &
+       a,  &
+       b,  &
+       c,  &
+       d,  &
+       h,  &
+       del,  &
+       fact,  &
+       EXPH,  &
+       EXPL
+
+       ID = 1.0
+! ---------------------------------------------------------
+! BEGIN CALCULATION:---------------------------------------
+! FORM FOR X >= 1.0 
+! ---------------------------------------------------------
+       b = x + ID
+       c = BIG*ID 
+       d = ID/b 
+       h = d 
+       DO i = 1,MAXIT
+          a = -1.0D0*i*i*ID
+          b = b + 2.0D0*ID
+          d = ID/(a*d + b) 
+          c = b + a/c
+          del = c*d
+          h = h*del
+          IF ( MAXVAL(ABS(del) - 1.0) <= EPS*1.0e13) EXIT
+       ENDDO
+
+       EXPH = h*exp(-x)
+
+! ---------------------------------------------------------
+! BEGIN CALCULATION:---------------------------------------
+! FORM FOR X < 1.0 
+! ---------------------------------------------------------
+
+       EXPL = -alog(x) - EULER 
+
+       fact = 1.0
+        del = 0.0
+       DO i = 1, MAXIT
+          fact = -(fact*x)/i 
+          del = -fact/i
+          EXPL = EXPL + del
+          IF ( MAXVAL(ABS(del)) <= MAXVAL(ABS(EXPL))*EPS) EXIT
+       ENDDO
+
+       WHERE(x < 1.0)
+         ans = EXPL
+       ELSEWHERE
+         ans = EXPH
+       END WHERE
+
+      END subroutine expint4
 
      end subroutine calc_radcooling 
 
 
 
+
+   subroutine calc_saturn_tides(iBlock)
+     use ModPlanet
+     use ModGITM
+     use ModConstants
+     use ModTime, only : tSimulation
+
+     integer, intent(in) :: iBlock
+
+     real :: a_titan, e_titan, Mass_Saturn 
+     real :: omega_titan
+     real :: GravConstant
+     real :: GravScalar
+     integer :: iAlt, iLat, iLon, iDir
+
+     a_titan = 1.22183e+09   ! Titan orbital semi-major axis (in m) 
+     e_titan = 0.0292        ! Titan orbital eccentricity (e)
+     omega_titan = OMEGABody ! Titan orbital angular frequency (rads/s)
+     Mass_Saturn = 5.685e+26 ! Mass of Saturn
+     GravConstant = 6.67259e-11  ! Graviational constant in SI units (N m^2/kg^2)
+     !Note:  Titan is phase-locked so that it's rotation rate and orbit rate are the same
+
+     !This Grav Scalar occurs so frequently, we just calculate it once and use it below
+     GravScalar = GravConstant*Mass_Saturn/(a_titan**3.0)
+
+
+     do iAlt = -1, nAlts+2
+       do iLat = -1, nLats+2
+         do iLon = -1, nLons+2
+            ! ----------------
+            ! Time-Independent Component of the Tides
+            ! This would be the only component if Titan were in a perfectly
+            ! Circular Orbit
+            ! ----------------
+            TideAIndp(iLon,iLat,iAlt,iUp_,iBlock) = GravScalar*&
+                  RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
+                 (3.0*cos(Latitude(iLat,iBlock))*cos(Latitude(iLat,iBlock))*&
+                      cos(Longitude(iLon,iBlock))*cos(Longitude(iLon,iBlock)) - &
+                  1.0 )
+
+            TideAIndp(iLon,iLat,iAlt,iNorth_,iBlock) = -1.0*GravScalar*&
+                  RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
+                 (3.0*cos(Latitude(iLat,iBlock))*sin(Latitude(iLat,iBlock))*&
+                     cos(Longitude(iLon,iBlock))*cos(Longitude(iLon,iBlock)) )
+
+            TideAIndp(iLon,iLat,iAlt,iEast_,iBlock) = -1.0*GravScalar*&
+                  RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
+                 (3.0*cos(Latitude(iLat,iBlock))*&
+                     cos(Longitude(iLon,iBlock))*sin(Longitude(iLon,iBlock)) )
+
+            ! Radial Tide Component:  Note proportional to Titan's eccentricity, e
+            ! This is due to Titan moving closer and away from Saturn in its orbit
+            ! We assume that we start at Periapsis at t = 0.0
+            ! By JPL Ephemeris, this occurs on Jan, 04, 2007, 1500 hours
+            ! The Local Time at Longitude 0 is roughly midnight 
+            TideADep(iLon,iLat,iAlt,iUp_,iBlock) = GravScalar*&
+                  RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
+                 (3.0*cos(Latitude(iLat,iBlock))*cos(Latitude(iLat,iBlock))*&
+                      cos(Longitude(iLon,iBlock))*cos(Longitude(iLon,iBlock)) - &
+                  1.0 )*(3.0*e_titan*cos(OmegaBody*tSimulation))
+              
+            TideADep(iLon,iLat,iAlt,iNorth_,iBlock) = -1.0*GravScalar*&
+                  RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
+                 (3.0*cos(Latitude(iLat,iBlock))*sin(Latitude(iLat,iBlock))*&
+                     cos(Longitude(iLon,iBlock))*cos(Longitude(iLon,iBlock)) )*&
+                 (3.0*e_titan*cos(OmegaBody*tSimulation))
+!
+            TideADep(iLon,iLat,iAlt,iEast_,iBlock) = -1.0*GravScalar*&
+                  RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
+                 (3.0*cos(Latitude(iLat,iBlock))*&
+                     cos(Longitude(iLon,iBlock))*sin(Longitude(iLon,iBlock)) )*&
+                 (3.0*e_titan*cos(OmegaBody*tSimulation))
+ 
+!             ! Add the Librational Tide to the Time-dependent part.
+!             ! This is due to the motion of Saturn in longitude about the Longitude 
+!             ! of zero.
+            TideADep(iLon,iLat,iAlt,iUp_,iBlock) = &
+            TideADep(iLon,iLat,iAlt,iUp_,iBlock) + 1.0*GravScalar*&
+                  RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
+                 (6.0*e_titan*cos(Latitude(iLat,iBlock))*cos(Latitude(iLat,iBlock))*&
+                      sin(2.0*Longitude(iLon,iBlock)))*sin(OmegaBody*tSimulation)
+!                 
+            TideADep(iLon,iLat,iAlt,iNorth_,iBlock) = &
+            TideADep(iLon,iLat,iAlt,iNorth_,iBlock) - 1.0*GravScalar*&
+                  RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
+                 (6.0*e_titan*cos(Latitude(iLat,iBlock))*sin(Latitude(iLat,iBlock))*&
+                     sin(2.0*Longitude(iLon,iBlock)) )*sin(OmegaBody*tSimulation)
+!
+            TideADep(iLon,iLat,iAlt,iEast_,iBlock) = &
+            TideADep(iLon,iLat,iAlt,iEast_,iBlock) + 1.0*GravScalar*&
+                  RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
+                 (6.0*e_titan*cos(Latitude(iLat,iBlock))*cos(2.0*Longitude(iLon,iBlock)))*&
+                  sin(OmegaBody*tSimulation)
+
+         enddo !iLon = -1, nLons+2
+       enddo !iLat = -1, nLats+2
+     enddo !iAlt = -1, nAlts+2
+
+   ! Remove the tides for now
+   TideADep = 0.0
+   TideAInDep = 0.0
+
+   end subroutine calc_saturn_tides
+
+
+   subroutine calc_cooltospace(iBlock)
+!  ---------------------------------------------------------------------
+!  Purpose: 
+!  =======
+!  This is the Cooling Routine to be used for the Titan TGCM
+!  This version incorporates all heating and cooling terms into
+!  the full line by line radiative transfer calculations.
+!     Date            Programmer                   Version
+!  ==========     ==================            ==============
+!  09-08-04           Jared Bell                 Original(1.0) 
+!  12-02-04           Jared Bell                 Update (1.1)   
+!  12-07-04           Jared Bell                 Update (1.2)   
+!  01-27-05           Jared Bell                 Consistency Check   
+!  01-27-05           Jared Bell                 Added Heating 1 
+!  01-27-05           Jared Bell                 Added Heating 2 
+!  01-28-05           Jared Bell                 Added Dynamic Memory 
+!  09-07-05           Jared Bell                 Modify to use TAU 
+!  09-12-05           Jared Bell                 Utilized Linear Interp. 
+!  09-16-05           Jared Bell                 Expint more accurate 
+!                                                and more efficient 
+!  03-02-06           Jared Bell                 GITM                 
+!  0l-07-07           Jared Bell                 Computational Efficiency
+!                                                Update 
+!  05-28-11           Jared Bell                 Removed all 5-D Arrays 
+!                                                (nLon, nLat, nAlts, nLines, nFreqas)
+!                                                Implemented Loops Instead
+!  -----------------------------------------------------------------
+
+      use ModPlanet
+      use ModGITM
+      use ModConstants, only:  Boltzmanns_Constant, Speed_Light, &
+                               Planck_Constant
+      use ModInputs, only:  iDebugLevel
+      use ModSources, only: RadCoolingRate
+      use ModTime, only: tSimulation, CurrentTime
+      use ModIndicesInterfaces
+
+      implicit none
+
+! INPUTS:----------------------------------------------------------
+
+      integer,intent(in):: iBlock 
+
+! LOCAL VARS:------------------------------------------------------
+
+      integer :: i,j,l,m,k,n,ii,tj 
+      integer :: iLat, iLon, iAlt, iLine, iFreq
+
+      integer, parameter :: NLVLS = nAlts+4
+
+      integer, parameter :: NLINES = rotlines 
+
+!      integer, parameter :: NFREQ = rotfreqs 
+      integer, parameter :: NewNFREQ = newrotfreqs 
+      integer, parameter :: NPTS = rotpts 
+
+!      integer, parameter :: blon = 1 
+!      integer, parameter :: elon = nLons 
+!      integer, parameter :: blat = 1 
+!      integer, parameter :: elat = nLats 
+!
+!      real,dimension(-1:nAlts+2) :: &
+!       TCOOLa
+
+      real ::   &
+       FTH
+
+      real,dimension(-1:nAlts+2) ::    &
+       T,       & 
+       NHCN,    &
+       COOL
+
+      real,dimension(1:NLINES,-1:nAlts+2) ::  &
+       gcool,   &
+       INTEN,   &
+       ALPHAD,  &
+       ALPHAV,  &
+       ALPHAL,  &    ! VOIGT
+       DELTAV,  &
+       VULIM,   &
+       VLLIM,   &
+       VJM,     &
+       TM,      &
+       ZM,      &
+       VTH,     &
+       NHCNM,   &
+       GammaNew,  &   ! VOIGT
+       YRATIO         ! VOIGT
+
+!!!! FWHM of the Doppler and Lorentz Profiles
+      real,dimension(1:NLINES,-1:nAlts+2) ::  &
+        FWHML, FWHMD, FWHMV
+
+!!! Coefficients for Combining Gaussian and Lorentz shapes
+!!! DRatio used by Liu et al. [2001] in JQSRT
+      real :: DRatio, CoefL, CoefG
+
+      real,dimension(1:NLINES,-1:nAlts+2) ::  &
+       NEW, &
+       OLD, &
+       Y1,  &
+       Y2,  &
+       Y
+
+      real,dimension(1:NLINES,-1:nAlts+2) ::  &
+       PRODCOOL
+
+      real,dimension(-1:nAlts+2) ::    &
+       SMCOOL
+!
+!
+
+!      real,dimension(-1:nAlts+2) ::  &
+!       NHCNT 
+!   
+! --------------BEGIN TAU VARS--------------------------------------- 
+! The Following Variables are used solely within the Tau Integration
+! 
+      real :: DFACT
+      real,dimension(1:NewNFREQ,1:NLINES,-1:nAlts+2) ::  &
+       NewDOP,  &  ! the DOPPLER Lineshape
+       NewLorentz,  &  ! the DOPPLER Lineshape
+       NewX,  &
+       NewV, &
+       NewYV,  &   ! VOIGT
+       NewVOI,  &  ! the VOIGT Lineshape
+       NewDopFactor
+
+      real,dimension(1:NewNFREQ,1:NLINES,-1:nAlts+2) ::  &
+       NewBv,  &
+       NewBalpha
+
+      real :: Bfactor
+
+      integer :: MiddleFreqIndex, FreqIndexMax
+
+      MiddleFreqIndex = 5
+      FreqIndexMax = 4
+
+  call start_timing("calc_radcooling")
+
+     do iLon = 1, nLons
+       do iLat = 1, nLats
+
+       T(-1:nAlts+2) = &
+        Temperature(iLon,iLat,-1:nAlts+2,iBlock)*TempUnit(iLon,iLat,-1:nAlts+2)
+
+       NHCN(-1:nAlts+2) = &
+        NDensityS(iLon,iLat,-1:nAlts+2,iHCN_,iBlock)*1.0e-06
+
+! ------------------------------------------------------------------------
+! INTERPOLATING INTENSITY DATA TO TEMPERATURE GRID -----------------------
+! ------------------------------------------------------------------------
+             do iAlt = -1, nAlts+2
+              do iLine = 1, NLINES
+!\
+! Speed_Light*100.0:   Converts cm^-1 --> Hz 
+! 1.0e-04          : converts Sj from Hz*cm^2/molecule -> Hz*m^2/molecule
+                INTEN(iLine,iAlt) =             &
+                  ( Speed_Light*100.0)*(1.0e-4)*          &
+                  exp( pmat(iLine,1)                         &
+                  + pmat(iLine,2)*(T(iAlt)   )  &
+                  + pmat(iLine,3)*(T(iAlt)**2)  &
+                  + pmat(iLine,4)*(T(iAlt)**3)  &
+                  + pmat(iLine,5)*(T(iAlt)**4)  &
+                  + pmat(iLine,6)*(T(iAlt)**5)  &
+                  + pmat(iLine,7)*(T(iAlt)**6)  &
+                  + pmat(iLine,8)*(T(iAlt)**7)  & 
+                  + pmat(iLine,9)*(T(iAlt)**8)  )    
+
+
+              enddo! iLine = 1, NLINES
+             enddo !iAlt = -1, nAlts+2
+
+! ------------------------------------------------------------------------
+! Frequency Integration Variables TM,VJM,ZM,NHCNM (1:nlines,1:nAlts)
+! ------------------------------------------------------------------------
+             do iAlt = -1, nAlts+2 
+!              write(*,*) '=====> iAlt =', iAlt
+              do iLine = 1, NLINES  
+
+               VJM(iLine,iAlt) = freqhz(iLine)        ! Lines in Hz
+                ZM(iLine,iAlt) = Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0   ! m -> km
+                TM(iLine,iAlt) = T(iAlt)       ! Temp in  K
+            NHCNM(iLine,iAlt) = NDensityS(iLon,iLat,iAlt,iHCN_,iBlock)*1.0E-06  ! m^-3 -> cm^-3
+
+! These provide the Alpha_L in cm^-1 (we call this GammaNew)
+          GammaNew(iLine,iAlt) = &
+                    ALPHAL0(iLine)*&
+             (1.0 - NDensityS(iLon,iLat,iAlt,iHCN_,iBlock)/NDensity(iLon,iLat,iAlt,iBlock))*&
+             (Pressure(iLon,iLat,iAlt,iBlock)/(101325.00))*(298.0/T(iAlt))**ALPHALExp(iLine) + &
+                    ALPHAS0(iLine)*&
+             (NDensityS(iLon,iLat,iAlt,iHCN_,iBlock)/NDensity(iLon,iLat,iAlt,iBlock))*&
+             (Pressure(iLon,iLat,iAlt,iBlock)/(101325.00))*(298.0/T(iAlt))**ALPHALExp(iLine)
+
+!! AlphaL is the Half-width of the Lorentz profile (pressure-broadening) in Hz
+          ALPHAL(iLine,iAlt) = &
+                 GammaNew(iLine,iAlt)*(Speed_Light*100.0)   !! This is AlphaL in Hz
+
+              enddo  ! End iLine
+             enddo ! End iAlt
+
+! ------------------------------------------------------------------------
+! DOPPLER HALFWIDTHS AT GIVEN TEMPERATURES -------------------------------
+! ------------------------------------------------------------------------
+           FTH = SQRT(2.0*(Boltzmanns_Constant/Mass(iHCN_)))
+           VTH = FTH*SQRT(TM)
+           ALPHAD = (VJM*(VTH/(Speed_Light)))  !!! Our Doppler (Gaussian) half-width
+           DELTAV = 5.0*ALPHAD
+           VULIM = VJM + DELTAV
+           VLLIM = VJM - DELTAV
+
+! =================================================>
+! Calculate the FWHM of the Convolved Voigt Profile
+! Use the form taken from Olivier and Longbothom
+
+           FWHMD = ALPHAD*(2.0*sqrt(2.0*alog(2.0)))  !! Our FUllWidth at Half-Max of Doppler
+           FWHML = 2.0*ALPHAL
+
+           FWHMV = 0.5346*FWHML + &
+              sqrt(0.2166*FWHML**2.0 + FWHMD**2.0)
+
+           ALPHAV = FWHMV/2.0  ! Our Voigt Half-width
+
+!----------------
+!WHILE LOOP BEGIN
+!----------------
+!
+!      m = 1
+!      do 
+!      if (2**m .EQ. NFREQ) exit
+!         m = m + 1
+!      enddo
+!----------------
+!END WHILE LOOP 
+!---------------
+
+         NewV(MiddleFreqIndex,:,:) = &
+                  (FreqQuadAbscissas(1)*(VULIM - VLLIM) + VULIM + VLLIM)*.5
+
+       do k = 1 , FreqIndexMax
+         NewV(MiddleFreqIndex - k,:,:)= &
+              (FreqQuadAbscissas(k+1)*(VULIM - VLLIM) + VULIM + VLLIM)*.5
+         NewV(MiddleFreqIndex + k,:,:)=&
+              (-1.0*FreqQuadAbscissas(k+1)*(VULIM - VLLIM) + VULIM + VLLIM)*.5
+       enddo
+
+         DFACT = SQRT(alog(2.0)/PI)
+
+        do iAlt = -1, nAlts+2
+           do iLine = 1, NLINES
+              ! Note that DRatio will vary 
+              ! from -1.0 ( Pure Doppler)
+              ! to 1.0 (Pure Lorentz)
+              DRatio = (FWHML(iLine,iAlt) - FWHMD(iLine,iAlt))/&
+                       (FWHML(iLine,iAlt) + FWHMD(iLine,iAlt))
+ 
+              ! Coef L and CoefD determine the "relative mixing"
+              ! Of our line shapes into the combined Voigt Shape
+              CoefL = 0.68188 + 0.61293*DRatio - &
+                      0.18384*DRatio**2.0 - &
+                      0.11568*DRatio**3.0 
+
+              CoefG = 0.32460 - 0.61825*DRatio + &
+                      0.17681*DRatio**2.0 + &
+                      0.12109*DRatio**3.0 
+
+              do iFreq = 1, NewNFREQ
+
+              ! Calculate the Doppler contribution
+              
+              NewX(iFreq,iLine,iAlt) =  &
+                  SQRT( alog(2.0) )*  (  ( NewV(iFreq,iLine,iAlt)  - VJM(iLine,iAlt) )/ & 
+                   ALPHAV(iLine,iAlt) ) 
+
+              NewDOP(iFreq,iLine,iAlt) =  &
+                    (DFACT/ALPHAV(iLine,iAlt))*    & 
+                    EXP( -( NewX(iFreq,iLine,iAlt)**2.0) ) 
+
+              NewYV(iFreq,iLine,iAlt) =  &
+                    ( NewV(iFreq,iLine,iAlt)  - VJM(iLine,iAlt) )
+
+              NewLorentz(iFreq,iLine,iAlt) =  &
+                    (1.0/PI)*ALPHAV(iLine,iAlt)/    & 
+                    ( NewYV(iFreq,iLine,iAlt)**2.0 + ALPHAV(iLine,iAlt)**2.0)
+
+              NewVOI(iFreq,iLine,iAlt) = &
+                   CoefL*NewLorentz(iFreq,iLine,iAlt) + &
+                   CoefG*NewDOP(iFreq,iLine,iAlt) 
+
+ !             write(*,*) '===============> iFreq', iFreq, NewVOI(iFreq,iLine,iAlt) 
+
+              NewBalpha(iFreq,iLine,iAlt)  =             &
+                    (  Planck_Constant/Boltzmanns_Constant)*  &
+                    (  NewV(iFreq,iLine,iAlt) /        &
+                            TM(iLine,iAlt)  )
+
+              Bfactor = 1.0/ &
+                        ( EXP(NewBalpha(iFreq,iLine,iAlt) ) - 1.0 ) 
+
+              NewBv(iFreq,iLine,iAlt) =                   &
+                     ( ( 2.0*Planck_Constant ) /        & 
+                     ( (Speed_Light)**2 )  ) *                   &
+                     ( NewV(iFreq,iLine,iAlt)**3 )*Bfactor
+
+         enddo
+       enddo
+    enddo
+
+! ------------------------------------------------------------------------
+! Cooling CALCULATIONS
+! Cool-To-Space Portion: 
+! ------------------------------------------------------------------------
+
+       OLD = 0.0
+       NEW = 0.0
+       NEW = NEW + FreqQuadWeights(1)*(NewBv(MiddleFreqIndex, :, :)*NewVOI(MiddleFreqIndex, :, :))
+
+      do iFreq = 1 , FreqIndexMax
+        Y1 = NewBv(MiddleFreqIndex - iFreq,:,:)*NewVOI(MiddleFreqIndex - iFreq,:,:)
+        Y2 = NewBv(MiddleFreqIndex + iFreq,:,:)*NewVOI(MiddleFreqIndex + iFreq,:,:) 
+        NEW = NEW + FreqQuadWeights(iFreq + 1)*(Y1 + Y2)
+      enddo
+
+      gcool(:,:) = (VULIM(:,:) - VLLIM(:,:) )*NEW*0.5
+! Multiply by the Intensity of the lines and a geometric factor of 4pi
+!
+      PRODCOOL(1:NLINES,-1:nAlts+2) =  &
+                       gcool(1:NLINES,-1:nAlts+2)* &
+                       INTEN(1:NLINES,-1:nAlts+2)*(4.0D0*PI)
+! Sum over the lines
+      SMCOOL(-1:nAlts+2) = &
+                SUM(PRODCOOL(1:NLINES,-1:nAlts+2),1)
+! Multiply by HCN density 
+      COOL(-1:nAlts+2)  =  &
+                      SMCOOL(-1:nAlts+2)* &
+                        NHCN(-1:nAlts+2)*1.0e+06   ! J/(m^3 s) 
+
+       RadCoolingRate(iLon,iLat,1:nAlts,iBlock) = &
+                   COOL(1:nAlts)*HCNCoolRatio(iLon,iLat,1:nAlts,iBlock)
+
+       enddo ! iLat
+    enddo ! iLon
+
+   endsubroutine !calc_cooltospace(iBlock)
 

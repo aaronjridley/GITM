@@ -37,6 +37,50 @@ subroutine advance_horizontal(iBlock)
 
   ! Vertical derivative of current variable (needed for topography only)
   real :: dVarDAlt_C(nLons,nLats) 
+
+  ! JMB: 06/2016.  
+  ! The following Variables enable us to use RK-4 time-stepping
+  real :: OrigRho_C(nLons,nLats)
+  real :: OrigTemp_C(nLons,nLats)
+  real :: OrigVel_CD(nLons,nLats, 3)
+  real :: OrigNum_CV(nLons,nLats, nSpecies)
+  real :: OrigVertVel_CV(nLons,nLats, nSpecies)
+  real :: OrigINum_CV(nLons,nLats, nIonsAdvect)
+
+  real :: UpdatedRho_C(nLons,nLats)
+  real :: UpdatedTemp_C(nLons,nLats)
+  real :: UpdatedVel_CD(nLons,nLats, 3)
+  real :: UpdatedNum_CV(nLons,nLats, nSpecies)
+  real :: UpdatedVertVel_CV(nLons,nLats, nSpecies)
+  real :: UpdatedINum_CV(nLons,nLats, nIonsAdvect)
+
+  real :: K1Rho_C(nLons,nLats)
+  real :: K1Temp_C(nLons,nLats)
+  real :: K1Vel_CD(nLons,nLats, 3)
+  real :: K1Num_CV(nLons,nLats, nSpecies)
+  real :: K1VertVel_CV(nLons,nLats, nSpecies)
+  real :: K1INum_CV(nLons,nLats, nIonsAdvect)
+
+  real :: K2Rho_C(nLons,nLats)
+  real :: K2Temp_C(nLons,nLats)
+  real :: K2Vel_CD(nLons,nLats, 3)
+  real :: K2Num_CV(nLons,nLats, nSpecies)
+  real :: K2VertVel_CV(nLons,nLats, nSpecies)
+  real :: K2INum_CV(nLons,nLats, nIonsAdvect)
+
+  real :: K3Rho_C(nLons,nLats)
+  real :: K3Temp_C(nLons,nLats)
+  real :: K3Vel_CD(nLons,nLats, 3)
+  real :: K3Num_CV(nLons,nLats, nSpecies)
+  real :: K3VertVel_CV(nLons,nLats, nSpecies)
+  real :: K3INum_CV(nLons,nLats, nIonsAdvect)
+
+  real :: K4Rho_C(nLons,nLats)
+  real :: K4Temp_C(nLons,nLats)
+  real :: K4Vel_CD(nLons,nLats, 3)
+  real :: K4Num_CV(nLons,nLats, nSpecies)
+  real :: K4VertVel_CV(nLons,nLats, nSpecies)
+  real :: K4INum_CV(nLons,nLats, nIonsAdvect)
   !----------------------------------------------------------------------------
   MaxDiff = 0.0
 
@@ -45,7 +89,7 @@ subroutine advance_horizontal(iBlock)
   do iAlt=1,nAlts
 
      cp_c       = cp(:,:,iAlt,iBlock)
-     gamma_c    = gamma(:,:,iAlt,iBlock) 
+     Gamma_c    = gamma(:,:,iAlt,iBlock) 
      Rho_C      = Rho(:,:,iAlt,iBlock)
      Vel_CD     = Velocity(:,:,iAlt,:,iBlock)
      VertVel_CV = VerticalVelocity(:,:,iAlt,1:nSpecies,iBlock)
@@ -55,6 +99,8 @@ subroutine advance_horizontal(iBlock)
      IVel_CD = IVelocity(:,:,iAlt,:,iBlock)
      INum_CV = IDensityS(:,:,iAlt,1:nIonsAdvect,iBlock)
      
+     !------------
+     ! BEGIN RK-4
      NewRho_C      = Rho_C(1:nLons,1:nLats)
      NewVel_CD     = Vel_CD(1:nLons,1:nLats,:)
      NewNum_CV     = Num_CV(1:nLons,1:nLats,:)
@@ -62,8 +108,183 @@ subroutine advance_horizontal(iBlock)
      NewTemp_C     = Temp_C(1:nLons,1:nLats)
      NewINum_CV    = INum_CV(1:nLons,1:nLats,:)
 
+     OrigRho_C      = Rho_C(1:nLons,1:nLats)
+     OrigVel_CD     = Vel_CD(1:nLons,1:nLats,:)
+     OrigNum_CV     = Num_CV(1:nLons,1:nLats,:)
+     OrigVertVel_CV = VertVel_CV(1:nLons,1:nLats,:)
+     OrigTemp_C     = Temp_C(1:nLons,1:nLats)
+     OrigINum_CV    = INum_CV(1:nLons,1:nLats,:)
+
+!!! 1st Update Step
+     call horizontal_solver
+     
+     K1Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
+     K1Vel_CD     = NewVel_CD(1:nLons,1:nLats,1:3) - &
+                   Vel_CD(1:nLons,1:nLats,1:3)
+     K1Num_CV     = NewNum_CV(1:nLons,1:nLats,1:nSpecies) - &
+                   Num_CV(1:nLons,1:nLats,1:nSpecies)
+     K1VertVel_CV = NewVertVel_CV(1:nLons,1:nLats,1:nSpecies) - &
+                   VertVel_CV(1:nLons,1:nLats,1:nSpecies)
+     K1Temp_C     = NewTemp_C(1:nLons,1:nLats) - Temp_C(1:nLons,1:nLats)
+     K1INum_CV     = NewINum_CV(1:nLons,1:nLats,1:nIonsAdvect) - &
+                    INum_CV(1:nLons,1:nLats,1:nIonsAdvect)
+
+     UpdatedRho_C   = 0.5*K1Rho_C(1:nLons,1:nLats) + &
+                        OrigRho_C(1:nLons,1:nLats)
+     UpdatedVel_CD  = 0.5*K1Vel_CD(1:nLons,1:nLats,1:3) + &
+                        OrigVel_CD(1:nLons,1:nLats,1:3)
+     UpdatedNum_CV  = 0.5*K1Num_CV(1:nLons,1:nLats,1:nSpecies) + &
+                        OrigNum_CV(1:nLons,1:nLats,1:nSpecies)
+     UpdatedVertVel_CV = 0.5*K1VertVel_CV(1:nLons,1:nLats,1:nSpecies) + &
+                           OrigVertVel_CV(1:nLons,1:nLats,1:nSpecies)
+     UpdatedTemp_C  = 0.5*K1Temp_C(1:nLons,1:nLats) + &
+                        OrigTemp_C(1:nLons,1:nLats)
+     UpdatedINum_CV = 0.5*K1INum_CV(1:nLons,1:nLats,1:nIonsAdvect) + &
+                        OrigINum_CV(1:nLons,1:nLats,1:nIonsAdvect)
+
+     Rho_C(1:nLons,1:nLats)      = UpdatedRho_C
+     Vel_CD(1:nLons,1:nLats,:)     = UpdatedVel_CD
+     Num_CV(1:nLons,1:nLats,:)     = UpdatedNum_CV
+     VertVel_CV(1:nLons,1:nLats,:) = UpdatedVertVel_CV
+     Temp_C(1:nLons,1:nLats)     = UpdatedTemp_C
+     INum_CV(1:nLons,1:nLats,:)    = UpdatedINum_CV
+
+     NewRho_C      = UpdatedRho_C
+     NewVel_CD     = UpdatedVel_CD
+     NewNum_CV     = UpdatedNum_CV
+     NewVertVel_CV = UpdatedVertVel_CV
+     NewTemp_C     = UpdatedTemp_C
+     NewINum_CV    = UpdatedINum_CV
+
+
+!!! 2nd Update Step
+     call horizontal_solver
+     
+     K2Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
+     K2Vel_CD     = NewVel_CD(1:nLons,1:nLats,1:3) - &
+                   Vel_CD(1:nLons,1:nLats,1:3)
+     K2Num_CV     = NewNum_CV(1:nLons,1:nLats,1:nSpecies) - &
+                   Num_CV(1:nLons,1:nLats,1:nSpecies)
+     K2VertVel_CV = NewVertVel_CV(1:nLons,1:nLats,1:nSpecies) - &
+                   VertVel_CV(1:nLons,1:nLats,1:nSpecies)
+     K2Temp_C     = NewTemp_C(1:nLons,1:nLats) - Temp_C(1:nLons,1:nLats)
+     K2INum_CV     = NewINum_CV(1:nLons,1:nLats,1:nIonsAdvect) - &
+                    INum_CV(1:nLons,1:nLats,1:nIonsAdvect)
+
+
+     UpdatedRho_C   = 0.5*K2Rho_C(1:nLons,1:nLats) + &
+                        OrigRho_C(1:nLons,1:nLats)
+     UpdatedVel_CD  = 0.5*K2Vel_CD(1:nLons,1:nLats,1:3) + &
+                        OrigVel_CD(1:nLons,1:nLats,1:3)
+     UpdatedNum_CV  = 0.5*K2Num_CV(1:nLons,1:nLats,1:nSpecies) + &
+                        OrigNum_CV(1:nLons,1:nLats,1:nSpecies)
+     UpdatedVertVel_CV = 0.5*K2VertVel_CV(1:nLons,1:nLats,1:nSpecies) + &
+                           OrigVertVel_CV(1:nLons,1:nLats,1:nSpecies)
+     UpdatedTemp_C  = 0.5*K2Temp_C(1:nLons,1:nLats) + &
+                        OrigTemp_C(1:nLons,1:nLats)
+     UpdatedINum_CV = 0.5*K2INum_CV(1:nLons,1:nLats,1:nIonsAdvect) + &
+                     OrigINum_CV(1:nLons,1:nLats,1:nIonsAdvect)
+
+     Rho_C(1:nLons,1:nLats)      = UpdatedRho_C
+     Vel_CD(1:nLons,1:nLats,:)     = UpdatedVel_CD
+     Num_CV(1:nLons,1:nLats,:)     = UpdatedNum_CV
+     VertVel_CV(1:nLons,1:nLats,:) = UpdatedVertVel_CV
+     Temp_C(1:nLons,1:nLats)     = UpdatedTemp_C
+     INum_CV(1:nLons,1:nLats,:)    = UpdatedINum_CV
+
+
+     NewRho_C      = UpdatedRho_C
+     NewVel_CD     = UpdatedVel_CD
+     NewNum_CV     = UpdatedNum_CV
+     NewVertVel_CV = UpdatedVertVel_CV
+     NewTemp_C     = UpdatedTemp_C
+     NewINum_CV    = UpdatedINum_CV
+
+!!! 3rd Update Step
+     call horizontal_solver
+     
+     K3Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
+     K3Vel_CD     = NewVel_CD(1:nLons,1:nLats,1:3) - &
+                   Vel_CD(1:nLons,1:nLats,1:3)
+     K3Num_CV     = NewNum_CV(1:nLons,1:nLats,1:nSpecies) - &
+                   Num_CV(1:nLons,1:nLats,1:nSpecies)
+     K3VertVel_CV = NewVertVel_CV(1:nLons,1:nLats,1:nSpecies) - &
+                   VertVel_CV(1:nLons,1:nLats,1:nSpecies)
+     K3Temp_C     = NewTemp_C(1:nLons,1:nLats) - Temp_C(1:nLons,1:nLats)
+     K3INum_CV     = NewINum_CV(1:nLons,1:nLats,1:nIonsAdvect) - &
+                    INum_CV(1:nLons,1:nLats,1:nIonsAdvect)
+
+     UpdatedRho_C   = K3Rho_C(1:nLons,1:nLats) + &
+                        OrigRho_C(1:nLons,1:nLats)
+     UpdatedVel_CD  = K3Vel_CD(1:nLons,1:nLats,1:3) + &
+                        OrigVel_CD(1:nLons,1:nLats,1:3)
+     UpdatedNum_CV  = K3Num_CV(1:nLons,1:nLats,1:nSpecies) + &
+                    OrigNum_CV(1:nLons,1:nLats,1:nSpecies)
+     UpdatedVertVel_CV = K3VertVel_CV(1:nLons,1:nLats,1:nSpecies) + &
+                           OrigVertVel_CV(1:nLons,1:nLats,1:nSpecies)
+     UpdatedTemp_C  = K3Temp_C(1:nLons,1:nLats) + &
+                        OrigTemp_C(1:nLons,1:nLats)
+     UpdatedINum_CV = K3INum_CV(1:nLons,1:nLats,1:nIonsAdvect) + &
+                     OrigINum_CV(1:nLons,1:nLats,1:nIonsAdvect)
+
+     Rho_C(1:nLons,1:nLats)      = UpdatedRho_C
+     Vel_CD(1:nLons,1:nLats,:)     = UpdatedVel_CD
+     Num_CV(1:nLons,1:nLats,:)     = UpdatedNum_CV
+     VertVel_CV(1:nLons,1:nLats,:) = UpdatedVertVel_CV
+     Temp_C(1:nLons,1:nLats)     = UpdatedTemp_C
+     INum_CV(1:nLons,1:nLats,:)    = UpdatedINum_CV
+
+
+     NewRho_C      = UpdatedRho_C
+     NewVel_CD     = UpdatedVel_CD
+     NewNum_CV     = UpdatedNum_CV
+     NewVertVel_CV = UpdatedVertVel_CV
+     NewTemp_C     = UpdatedTemp_C
+     NewINum_CV    = UpdatedINum_CV
+
+!!! 4th (Final) Update Step
      call horizontal_solver
 
+     K4Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
+     K4Vel_CD     = NewVel_CD(1:nLons,1:nLats,1:3) - &
+                   Vel_CD(1:nLons,1:nLats,1:3)
+     K4Num_CV     = NewNum_CV(1:nLons,1:nLats,1:nSpecies) - &
+                   Num_CV(1:nLons,1:nLats,1:nSpecies)
+     K4VertVel_CV = NewVertVel_CV(1:nLons,1:nLats,1:nSpecies) - &
+                   VertVel_CV(1:nLons,1:nLats,1:nSpecies)
+     K4Temp_C     = NewTemp_C(1:nLons,1:nLats) - Temp_C(1:nLons,1:nLats)
+     K4INum_CV     = NewINum_CV(1:nLons,1:nLats,1:nIonsAdvect) - &
+                    INum_CV(1:nLons,1:nLats,1:nIonsAdvect)
+
+     UpdatedRho_C   = OrigRho_C + (1.0/6.0)*&
+           (K1Rho_C + 2.0*K2Rho_C + 2.0*K3Rho_C + K4Rho_C) 
+
+     UpdatedVel_CD   = OrigVel_CD + (1.0/6.0)*&
+           (K1Vel_CD + 2.0*K2Vel_CD + 2.0*K3Vel_CD + K4Vel_CD) 
+
+     UpdatedNum_CV   = OrigNum_CV + (1.0/6.0)*&
+           (K1Num_CV + 2.0*K2Num_CV + 2.0*K3Num_CV + K4Num_CV) 
+
+     UpdatedVertVel_CV   = OrigVertVel_CV + (1.0/6.0)*&
+           (K1VertVel_CV + 2.0*K2VertVel_CV + 2.0*K3VertVel_CV + K4VertVel_CV) 
+
+     UpdatedTemp_C   = OrigTemp_C + (1.0/6.0)*&
+           (K1Temp_C + 2.0*K2Temp_C + 2.0*K3Temp_C + K4Temp_C) 
+
+     UpdatedINum_CV   = OrigINum_CV + (1.0/6.0)*&
+           (K1INum_CV + 2.0*K2INum_CV + 2.0*K3INum_CV + K4INum_CV) 
+
+     NewRho_C      = UpdatedRho_C
+     NewVel_CD     = UpdatedVel_CD
+     NewNum_CV     = UpdatedNum_CV
+     NewVertVel_CV = UpdatedVertVel_CV
+     NewTemp_C     = UpdatedTemp_C
+     NewINum_CV    = UpdatedINum_CV
+
+     ! END RK-4
+     ! ---------
+     ! JMB:  06/2016
+     ! After the RK-4 Update, we update the state variables
      Rho(1:nLons,1:nLats,iAlt,iBlock)                     = NewRho_C
      Velocity(1:nLons,1:nLats,iAlt,:,iBlock)              = NewVel_CD
 
@@ -71,7 +292,8 @@ subroutine advance_horizontal(iBlock)
           NewTemp_C-Temperature(1:nLons,1:nLats,iAlt,iBlock)
 
      Temperature(1:nLons,1:nLats,iAlt,iBlock)             = NewTemp_C
-     VerticalVelocity(:,:,iAlt,1:nSpecies,iBlock)         = VertVel_CV
+     VerticalVelocity(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock)         = &
+         NewVertVel_CV
 
      if (minval(NewNum_CV) < 0.0) then
         write(*,*) "Negative Density after horizontal advection!!"
@@ -99,7 +321,7 @@ subroutine advance_horizontal(iBlock)
         enddo
      endif
  
-     nDensityS(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock)    = NewNum_CV
+     NDensityS(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock)    = NewNum_CV
 
      if (UseIonAdvection) then
 
@@ -392,17 +614,21 @@ contains
 
     real, dimension(1:nLats+1) :: VarNorth, VarSouth, DiffFlux
     real :: InvdLat(nLats), InvdLon
+    real :: TempVar(-1:nLats+2)
 
     integer :: iLon
 
     ! Calculate gradient and diffusive flux with respect to latitude
 
     do iLon = 1, nLons
-
+       TempVar(-1:nLats+2) = Var(iLon,-1:nLats+2)
        InvdLat = InvDLatDist_GB(iLon, 1:nLats,iAlt,iBlock)
 
-       call calc_facevalues_lats(iLon, iAlt, iBlock, Var(iLon,:), &
+       call calc_facevalues_lats(iLon, iAlt, iBlock, TempVar, &
             VarSouth, VarNorth)
+
+!       call calc_facevalues_lats(iLon, iAlt, iBlock, Var(iLon,:), &
+!            VarSouth, VarNorth)
 
        ! Gradient based on averaged Left/Right values
 
@@ -489,6 +715,7 @@ subroutine calc_facevalues_lats(iLon, iAlt, iBlock, Var, VarLeft, VarRight)
   implicit none
   
   integer, intent(in) :: iLon, iAlt, iBlock
+
   real, intent(in)    :: Var(-1:nLats+2)
   real, intent(out)   :: VarLeft(1:nLats+1), VarRight(1:nLats+1)
 

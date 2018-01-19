@@ -2,12 +2,12 @@
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 module ModMagTrace
 
-  integer, parameter :: MaxMMTPoints = 1500
+  integer, parameter :: MaxMMTPoints = 5000
   integer, allocatable :: MMTblk(:,:,:,:,:)
 
   logical, parameter :: MMTSaveInterp = .false., MMTDebug=.false.
 
-  real, parameter :: MMTlen=1000.
+  real, parameter :: MMTlen=500.
   real, allocatable :: MMTalt(:,:,:,:,:), MMTlat(:,:,:,:,:), MMTlon(:,:,:,:,:)
   real, allocatable :: MMTaltLoc(:,:,:,:,:), MMTlatLoc(:,:,:,:,:), MMTlonLoc(:,:,:,:,:)
 
@@ -78,8 +78,7 @@ contains
           GeoLat = -pi - GeoLat
           GeoLon = mod(GeoLon + pi,twopi)
        endif
-       GeoLon = mod(GeoLon, twopi)
-       if(GeoLon<0.) GeoLon=GeoLon+twopi
+       GeoLon = mod(GeoLon+twopi, twopi)
 
        GeoAlt = Altitude_GB(iLon,iLat,1,iBlock)
        IsDone = .false.
@@ -128,10 +127,8 @@ contains
                 xAlt = (GeoAlt - Altitude_GB(iLon,iLat,iAlt,iBlock)) / &
                      ( Altitude_GB(iLon,iLat,iAlt+1,iBlock) &
                      - Altitude_GB(iLon,iLat,iAlt  ,iBlock))
-                GeoLat = GeoLat + signz*xmag/bmag * MMTlen/(RBody + GeoAlt)*pi
-                GeoLon = GeoLon + signz*ymag/bmag * MMTlen/(RBody + GeoAlt)*pi &
-                     /cos(GeoLon)
-                !    /(sign(1.,GeoLon)*max(0.01,abs(cos(GeoLon))))
+                GeoLat = GeoLat + signz*xmag/bmag * MMTlen/(RBody + GeoAlt) !*pi
+                GeoLon = GeoLon + signz*ymag/bmag * MMTlen/(RBody + GeoAlt)/cos(GeoLat) !*pi &
 
                 if (GeoLat > pi/2.) then
                    GeoLat = pi - GeoLat

@@ -1,7 +1,7 @@
 !  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 !-----------------------------------------------------------------------------
-! $Id: init_msis.Earth.f90,v 1.35 2013/11/24 18:09:33 ridley Exp $
+! $Id: init_msis.Earth.f90,v 1.40 2017/08/09 15:18:05 ridley Exp $
 ! Author: Aaron Ridley, UMichigan
 !
 ! Modified:
@@ -21,7 +21,7 @@ subroutine get_msis_temperature(lon, lat, alt, t, h)
   use ModGITM
   use ModRCMR, only: RCMRFlag, RCMROutType
 
-  use EUA_ModMsis90, only: meter6, gtd6
+  use EUA_ModMsis00, only: meters, gtd7
 
   implicit none
 
@@ -29,7 +29,7 @@ subroutine get_msis_temperature(lon, lat, alt, t, h)
   real, intent(out) :: t, h
 
   real, dimension(1:2) :: msis_temp
-  real, dimension(1:8) :: msis_dens
+  real, dimension(1:9) :: msis_dens
 
   real :: LonDeg, LatDeg, AltKm, LST
   real,dimension(7)    :: AP  
@@ -40,7 +40,7 @@ subroutine get_msis_temperature(lon, lat, alt, t, h)
   
   ap=10.0
 
-  call meter6(.true.)
+  call meters(.true.)
 
   LonDeg = lon*180.0/pi
   LatDeg = lat*180.0/pi
@@ -64,10 +64,10 @@ subroutine get_msis_temperature(lon, lat, alt, t, h)
   endif
 
   if(RCMRFlag .and. RCMROutType == "F107") then
-     CALL GTD6(iJulianDay,utime,AltKm,LatDeg,LonDeg,LST, &
+     CALL GTD7(iJulianDay,utime,AltKm,LatDeg,LonDeg,LST, &
           f107a_msis,f107_msis,AP,48,msis_dens,msis_temp)
   else
-     call GTD6(iJulianDay,utime,AltKm,LatDeg,LonDeg,LST,&
+     call GTD7(iJulianDay,utime,AltKm,LatDeg,LonDeg,LST,&
           F107A,F107,AP,48,msis_dens,msis_temp)
   end if
 
@@ -98,14 +98,14 @@ subroutine init_msis
   use ModPlanet
   use ModTime
 
-  use EUA_ModMsis90, ONLY: meter6, gtd6, tselec
+  use EUA_ModMsis00, ONLY: meters, gtd7, tselec
 
   implicit none
 
   ! msis variables
 
   real, dimension(1:2) :: msis_temp
-  real, dimension(1:8) :: msis_dens
+  real, dimension(1:9) :: msis_dens
 
   real, dimension(25) :: sw
 
@@ -116,6 +116,8 @@ subroutine init_msis
 
   real*4 :: hwm_utime, hwm_alt, hwm_lat, hwm_lon, hwm_lst
   real*4 :: hwm_f107a, hwm_f107, hwm_ap(2), qw(2)
+
+  character(250) :: path = './DataIn/'
 
   call report("init_msis",0)
 
@@ -135,7 +137,7 @@ subroutine init_msis
   !        T(1) - EXOSPHERIC TEMPERATURE
   !        T(2) - TEMPERATURE AT ALT
   !
-  !      TO GET OUTPUT IN M-3 and KG/M3:   CALL METER6(.TRUE.) 
+  !      TO GET OUTPUT IN M-3 and KG/M3:   CALL METERS(.TRUE.) 
   !
   !      O, H, and N set to zero below 72.5 km
   !      Exospheric temperature set to average for altitudes below 120 km.
@@ -144,7 +146,7 @@ subroutine init_msis
 
   ! We want units of /m3 and not /cm3
 
-  call meter6(.true.)
+  call meters(.true.)
 
   if (UseMsisTides) then
      sw = 1
@@ -195,11 +197,18 @@ subroutine init_msis
         do iLon=-1,nLons+2
            do iLat=-1,nLats+2
 
-              geo_lat = Latitude(iLat,iBlock)*180.0/pi
-              if (geo_lat < -90.0) geo_lat = -180.0-geo_lat
-              if (geo_lat >  90.0) geo_lat =  180.0-geo_lat
-              geo_lon = Longitude(iLon,iBlock)*180.0/pi
+              geo_lon = mod(Longitude(iLon,iBlock)*180.0/pi + 360.0, 360.0)
 
+              geo_lat = Latitude(iLat,iBlock)*180.0/pi
+              if (geo_lat < -90.0) then
+                 geo_lat = -180.0-geo_lat
+                 geo_lon = mod(geo_lon+180.0,360.0)
+              endif
+              if (geo_lat >  90.0) then
+                 geo_lat =  180.0-geo_lat
+                 geo_lon = mod(geo_lon+180.0,360.0)
+              endif
+              
               geo_alt = Altitude_GB(iLon, iLat, iAlt, iBlock)/1000.0
               geo_lst = mod(utime/3600.0+geo_lon/15.0,24.0)
 
@@ -207,13 +216,13 @@ subroutine init_msis
               ! Call MSIS (results will be im mks units)
               !
 
-              CALL GTD6(iJulianDay,utime,geo_alt,geo_lat,geo_lon,geo_lst, &
+              CALL GTD7(iJulianDay,utime,geo_alt,geo_lat,geo_lon,geo_lst, &
                    F107A,F107,AP,48,msis_dens,msis_temp)
 
               ! Initialize densities to zero in case msis does not set it
               NDensityS(iLon,iLat,iAlt,:,iBlock) = 1.0
 
-              NDensityS(iLon,iLat,iAlt,iH_,iBlock)          = &
+              NDensityS(iLon,iLat,iAlt,iHe_,iBlock)         = &
                    max(msis_dens(1),100.0)
               NDensityS(iLon,iLat,iAlt,iO_3P_,iBlock)       = &
                    max(msis_dens(2),100.0)
@@ -223,7 +232,7 @@ subroutine init_msis
                    max(msis_dens(4),100.0)
 !              NDensityS(iLon,iLat,iAlt,iAr_,iBlock)         = &
 !                   max(msis_dens(5),100.0)
-              NDensityS(iLon,iLat,iAlt,iHe_,iBlock)         = &
+              NDensityS(iLon,iLat,iAlt,iH_,iBlock)          = &
                    max(msis_dens(7),100.0)
               NDensityS(iLon,iLat,iAlt,iN_4S_,iBlock)       = &
                    max(msis_dens(8),100.0)
@@ -248,10 +257,6 @@ subroutine init_msis
               Temperature(iLon,iLat,iAlt,iBlock) = &
                    msis_temp(2)/TempUnit(iLon,iLat,iAlt)
 
-              InvScaleHeight(iLon,iLat,iAlt,iBlock)  =  &
-                   -Gravity_GB(iLon,iLat,iAlt,iBlock) / &
-                   Temperature(iLon,iLat,iAlt,iBlock)
-
               Rho(iLon,iLat,iAlt,iBlock) = msis_dens(6)
 
 !              ! The initial profile of [NO] is refered to:
@@ -273,7 +278,7 @@ subroutine init_msis
 !                   log(NDensityS(iLon,iLat,iAlt,iNO_,iBlock))
 
               ffactor = 6.36*log(f107)-13.8
-              no = (ffactor * 1.0e13 + 8.0e13)*12.4 ! 12.4 is roughly exp
+              no = (ffactor * 1.0e13 + 8.0e13)* 1.24 ! 12.4 ! 12.4 is roughly exp
 
               h = -Boltzmanns_Constant * msis_temp(2) / &
                    (Gravity_GB(iLon,iLat,iAlt,iBlock) * Mass(iNO_)) /1000.0
@@ -287,7 +292,6 @@ subroutine init_msis
               LogNS(iLon,iLat,iAlt,1:nSpecies,iBlock) = &
                    log(NDensityS(iLon,iLat,iAlt,1:nSpecies,iBlock))
 
-
               hwm_utime = utime
               hwm_alt = geo_alt
               hwm_lat = geo_lat
@@ -296,14 +300,25 @@ subroutine init_msis
               hwm_f107a = f107a
               hwm_f107 = f107
               hwm_ap(1) = -1.0
-              hwm_ap(2) = -1.0
+              hwm_ap(2) =  4.0
               
-              call HWM07(iyd,hwm_utime,hwm_alt,hwm_lat,hwm_lon,hwm_lst,&
-                   hwm_f107a,hwm_f107,hwm_ap,qw)
+!              call HWM07(iyd,hwm_utime,hwm_alt,hwm_lat,hwm_lon,hwm_lst,&
+!                   hwm_f107a,hwm_f107,hwm_ap,qw)
+              if (UseMsisTides) then
 
-              ! qw is north&east
-              Velocity(iLon,iLat,iAlt,iEast_,iBlock) = qw(2)
-              Velocity(iLon,iLat,iAlt,iNorth_,iBlock) = qw(1)
+                 call hwm14(iyd,hwm_utime,hwm_alt,hwm_lat,hwm_lon,hwm_lst,&
+                      hwm_f107a,hwm_f107,hwm_ap,path,qw)
+
+                 ! qw is north&east
+                 Velocity(iLon,iLat,iAlt,iEast_,iBlock) = qw(2)
+                 Velocity(iLon,iLat,iAlt,iNorth_,iBlock) = qw(1)
+
+              else
+
+                 Velocity(iLon,iLat,iAlt,iEast_,iBlock) = 0.0
+                 Velocity(iLon,iLat,iAlt,iNorth_,iBlock) = 0.0
+
+              endif
 
            enddo
         enddo
@@ -332,32 +347,48 @@ end subroutine init_msis
 !
 !--------------------------------------------------------------
 
-subroutine msis_bcs(iJulianDay,UTime,Alt,Lat,Lon,Lst, &
+subroutine msis_bcs(iJulianDay,UTime,Alt,LatIn,LonIn,Lst, &
      F107A,F107,AP,LogNS, Temp, LogRho, v)
 
   use ModTime, only : iTimeArray
   use ModPlanet
-
-  use EUA_ModMsis90, ONLY: gtd6
+  use ModInputs, only: UseMSISTides
+  use EUA_ModMsis00, ONLY: gtd7
 
   implicit none
 
   integer, intent(in) :: iJulianDay
-  real, intent(in) :: uTime, Alt, Lat, Lon, LST, f107a, f107
+  real, intent(in) :: uTime, Alt, LatIn, LonIn, LST, f107a, f107
   real, intent(in):: ap
   real, intent(out) :: LogNS(nSpecies), Temp, LogRho, v(2)
 
+  real :: lat, lon
+  
   real :: msis_temp(2)
-  real :: msis_dens(8)
+  real :: msis_dens(9)
   real :: AP_I(7), ffactor, no
   integer :: iyd
 
   real*4 :: hwm_utime, hwm_alt, hwm_lat, hwm_lon, hwm_lst
   real*4 :: hwm_f107a, hwm_f107, hwm_ap(2), qw(2)
 
+  character(250) :: path = './DataIn/'
+  
+  lat = LatIn
+  lon = mod(LonIn + 360.0,360.0)
+  
+  if (lat >  90) then
+     lat =  180 - lat
+     lon = mod(lon + 180.0, 360.0)
+  endif
+  if (lat < -90) then
+     lat = -180 - lat
+     lon = mod(lon + 180.0, 360.0)
+  endif
+  
   !----------------------------------------------------------------------------
   AP_I = AP
-  CALL GTD6(iJulianDay,uTime,Alt,Lat,Lon,LST, &
+  CALL GTD7(iJulianDay,uTime,Alt,Lat,Lon,LST, &
        F107A,F107,AP_I,48,msis_dens,msis_temp)
 
 !  write(*,*) msis_dens(2), msis_dens(3), msis_dens(4), msis_dens(8), msis_dens(6), msis_temp(2)
@@ -367,10 +398,12 @@ subroutine msis_bcs(iJulianDay,UTime,Alt,Lat,Lon,Lst, &
   LogNS(iN2_) = alog(max(msis_dens(3),1.0))
   if (nSpecies >= iN_4S_) &
        LogNS(min(nSpecies,iN_4S_)) = alog(max(msis_dens(8),1.0))
+  if (nSpecies >= iHe_) &
+       LogNS(min(nSpecies,iHe_)) = alog(max(msis_dens(1),1.0))
 
   if (nSpecies >= iNO_) then
      ffactor = 6.36*log(f107)-13.8
-     no = ffactor * 1.0e13 + 8.0e13
+     no = (ffactor * 1.0e13 + 8.0e13)
      LogNS(min(nSpecies,iNO_))   = alog(no)
   endif
 
@@ -388,12 +421,19 @@ subroutine msis_bcs(iJulianDay,UTime,Alt,Lat,Lon,Lst, &
   hwm_ap(1) = -1.0
   hwm_ap(2) = -1.0
 
-  call HWM07(iyd,hwm_utime,hwm_alt,hwm_lat,hwm_lon,hwm_lst,&
-       hwm_f107a,hwm_f107,hwm_ap,qw)
+!  call HWM07(iyd,hwm_utime,hwm_alt,hwm_lat,hwm_lon,hwm_lst,&
+!       hwm_f107a,hwm_f107,hwm_ap,qw)
 
-  ! qw is north&east
-  V(1) = qw(2)
-  V(2) = qw(1)
+  if (UseMSISTides) then
+     call hwm14(iyd,hwm_utime,hwm_alt,hwm_lat,hwm_lon,hwm_lst,&
+          hwm_f107a,hwm_f107,hwm_ap,path,qw)
+     ! qw is north&east
+     V(1) = qw(2)
+     V(2) = qw(1)
+  else
+     V(1) = 0.0
+     V(2) = 0.0
+  endif
 
 end subroutine msis_bcs
 
@@ -411,7 +451,9 @@ subroutine calc_co2(iBlock)
   real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2) :: &
        Have, Hn2, Ho, r, Hco2, Hco2t
 
-  Have  = 1.0/InvScaleHeight(:,:,:,iBlock)
+  Have  = -Boltzmanns_Constant * &
+       Temperature(:,:,:,iBlock)*TempUnit / ( &
+       MeanMajorMass * Gravity_GB(:,:,:,iBlock))
   Hn2   = -Boltzmanns_Constant * &
        Temperature(:,:,:,iBlock)*TempUnit / ( &
        Mass(iN2_) * Gravity_GB(:,:,:,iBlock))

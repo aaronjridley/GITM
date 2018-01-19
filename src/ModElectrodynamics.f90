@@ -34,6 +34,7 @@ module ModElectrodynamics
   real, dimension(:,:), allocatable :: SigmaCCMC
   real, dimension(:,:), allocatable :: SigmaPLMC
   real, dimension(:,:), allocatable :: SigmaLPMC
+  real, dimension(:,:), allocatable :: AverageMC
 
   real, dimension(:,:), allocatable :: KDpmMC, kpmMC
   real, dimension(:,:), allocatable :: KDlmMC, klmMC
@@ -70,9 +71,11 @@ module ModElectrodynamics
   real, dimension(:,:), allocatable :: &
        SmallMagLocTimeMC, SmallMagLatMC, SmallPotentialMC
 
-  integer :: nMagLats = 180  ! 1 degrees
-  integer :: nMagLons = 180  ! 2 degrees
-
+  integer :: nMagLats = 140  ! 1 degrees
+  integer :: nMagLons = 90  ! 4 degrees
+  real :: MagLatRes = 0.5
+  real :: MagLonRes = 4.0
+  
   !----------------------------------------------------------------------
   ! These are in geographic coordinates : 
 

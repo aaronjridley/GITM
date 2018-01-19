@@ -1,27 +1,27 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
 
 module ModPlanet
 
   use ModConstants
+  use ModOrbital
   use ModSizeGITM
 
   implicit none
 ! Modified (01/18/07) : SWB :   Aij, s-exponents for mutual diffusion
 ! Modified (06/12/08) : SWB :   ordering to species revised
 ! Modified (06/12/08) : SWB :   nSpecies = 6; nSpeciesTotal = 11
+! Modified (04/21/17) : SWB :   nEmissions = 10; iENOUV = 1 
 ! Majors (6):  COntrol the Pressures Gradients and winds
-  integer, parameter :: nSpecies = 6
+  integer, parameter :: nSpecies = 8
   integer, parameter :: iCO2_    = 1
   integer, parameter :: iCO_     = 2
   integer, parameter :: iO_      = 3
   integer, parameter :: iN2_     = 4
-  integer, parameter :: iO2_    = 5
-  integer, parameter :: iAr_    = 6
+  integer, parameter :: iO2_     = 5
+  integer, parameter :: iAr_     = 6
+  integer, parameter :: iHe_     = 7
+  integer, parameter :: iN4S_  =  8
 
 ! Minors (6) : Ride on background of mean winds derived from majors
-  integer, parameter :: iN4S_  =  7
-  integer, parameter :: iHe_ =  8
   integer, parameter :: iH_ =  9
   integer, parameter :: iN2D_ =  10
   integer, parameter :: iNO_ =  11
@@ -39,6 +39,15 @@ module ModPlanet
   integer, parameter  :: nIonsAdvect = 0
   integer, parameter  :: nSpeciesAll = 16 !Ions plus neutrals
 
+! Extra ions, just to be able to compile merged version (LHR, 07/2017):
+  integer, parameter :: iO_3P_   = -1
+  integer, parameter :: iN_4S_   = -1
+  integer, parameter  :: iO_4SP_ = -1
+  integer, parameter  :: iNP_    = -1
+  integer, parameter  :: iO_2DP_ = -1
+  integer, parameter  :: iO_2PP_ = -1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
   character (len=20) :: cSpecies(nSpeciesTotal)
   character (len=20) :: cIons(nIons)
 
@@ -53,6 +62,14 @@ module ModPlanet
   real, parameter :: HeatCapacityCO2           = 735.94              ! J/(Kg*K)
 
   ! When you want to program in emissions, you can use this...
+  integer, parameter :: iENOUV_ = 1
+! integer, parameter :: iE7320_ = 2
+! integer, parameter :: iE3726_ = 3
+! integer, parameter :: iE5200_ = 4
+! integer, parameter :: iE10400_ = 5
+! integer, parameter :: iE6300_ = 6
+! integer, parameter :: iE6364_ = 7
+
   integer, parameter :: nEmissions = 10
 
   real, parameter :: GC_Mars                = 3.73                    ! m/s^2
@@ -71,6 +88,7 @@ module ModPlanet
   real, parameter :: Tilt = 25.19
 
   ! This is the Vernal Equinox at Midnight (Ls = 0!!!)
+  ! Revised by D. Pawlwoski:  18-FEB-2013
   ! Earth-Mars clocks are set from this epoch at vernal equinox
   integer, parameter :: iVernalYear   = 1998
   integer, parameter :: iVernalMonth  =    7
@@ -85,11 +103,24 @@ module ModPlanet
 ! real, parameter :: SunOrbit_D = 0.00
 ! real, parameter :: SunOrbit_E = 0.00
 
- real, parameter :: SunOrbit_A = 1.52369
+  real, parameter :: SunOrbit_A = 1.52369
   real, parameter :: SunOrbit_B = 0.093379
   real, parameter :: SunOrbit_C = 335.538
   real, parameter :: SunOrbit_D = 355.45332
   real, parameter :: SunOrbit_E = 68905103.78
+
+  real :: semimajoraxis_0 = semimajor_Mars
+  real :: eccentricity_0 = eccentricity_Mars
+  real :: inclination_0 = inclination_Mars
+  real :: longitudePerihelion_0 = longitudePerihelion_Mars
+  real :: longitudeNode_0 = longitudeNode_Mars
+  real :: meanLongitude_0 = meanLongitude_Mars
+  real :: semimajordot = semimajordot_Mars
+  real :: eccentricitydot = eccentricitydot_Mars
+  real :: inclinationdot = inclinationdot_Mars
+  real :: longitudePeriheliondot = longitudePeriheliondot_Mars
+  real :: longitudeNodedot = longitudeNodedot_Mars
+  real :: meanLongitudedot = meanLongitudedot_Mars
 
   real, parameter :: DaysPerYear = 670.0
   real, parameter :: SecondsPerYear = DaysPerYear * Rotation_Period
@@ -117,43 +148,113 @@ module ModPlanet
   integer, parameter :: i3726_ = 11
 !  real :: KappaTemp0 = 2.22e-4
 
+
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! These are Modified for Mars by SWB: 1/18/07
   ! -- Most source state Dij = Dji (check)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- real, parameter, dimension(6, 6) :: Diff0 = 1.0e17 * reshape( (/ &
-  ! These are Aij coefficients from B&K (1973) formulation: Aij*1.0E+17
-  ! Use Jared Bell's Titan GITM formulation for Mars GITM
-! integer, parameter :: iCO2_    = 1
-! integer, parameter :: iCO_     = 2
-! integer, parameter :: iO_      = 3
-! integer, parameter :: iN2_     = 4
-! integer, parameter :: iO2_     = 5
-! integer, parameter :: iAr_     = 6
-     !------------------------------------------------+
-     ! i=C02      CO      O        N2      O2      Ar  
-     !------------------------------------------------+
-       0.0000, 0.7762, 0.2219,  0.6580,  0.5770, 1.1920,         &  ! CO2
-       0.7762, 0.0000, 0.9466,  0.9280,  0.8300, 0.6625,         &  ! CO
-       0.2219, 0.9466, 0.0000,  0.9690,  0.9690, 0.5510,         &  ! O
-       0.6580, 0.9280, 0.9690,  0.0000,  0.7150, 0.6640,         &  ! N2
-       0.5770, 0.8300, 0.9690,  0.7150,  0.0000, 0.7170,         &  ! O2
-       1.1920, 0.6625, 0.5510,  0.6640,  0.7170, 0.000 /), (/6,6/) )! Ar
+
+! real, parameter, dimension(6, 6) :: Diff0 = 1.0e17 * reshape( (/ &
+!  ! These are Aij coefficients from B&K (1973) formulation: Aij*1.0E+17
+!  ! Use Jared Bell's Titan GITM formulation for Mars GITM
+!! integer, parameter :: iCO2_    = 1
+!! integer, parameter :: iCO_     = 2
+!! integer, parameter :: iO_      = 3
+!! integer, parameter :: iN2_     = 4
+!! integer, parameter :: iO2_     = 5
+!! integer, parameter :: iAr_     = 6
+!     !------------------------------------------------+
+!     ! i=C02      CO      O        N2      O2      Ar  
+!     !------------------------------------------------+
+!       0.0000, 0.7762, 0.2219,  0.6580,  0.5770, 1.1920,         &  ! CO2
+!       0.7762, 0.0000, 0.9466,  0.9280,  0.8300, 0.6625,         &  ! CO
+!       0.2219, 0.9466, 0.0000,  0.9690,  0.9690, 0.5510,         &  ! O
+!       0.6580, 0.9280, 0.9690,  0.0000,  0.7150, 0.6640,         &  ! N2
+!       0.5770, 0.8300, 0.9690,  0.7150,  0.0000, 0.7170,         &  ! O2
+!       1.1920, 0.6625, 0.5510,  0.6640,  0.7170, 0.000 /), (/6,6/) )! Ar
+!
+!  ! These are s-exponents from B&K (1973) formulation: T**s
+!
+!   real, parameter, dimension(6, 6) :: DiffExp = reshape( (/ &
+!     !------------------------------------------------+
+!     ! i=C02      CO      O     N2     O2     Ar  
+!     !------------------------------------------------+
+!       0.000,  0.750,  0.750, 0.752, 0.749, 0.750,  &           ! CO2
+!       0.750,  0.000,  0.750, 0.710, 0.724, 0.750,  &           ! CO
+!       0.750,  0.750,  0.000, 0.774, 0.774, 0.841,  &           ! O
+!       0.752,  0.710,  0.774, 0.000, 0.750, 0.752,  &           ! N2
+!       0.749,  0.724,  0.774, 0.750, 0.000, 0.736,  &           ! O2
+!       0.750,  0.750,  0.841, 0.752, 0.736, 0.000 /), (/6,6/) ) ! AR
+! 
+!!     Arrays filled in init_radcool in data statements (np = 68)
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! These are Modified for Mars by SWB: 1/18/07
+  ! -- Most source state Dij = Dji (check)
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!real, parameter, dimension(nSpecies, nSpecies) :: Diff0 = 1.0e17 * reshape( (/ &
+!     !----------------------------------------------------------+
+!     ! i=C02      CO      O        N2      O2      Ar    He 
+!     !----------------------------------------------------------+
+!       0.0000, 0.7762, 0.2219,  0.6580,  0.5770, 1.1920, 2.4292, &  ! CO2
+!       0.7762, 0.0000, 0.9466,  0.9280,  0.8300, 0.6625,1159.55, &  ! CO
+!       0.2219, 0.9466, 0.0000,  0.9690,  0.9690, 0.5510, 3.4346, &  ! O
+!       0.6580, 0.9280, 0.9690,  0.0000,  0.7150, 0.6640,1159.55, &  ! N2
+!       0.5770, 0.8300, 0.9690,  0.7150,  0.0000, 0.7170, 3.2070, &  ! O2
+!       1.1920, 0.6625, 0.5510,  0.6640,  0.7170, 0.0000,1000.00, &  ! Ar
+!       2.4292,1159.55, 3.4346,1159.550,  3.2070,1000.00, 0.0000 /),  &  ! He
+!       (/nSpecies,nSpecies/) )
+!
+!
+!  ! These are s-exponents from B&K (1973) formulation: T**s
+! real, parameter, dimension(nSpecies, nSpecies) :: DiffExp = reshape( (/ &
+!     !----------------------------------------------------------+
+!     ! i=C02      CO      O     N2     O2     Ar     He 
+!     !----------------------------------------------------------+
+!       0.000,  0.750,  0.750, 0.752, 0.749, 0.750, 0.720, &     ! CO2
+!       0.750,  0.000,  0.750, 0.710, 0.724, 0.750, 0.524, &     ! CO
+!       0.750,  0.750,  0.000, 0.774, 0.774, 0.841, 0.749, &     ! O
+!       0.752,  0.710,  0.774, 0.000, 0.750, 0.752, 0.524, &     ! N2
+!       0.749,  0.724,  0.774, 0.750, 0.000, 0.736, 0.710, &     ! O2
+!       0.750,  0.750,  0.841, 0.752, 0.736, 0.000, 0.524, &     ! Ar
+!       0.720,  0.524,  0.749, 0.524, 0.710, 0.524, 0.000 /), &  ! He
+!       (/nSpecies,nSpecies/) ) 
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ real, parameter, dimension(nSpecies, nSpecies) :: Diff0 = 1.0e17 * reshape( (/ &
+     !----------------------------------------------------------------+
+     ! i=C02      CO      O        N2      O2      Ar    He       N4S
+     !----------------------------------------------------------------+
+       0.0000, 0.7762, 0.2219,  0.6580,  0.5770, 1.1920, 2.4292, 0.2219,&  ! CO2
+       0.7762, 0.0000, 0.9466,  0.9280,  0.8300, 0.6625,1159.55, 0.9466,&  ! CO
+       0.2219, 0.9466, 0.0000,  0.9690,  0.9690, 0.5510, 3.4346, 0.9690, &  ! O
+       0.6580, 0.9280, 0.9690,  0.0000,  0.7150, 0.6640,1159.55, 0.9690,&  ! N2
+       0.5770, 0.8300, 0.9690,  0.7150,  0.0000, 0.7170, 3.2070, 0.9690,&  ! O2
+       1.1920, 0.6625, 0.5510,  0.6640,  0.7170, 0.0000,1000.00, 0.5510, &  ! Ar
+       2.4292,1159.55, 3.4346,1159.550,  3.2070,1000.00, 0.0000, 3.34346, &  ! He
+       0.2219, 0.9466, 0.9690,  0.9690,  0.9690, 0.5510, 3.4346, 0.0000 /), &  ! N4S
+       (/nSpecies,nSpecies/) )
+
 
   ! These are s-exponents from B&K (1973) formulation: T**s
+   real, parameter, dimension(nSpecies, nSpecies) :: DiffExp = reshape( (/ &
+     !----------------------------------------------------------+
+     ! i=C02      CO      O     N2     O2     Ar     He 
+     !----------------------------------------------------------+
+       0.000,  0.750,  0.750, 0.752, 0.749, 0.750, 0.720, 0.750,&  ! CO2
+       0.750,  0.000,  0.750, 0.710, 0.724, 0.750, 0.524, 0.750,&  ! CO
+       0.750,  0.750,  0.000, 0.774, 0.774, 0.841, 0.749, 0.750,&  ! O
+       0.752,  0.710,  0.774, 0.000, 0.750, 0.752, 0.524, 0.774,&  ! N2
+       0.749,  0.724,  0.774, 0.750, 0.000, 0.736, 0.710, 0.774,&  ! O2
+       0.750,  0.750,  0.841, 0.752, 0.736, 0.000, 0.524, 0.841,&  ! Ar
+       0.720,  0.524,  0.749, 0.524, 0.710, 0.524, 0.000, 0.749,&  ! He
+       0.750,  0.750,  0.750, 0.774, 0.774, 0.841, 0.749, 0.000 /), &     ! O
+       (/nSpecies,nSpecies/) ) 
 
-   real, parameter, dimension(6, 6) :: DiffExp = reshape( (/ &
-     !------------------------------------------------+
-     ! i=C02      CO      O     N2     O2     Ar  
-     !------------------------------------------------+
-       0.000,  0.750,  0.750, 0.752, 0.749, 0.750,  &           ! CO2
-       0.750,  0.000,  0.750, 0.710, 0.724, 0.750,  &           ! CO
-       0.750,  0.750,  0.000, 0.774, 0.774, 0.841,  &           ! O
-       0.752,  0.710,  0.774, 0.000, 0.750, 0.752,  &           ! N2
-       0.749,  0.724,  0.774, 0.750, 0.000, 0.736,  &           ! O2
-       0.750,  0.750,  0.841, 0.752, 0.736, 0.000 /), (/6,6/) ) ! AR
- 
-!     Arrays filled in init_radcool in data statements (np = 68)
+
+
+
   integer, parameter :: np=68,nInAlts = 124
   real,dimension(np) :: pnbr,ef1,ef2,co2vmr,o3pvmr,n2covmr
 
@@ -175,6 +276,8 @@ module ModPlanet
 
   real, dimension(nLons, nLats,nBlocksMax) :: &
        fir,fvis,Tbot,TopL,Psurf,P125,iAltMinIono,DustDistribution,ConrathDistribution
+
+  real, dimension(1:nLons,1:nLats,1:nAlts) :: MarsOrbitalDistance
 
 
 !################ Nelli, April 07 ##########################
@@ -198,7 +301,7 @@ module ModPlanet
 
 ! Surface and subsurface temperature constants
        real, parameter :: Pa = 5.927E+7
-       real, parameter :: Pd = 88775.0
+       real, parameter :: PdM = 88775.0
 
 ! Stefan-Boltzmann constant in SI
        real, parameter :: SBconstant = 5.67E-8
@@ -511,10 +614,13 @@ contains
     cIons(iN2P_)    = "N!D2!U+!N"
     cIons(ie_)     = "e-"
 
-    Vibration(iCO2_)  = 7.0  ! Corrected by Bougher (01/18/07)!!!!
+    Vibration(iCO2_)  = 8.66667  ! This gives Gamma = ~1.3 (experimental value)
+    !Vibration(iCO2_)  = 7.0  ! Corrected by Bougher (01/18/07)!!!!
     Vibration(iCO_)   = 7.0
     Vibration(iO_)    = 5.0
     Vibration(iN2_)   = 7.0
+    Vibration(iHe_)   = 5.0
+    Vibration(iN4S_)   = 5.0
 
     MassI(iOP_)   = Mass(iO_)
     MassI(iNOP_)  = Mass(iO_) + Mass(iN2_)/2.0

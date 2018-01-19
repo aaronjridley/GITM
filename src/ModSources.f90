@@ -11,10 +11,20 @@ module ModSources
   !/
 
   real, dimension(nLons, nLats, nAlts) :: &
-       Conduction, NOCooling, OCooling, ElectronHeating, &
+       NOCooling, OCooling, ElectronHeating, &
        AuroralHeating, JouleHeating, IonPrecipHeating, &
-       EddyCond,EddyCondAdia,MoleConduction
+       EddyCond,EddyCondAdia
 
+  real, dimension(nLons, nLats, 0:nAlts+1) :: MoleConduction
+
+! JMB: 07/13/2017.  Conduction must extend 0:nAlts+1
+! for the 2nd order update and 2nd order boundary conditions
+  real, dimension(nLons, nLats, 0:nAlts+1) :: &
+       Conduction
+
+  real, dimension(nLons, nLats) :: &
+       JouleHeating2d, EuvHeating2d, HeatTransfer2d, RadiativeCooling2d
+       
   real, allocatable :: EuvHeating(:,:,:,:)
   real, allocatable :: eEuvHeating(:,:,:,:)
   real, allocatable :: PhotoElectronHeating(:,:,:,:)
@@ -24,6 +34,11 @@ module ModSources
   real, allocatable :: EuvHeatingErgs(:,:,:,:)
   real, allocatable :: LowAtmosRadRate(:,:,:,:)
   real, allocatable :: UserHeatingRate(:,:,:,:)
+
+  real, allocatable :: QnirTOT(:,:,:,:)
+  real, allocatable :: QnirLTE(:,:,:,:)
+  real, allocatable :: CirLTE(:,:,:,:)
+
 
   real, dimension(nLons,nLats,nAlts,3) :: GWAccel = 0.0
 
@@ -35,7 +50,7 @@ module ModSources
 
   
   integer, parameter :: nReactions = 26
- real :: ChemicalHeatingSpecies(nLons, nLats, nAlts,nReactions)
+  real :: ChemicalHeatingSpecies(nLons, nLats, nAlts,nReactions)
   real :: ChemicalHeatingS(nReactions)
   real :: NeutralSourcesTotal(nAlts, nSpeciesTotal)
   real :: NeutralLossesTotal(nAlts, nSpeciesTotal)
@@ -87,6 +102,10 @@ module ModSources
   real, allocatable :: IonPrecipIonRateS(:,:,:,:,:)
   real, allocatable :: IonPrecipHeatingRate(:,:,:,:)
   real :: ChemicalHeatingRate(nLons, nLats, nAlts)
+  real :: ChemicalHeatingRateIon(nLons, nLats, nAlts)
+  real :: ChemicalHeatingRateEle(nLons, nLats, nAlts)
+
+  
 
   real :: HorizontalTempSource(nLons, nLats, nAlts)
 
@@ -110,6 +129,9 @@ contains
     allocate(RadCoolingErgs(nLons, nLats, nAlts,nBlocks))
     allocate(EuvHeatingErgs(nLons, nLats, nAlts,nBlocks))
     allocate(LowAtmosRadRate(nLons, nLats, nAlts,nBlocks))
+    allocate(QnirTOT(nLons, nLats, nAlts,nBlocks))
+    allocate(QnirLTE(nLons, nLats, nAlts,nBlocks))
+    allocate(CirLTE(nLons, nLats, nAlts,nBlocks))
     allocate(UserHeatingRate(nLons, nLats, nAlts,nBlocks))
     allocate(ISourcesTotal(nLons,nLats,nAlts,nIons-1,nBlocks))
     allocate(ILossesTotal(nLons,nLats,nAlts,nIons-1,nBlocks))
@@ -121,6 +143,8 @@ contains
   end subroutine init_mod_sources
   !=========================================================================
   subroutine clean_mod_sources
+
+
     if(.not.allocated(EuvHeating)) RETURN
     deallocate(EuvHeating)
     deallocate(eEuvHeating)
@@ -130,6 +154,9 @@ contains
     deallocate(RadCoolingErgs)
     deallocate(EuvHeatingErgs)
     deallocate(LowAtmosRadRate)
+    deallocate(QnirTOT)
+    deallocate(QnirLTE)
+    deallocate(CirLTE)
     deallocate(UserHeatingRate)
     deallocate(ISourcesTotal)
     deallocate(ILossesTotal)

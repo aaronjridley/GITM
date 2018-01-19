@@ -4,11 +4,18 @@
 module ModInputs
 
   use ModConstants
-  use ModPlanet, only : nSpecies, Rotation_Period
+  use ModPlanet, only : nSpecies, Rotation_Period, nSpeciesTotal, nIons
   use ModIoUnit, only : UnitTmp_
   use ModKind, only:    Real8_
 
   implicit none
+
+  logical :: iRhoOutputList=.true.
+  logical :: iNeutralDensityOutputList(nSpeciesTotal)=.true.
+  logical :: iNeutralWindOutputList(3)=.true.
+  logical :: iIonDensityOutputList(nIons)=.true.
+  logical :: iIonWindOutputList(3)=.true.
+  logical :: iTemperatureOutputList(3)=.true.
 
   integer                   :: useDART = 0 !alexey, default is to not use DART
 
@@ -29,8 +36,8 @@ module ModInputs
 
   character (len=iCharLen_) :: cInputFile = "UAM.in"
 
-  character (len=iCharLen_) :: cAMIEFileSouth
-  character (len=iCharLen_) :: cAMIEFileNorth
+  character (len=iCharLen_) :: cAMIEFileSouth = "none"
+  character (len=iCharLen_) :: cAMIEFileNorth = "none"
 
   character (len=iCharLen_) :: PotentialModel
   character (len=iCharLen_) :: AuroralModel
@@ -76,7 +83,8 @@ module ModInputs
   logical :: UsePerturbation = .false., DuringPerturb = .false.
 
   real :: CFL = 0.25
-
+  real :: FixedDt = 1.0e32
+  
   integer :: nOutputTypes = 0
   integer, parameter :: nMaxOutputTypes = 50
   character (len=iCharLen_), dimension(nMaxOutputTypes) :: OutputType
@@ -164,14 +172,10 @@ module ModInputs
   character (len=iCharLen_) :: IonIonizationFilename
   character (len=iCharLen_) :: IonHeatingRateFilename
 
-  logical :: UseEddyInSolver = .false.
-  logical :: UseNeutralFrictionInSolver = .false.
-  real    :: MaximumVerticalVelocity = 1000.0
   logical :: UseDamping = .false.
 
 !! EddyVelocity Terms
-  logical :: UseBoquehoAndBlelly = .false.
-  logical :: UseEddyCorrection = .false.
+  real    :: MaximumVerticalVelocity = 1000.0
 
   !\
   ! These are logicals to turn off and on forcing terms:
@@ -181,12 +185,16 @@ module ModInputs
   logical :: UseGravity          = .true.
   logical :: UseIonDrag          = .true.
   logical :: UseViscosity        = .true.
+  logical :: UseTestViscosity    = .false.
+  real    :: TestViscosityFactor = 1.0
   logical :: UseCoriolis         = .true.
-  logical :: UseGravityWave         = .false.
+  logical :: UseGravityWave      = .false.
 
   logical :: UseHorAdvection     = .true.
   logical :: UseVerAdvection     = .true.
   logical :: UseNeutralFriction  = .true.
+
+  logical :: UseAUSMSolver     = .false.
 
   logical :: UseIonPressureGradient = .true.
   logical :: UseIonGravity          = .true.
@@ -200,33 +208,35 @@ module ModInputs
   real    :: DynamoHighLatBoundary  = 65.0
   integer :: nItersMax              = 500
   real    :: MaxResidual            = 1.0
+  logical :: IncludeCowling         = .false.
+  real    :: DynamoLonAverage       = 10.0
 
+  logical :: UseImprovedIonAdvection = .false.
+  logical :: UseNighttimeIonBCs = .false.
+  real :: MinTEC = 2.0
+  
   logical :: UseSolarHeating   = .true.
   logical :: UseJouleHeating   = .true.
   logical :: UseAuroralHeating = .true.
   logical :: UseNOCooling      = .true.
   logical :: UseOCooling       = .true.
   logical :: UseConduction     = .true.
+  logical :: UseTurbulentCond = .true.
+
   logical :: UseDiffusion      = .false.
   logical :: UseVerAdvectionT  = .true.
 
   logical :: UseCO2Cooling = .true.
-  real    :: CO2ppm = 320.0
+  real    :: CO2ppm = 225.0
 
-!! New Turbulent (Eddy) Conduction Routines
-  logical :: UseTurbulentCond = .false.
-  logical :: UseUpdatedTurbulentCond = .false.
-  real :: EddyScaling = 1.0
-
-!! WAVE DRAG FORCINGS
-  logical :: UseStressHeating  = .false.
 
   real :: PhotoElectronHeatingEfficiency = 0.0
+  real :: NeutralHeatingEfficiency = 0.05
 
   real :: KappaTemp0 = 5.6e-4
   real :: ThermalConduction_AO2 = 3.6e-4
   real :: ThermalConduction_AO  = 5.6e-4
-  real :: ThermalConduction_s   = 0.75
+  real :: ThermalConduction_s   = 0.726
   !! Pawlowski says AO2 = 3.6e-4 - 5.6e-4
   !!                AO  = 5.6e-4 - 7.6e-4
   !!                s   = 0.69 - 0.75
@@ -244,7 +254,7 @@ module ModInputs
 
   logical :: DoCheckStopFile = .true.
 
-! AGB: Setting physical limits for ionospheric dynamics
+  ! AGB: Setting physical limits for ionospheric dynamics
   real :: MaxVParallel = 100.0         
   real :: MaxEField = 0.1
 
@@ -265,49 +275,63 @@ module ModInputs
 
   real :: LogNS0(nSpecies)
 
+  logical                   :: UseEUVAC     = .true.
+  logical                   :: UseTobiska   = .true.
+  logical                   :: UseAboveHigh = .true.
+  logical                   :: UseBelowLow  = .true.
+
+  logical                   :: UseRidleyEUV = .false.
+  
   logical                   :: UseEUVData =.false.
   character (len=iCharLen_) :: cEUVFile
 
+  !\
+  ! Eclipse Information
+  !/
+  logical :: IncludeEclipse = .false.
+  real(Real8_) :: EclipseStartTime
+  real(Real8_) :: EclipseEndTime
+  real :: EclipseStartY, EclipseEndY
+  real :: EclipseStartZ, EclipseEndZ
+  real :: EclipsePeak, EclipseMaxDistance
+  real :: EclipseExpAmp, EclipseExpWidth
+  
   ! These are Mars Specific, but ignored by other codes:
   ! Some are modified in Planet.f90 (set_planet_defaults)
   real :: DtLTERadiation = 100.0*Rotation_Period
 
-!!!!!!!!!!!!!!! DUST
-Logical :: UseDustDistribution = .False.
-! Setting the depth to which dust is mixed based on a reference dust opacity
-!This can now be read in as a horizontal distribution, or as a constant value
-!using UAM.in
-  character (len=iCharLen_) :: cDustFile
-  character (len=iCharLen_) :: cConrathFile
+  !!!!!!!!!!!!!!! DUST
+  Logical :: UseDustDistribution = .False.
+  ! Setting the depth to which dust is mixed based on a reference dust opacity
+  !This can now be read in as a horizontal distribution, or as a constant value
+  !using UAM.in
+  character (len=iCharLen_) :: cDustFile="NotSet"
+  character (len=iCharLen_) :: cConrathFile="NotSet"
   real :: CONRNU_temp = 0.03    ! Standard value  ~25km half-height
-!     real :: CONRNU = 0.003   ! ~50 km half-height
-!     real  :: CONRNU = 0.5     ! ~10 km half-height
-! Global mean dust opacity
+  !     real :: CONRNU = 0.003   ! ~50 km half-height
+  !     real  :: CONRNU = 0.5     ! ~10 km half-height
+  ! Global mean dust opacity
   real :: TAUTOT_temp  = 0.3 !do not set to 0.0 or less
-!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!
 
-!   RPTAU   :  Reference Pressure optical depth;  6.1 mbar for now
+  !   RPTAU   :  Reference Pressure optical depth;  6.1 mbar for now
   real, parameter :: RPTAU  = 6.1
 
-! Top of the shortwave calculation for lower atmosphere radiation code(mbars)
+  ! Top of the shortwave calculation for lower atmosphere radiation code(mbars)
   real, parameter :: PRAD  = 1.0E-6 !mb (~115 km)
 
-! Top of the longwave calculation for lower atmosphere radiation code(PASCALS)
-! and where radcool begins
+  ! Top of the longwave calculation for lower atmosphere radiation code(PASCALS)
+  ! and where radcool begins
   real, parameter :: PLONG = 4.0E-1 ! Pa  (also 4.0  ubar)
 
-
-
-! Ls Variables
-	  real, dimension(7) :: Ls_a
-	  real, dimension(7) :: Ls_tau
-	  real, dimension(7) :: Ls_phi
+  ! Ls Variables
+  real, dimension(7) :: Ls_a
+  real, dimension(7) :: Ls_tau
+  real, dimension(7) :: Ls_phi
 	  
-	  DATA Ls_a / 0.007, 0.006, 0.004, 0.004, 0.002, 0.002, 0.002 /
-	  DATA Ls_tau / 2.2353, 2.7543, 1.1177, 15.7866, 2.1354, &
-	             2.4694, 32.8493 /
-	  DATA Ls_phi / 49.409, 168.173, 191.837, 21.736, 15.704, &
-				 95.528, 49.095 /
+  DATA Ls_a / 0.007, 0.006, 0.004, 0.004, 0.002, 0.002, 0.002 /
+  DATA Ls_tau / 2.2353, 2.7543, 1.1177, 15.7866, 2.1354, 2.4694, 32.8493 /
+  DATA Ls_phi / 49.409, 168.173, 191.837, 21.736, 15.704, 95.528, 49.095 /
 
 contains
 
@@ -346,7 +370,9 @@ contains
 
     dTAurora = 120.0
     
-    if (IsEarth) PhotoElectronHeatingEfficiency = 0.06
+    if (IsEarth) then 
+       PhotoElectronHeatingEfficiency = 0.06
+    endif
 
     tSimulation = 0.0
 

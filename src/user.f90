@@ -139,7 +139,7 @@ subroutine set_nVarsUser3d
 
   ! Make sure to include Lat, Lon, and Alt
 
-  nVarsUser3d = 4
+  nVarsUser3d = 5
 
   if (nVarsUser3d-3 > nUserOutputs) &
        call stop_gitm("Too many user outputs!! Increase nUserOutputs!!")
@@ -215,6 +215,7 @@ subroutine output_header_user(cType, iOutputUnit_)
      write(iOutputUnit_,"(I7,A1,a)")  2, " ", "Latitude"
      write(iOutputUnit_,"(I7,A1,a)")  3, " ", "Altitude"
      write(iOutputUnit_,"(I7,A1,a)")  4, " ", "Joule Heating"
+     write(iOutputUnit_,"(I7,A1,a)")  5, " ", "JPara"
 
   endif
 

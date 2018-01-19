@@ -1,7 +1,7 @@
 !  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 !-----------------------------------------------------------------------------
-! $Id: set_inputs.f90,v 1.68 2015/06/10 13:31:54 ridley Exp $
+! $Id: set_inputs.f90,v 1.84 2017/10/30 14:05:36 ridley Exp $
 !
 ! Author: Aaron Ridley, UMichigan
 !
@@ -18,7 +18,7 @@ subroutine set_inputs
   use ModInputs
   use ModSizeGitm
   use ModGITM, only: iProc, f107_est, f107a_est, f107_msis, f107a_msis, &
-       PhotoElectronHeatingEfficiency_est
+       PhotoElectronHeatingEfficiency_est, EDC_est !! Ankit23May16: Added EDC_est
   use ModTime
   use ModPlanet
   use ModSatellites
@@ -43,6 +43,7 @@ subroutine set_inputs
   character (len=iCharLen_), dimension(100) :: cTempLines
 
   real :: Vx, Bx, Bz, By, Kp, HemisphericPower, tsim_temp
+  real :: EDC_est_tmp
   real*8 :: DTime
 
   call report("set_inputs",1)
@@ -449,6 +450,18 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
+        case ("#FIXEDDT")
+           call read_in_real(fixeddt, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #FIXEDDT:'
+              write(*,*) 'If you would like to force GITM to take a fixed dt'
+              write(*,*) 'you can use this.  It will try to take that fixed dt,'
+              write(*,*) 'unless the CFL condition is violated.'
+              write(*,*) '#FIXEDDT'
+              write(*,*) 'FixedDt  (real)'
+              IsDone = .true.
+           endif
+
         case ("#SOLARWIND")
            call read_in_real(bx, iError)
            call read_in_real(by, iError)
@@ -655,6 +668,16 @@ subroutine set_inputs
               end if
            end if
 
+        case ("#NEUTRALHEATING")
+           call read_in_real(NeutralHeatingEfficiency, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #NEUTRALHEATING:'
+              write(*,*) ''
+              write(*,*) '#NEUTRALHEATING'
+              write(*,*) "NeutralHeatingEfficiency   (real)"
+              IsDone = .true.
+           end if
+
         case ("#THERMO")
            call read_in_logical(UseSolarHeating, iError)
            call read_in_logical(UseJouleHeating, iError)
@@ -663,8 +686,6 @@ subroutine set_inputs
            call read_in_logical(UseOCooling, iError)
            call read_in_logical(UseConduction, iError)
            call read_in_logical(UseTurbulentCond, iError)
-           call read_in_logical(UseUpdatedTurbulentCond, iError)
-           call read_in_real(EddyScaling, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #THERMO:'
               write(*,*) ''
@@ -676,8 +697,6 @@ subroutine set_inputs
               write(*,*) "UseOCooling       (logical)"
               write(*,*) "UseConduction     (logical)"
               write(*,*) "UseTurbulentCond  (logical)"
-              write(*,*) "UseUpdatedTurbulentCond  (logical)"
-              write(*,*) "EddyScaling  (real)"
               IsDone = .true.
            endif
 
@@ -704,36 +723,21 @@ subroutine set_inputs
            endif
 
         case ("#VERTICALSOURCES")
-           call read_in_logical(UseEddyInSolver, iError)
-           call read_in_logical(UseNeutralFrictionInSolver, iError)
            call read_in_real(MaximumVerticalVelocity, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #VERTICALSOURCES:'
               write(*,*) ''
               write(*,*) '#VERTICALSOURCES'
-              write(*,*) "UseEddyInSolver              (logical)"
-              write(*,*) "UseNeutralFrictionInSolver   (logical)"
               write(*,*) "MaximumVerticalVelocity      (real)"
            endif
 
-        case ("#EDDYVELOCITY")
-           call read_in_logical(UseBoquehoAndBlelly, iError)
-           call read_in_logical(UseEddyCorrection, iError)
+        case ("#AUSMSOLVER")
+           call read_in_logical(UseAUSMSolver, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #VERTICALSOURCES:'
               write(*,*) ''
-              write(*,*) '#EDDYVELOCITY'
-              write(*,*) "UseBoquehoAndBlelly              (logical)"
-              write(*,*) "UseEddyCorrection   (logical)"
-           endif
-
-        case ("#WAVEDRAG")
-           call read_in_logical(UseStressHeating, iError)
-           if (iError /= 0) then
-              write(*,*) 'Incorrect format for #WAVEDRAG:'
-              write(*,*) ''
-              write(*,*) '#WAVEDRAG'
-              write(*,*) "UseStressHeating              (logical)"
+              write(*,*) '#AUSMSOLVER'
+              write(*,*) "Use AUSM Solver      (logical)"
            endif
 
         case ("#DIFFUSION")
@@ -782,11 +786,38 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
+        case ("#USEIMPROVEDIONADVECTION")
+           call read_in_logical(UseImprovedIonAdvection, iError)
+           call read_in_logical(UseNighttimeIonBCs, iError)
+           call read_in_real(MinTEC, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #USEIMPROVEDIONADVECTION:'
+              write(*,*) ''
+              write(*,*) '#USEIMPROVEDIONADVECTION'
+              write(*,*) "UseImprovedIonAdvection      (logical)"
+              write(*,*) "UseNighttimeIonBCs           (logical)"
+           endif
+
+        case ("#USETESTVISCOSITY")
+           call read_in_logical(UseTestViscosity, iError)
+           call read_in_real(TestViscosityFactor, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #USETESTVISCOSITY:'
+              write(*,*) ''
+              write(*,*) '#USETESTVISCOSITY'
+              write(*,*) "UseTestViscosity         (logical)"
+              write(*,*) "TestViscosityFactor      (real)"
+           endif
+
         case ("#DYNAMO")
            call read_in_logical(UseDynamo, iError)
-           call read_in_real(DynamoHighLatBoundary, iError)
-           call read_in_int(nItersMax, iError)
-           call read_in_real(MaxResidual, iError)
+           if (UseDynamo) then
+              call read_in_real(DynamoHighLatBoundary, iError)
+              call read_in_int(nItersMax, iError)
+              call read_in_real(MaxResidual, iError)
+              call read_in_logical(IncludeCowling, iError)
+              call read_in_real(DynamoLonAverage, iError)
+           endif
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #DYNAMO:'
               write(*,*) ''
@@ -795,6 +826,8 @@ subroutine set_inputs
               write(*,*) "DynamoHighLatBoundary  (real)"
               write(*,*) "nItersMax              (integer)"
               write(*,*) "MaxResidual            (V,real)"
+              write(*,*) "IncludeCowling         (logical)"
+              write(*,*) "DynamoLonAverage       (real)"
            endif
 
         case ("#IONFORCING")
@@ -802,7 +835,6 @@ subroutine set_inputs
            call read_in_logical(UseIonPressureGradient, iError)
            call read_in_logical(UseIonGravity, iError)
            call read_in_logical(UseNeutralDrag, iError)
-           call read_in_logical(UseDynamo, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #IONFORCING:'
               write(*,*) ''
@@ -811,7 +843,6 @@ subroutine set_inputs
               write(*,*) "UseIonPressureGradient (logical)"
               write(*,*) "UseIonGravity          (logical)"
               write(*,*) "UseNeutralDrag         (logical)"
-              write(*,*) "UseDynamo              (logical)"
               IsDone = .true.
            endif
 
@@ -1205,16 +1236,44 @@ subroutine set_inputs
                  if(RCMROutType == 'PHOTOELECTRON') then
                     PhotoElectronHeatingEfficiency = PhotoElectronHeatingEfficiency_est
                  end if
+              
+                 !!ANKIT: TEC read
+              else if(RCMROutType == 'EDC') then
+                 RCMRFlag = .true.
+                 call read_in_real(EDC_est_tmp, iError)
+                 EDC_est(1,1) = EDC_est_tmp
+                 ! call read_in_real(EDC_est, iError)
+                 
+                 if(iError /= 0) then
+                    write (*,*) 'Unrecognizable initial eddy diffusion '
+                    write (*,*) 'coefficient.  Running with 1750, which is only '
+                    write (*,*) 'appropraite if the actual coefficient is not '
+                    write (*,*) 'close to 1750'
+                    EDC_est = 1750
+                    iError = 0
+                 end if
+                 
+                 if(RCMROutType == 'EDC') then
+                    EddyDiffusionCoef = EDC_est(1,1)
+                 end if
               end if
-
               ! Quality check of the satellite indexes will occur when
               ! reading the satellite block.
               call read_in_int(nRCMRSat, iError)
               do iSat=1,nRCMRSat
                  call read_in_int(RCMRSat(iSat), iError)
               end do
+              call read_in_string(RCMRrun, iError)    !Ankit23May16: Truth or ID
+              call read_in_int(Nc, iError)            !Ankit23May16: Controller Order.
+              call read_in_int(RegZ, iError)          !Ankit23May16: Regressor Variable. 1=z, 0=y.
+              call read_in_real(lambda1, iError)      !Ankit23May16: Forgetting factor. 
+              call read_in_real(W_Rtheta, iError)     !Ankit23May16: Rtheta. Or inv(P0).
+              call read_in_real(Dts, iError)          !Ankit23May16: Time step used with RCMR
+              call read_in_real(Measure_Dts, iError)  !Ankit23May16: RCMR executes every Measure_Dts*Dts*steps timesteps.
+              call read_in_int(C_on, iError)          !Ankit23May16: RCMR switches on after C_on steps.
+              call read_in_int(uFiltLength, iError)   !Ankit23May16: Length of averaging filter.
            end if
-
+           
            if(iError /= 0) then
               write (*,*) 'Incorrect format for #RCMR'
               write (*,*) ''
@@ -1231,6 +1290,9 @@ subroutine set_inputs
               write (*,*) 'the MSIS F10.7 and F10.7a to realistic values'
               IsDone = .true.
            else
+              if(RCMROutType == 'EDC') then
+                 call read_tec_locations              
+              end if
               call alloc_rcmr
               call init_markov_matrix
               call init_rcmr
@@ -1311,6 +1373,29 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
+        case ("#EUVMODEL")
+           call read_in_logical(UseEUVAC, iError)
+           call read_in_logical(UseTobiska, iError)
+           call read_in_logical(UseAboveHigh, iError)
+           call read_in_logical(UseBelowLow, iError)
+
+           if ( .not. UseEUVAC     .and. &
+                .not. UseTobiska   .and. &
+                .not. UseAboveHigh .and. &
+                .not. UseBelowLow) UseRidleyEUV = .true.
+
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #EUVMODEL'
+              write(*,*) 'If EUVAC   = true, use EUVAC Model'
+              write(*,*) 'If Tobiska = true, use Tobiska91 Model'
+              write(*,*) 'If both are true, average them together'
+              write(*,*) 'If UseAboveHigh, then extend the spectrum to the longer wavelengths'
+              write(*,*) 'If UseBelowLow, then extend the spectrum to the shorter wavelengths'
+              write(*,*) '#EUV_DATA'
+              write(*,*) 'UseEUVData            (logical)'
+              write(*,*) 'cEUVFile              (string)'
+           endif
+
         case ("#EUV_DATA")
            call read_in_logical(UseEUVData, iError)
            call read_in_string(cEUVFile, iError)
@@ -1322,6 +1407,41 @@ subroutine set_inputs
               write(*,*) '#EUV_DATA'
               write(*,*) 'UseEUVData            (logical)'
               write(*,*) 'cEUVFile              (string)'
+           endif
+
+        case ("#ECLIPSE")
+           IncludeEclipse = .true.
+           call read_in_time(EclipseStartTime, iError)
+           call read_in_time(EclipseEndTime, iError)
+           call read_in_real(EclipseStartY, iError)
+           call read_in_real(EclipseStartZ, iError)
+           call read_in_real(EclipseEndY, iError)
+           call read_in_real(EclipseEndZ, iError)
+           call read_in_real(EclipsePeak, iError)
+           call read_in_real(EclipseMaxDistance, iError)
+           call read_in_real(EclipseExpAmp, iError)
+           call read_in_real(EclipseExpWidth, iError)
+
+           EclipseStartY = EclipseStartY * 1000.0
+           EclipseStartZ = EclipseStartZ * 1000.0
+           EclipseEndY = EclipseEndY * 1000.0
+           EclipseEndZ = EclipseEndZ * 1000.0
+           EclipseMaxDistance = EclipseMaxDistance * 1000.0
+           EclipseExpWidth = EclipseExpWidth * 1000.0
+           
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #ECLIPSE'
+              write(*,*) '#ECLIPSE'
+              write(*,*) 'start y m d h m s            (int x 6)'
+              write(*,*) 'end   y m d h m s            (int x 6)'
+              write(*,*) 'start-y-gse                  (real)'
+              write(*,*) 'start-z-gse                  (real)'
+              write(*,*) 'end-y-gse                    (real)'
+              write(*,*) 'end-z-gse                    (real)'
+              write(*,*) 'peak                         (real)'
+              write(*,*) 'Max Distance                 (real)'
+              write(*,*) 'ExpAmp                       (real)'
+              write(*,*) 'ExpWidth                     (real)'
            endif
 
         case ("#GLOW")

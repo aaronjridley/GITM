@@ -1,9 +1,11 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
 !--------------------------------------------------------------
 !  Corrections by S. W. Bougher (9/28/07)
 !  -- atomic oxygen replaces O2 in mean mass and scale height
-!  -- artificially set ion densities to 1.0 m-3 (not 1.0E+06 m-3)
+!  -- artificially set all ion densities to 1.0 m-3 (not 1.0E+06 m-3)
+!  Corrections by S. W. Bougher (11/07/12)
+!  -- artificially set all ion densities to 1.0 m-3 (not 1.0E+04 m-3)
+!  Corrections by S. W. Bougher (11/28/12)
+!  -- artificially set O2+ and CO2+ ion densities to 1.0 m-3 (LBC at 80 km)
 !--------------------------------------------------------------
 
 subroutine get_msis_temperature(lon, lat, alt, t, h)
@@ -71,14 +73,13 @@ subroutine init_msis
 
   logical :: Done = .False.,NotStarted = .True.
   character (len=iCharLen_) :: cLine
-  real :: inDensities(9),altlow,althigh,latlow,lathigh,invscaleheights
+  real :: inDensities(9),altlow,althigh,latlow,lathigh
   real :: ralt, invAltDiff, altFind, altdiff, LogElectronDensity,dalt(nspeciestotal),alttemp(nInAlts)
   real, dimension(nInitialAlts) :: tempalt,LogInitialDensity,InitialEDensity,InitialAlt
 
 
   SurfaceAlbedo(:,:,:) = 0.0
- 
-  
+
   do iblock = 1, nblocks
      do ilon = 1,nlons
         do ilat = 1,nlats
@@ -86,7 +87,7 @@ subroutine init_msis
            klon = nint((longitude(ilon,iblock)*180.0/pi+5.0)/10.0)
            SurfaceAlbedo(ilon,ilat,iblock) = dummyalbedo(jlat,klon)
            tinertia(ilon,ilat,iblock) = dummyti(jlat,klon)
-        enddo
+      enddo
      enddo
   enddo
 
@@ -287,11 +288,15 @@ subroutine init_msis
         enddo! end iLon loop
      enddo ! end iLat loop
 
+!  Initialization of Major Ions for Ion Calculation
      IDensityS(:,:,:,iO2P_,iBlock) = 0.9* IDensityS(:,:,:,iE_,iBlock)
      IDensityS(:,:,:,iCO2P_,iBlock) = 0.1* IDensityS(:,:,:,iE_,iBlock)
-     IDensityS(:,:,:,iOP_,iBlock) = 1.0e4
-     IDensityS(:,:,:,iN2P_,iBlock) = 1.0e4
-     IDensityS(:,:,:,iNOP_,iBlock) = 1.0e4
+!  LBC for all  Ions for Ion Calculation
+!    IDensityS(:,:,:,iO2P_,iBlock) = 1.0e0
+!    IDensityS(:,:,:,iCO2P_,iBlock) = 1.0e0
+     IDensityS(:,:,:,iOP_,iBlock) = 1.0e0
+     IDensityS(:,:,:,iN2P_,iBlock) = 1.0e0
+     IDensityS(:,:,:,iNOP_,iBlock) = 1.0e0
      write(*,*) '============> init_msis.Mars.f90 Major Diagnostics:  Begin'
 !     Temperature(:,:,:,iBlock) = 175.
      !\
@@ -331,16 +336,6 @@ subroutine init_msis
      ! Initialize MeanMajorMass to 0.0
      !/
      NDensityS = exp(nDensityS)
-!     do iSpecies = 1, nSpecies
-!        do ialt = 0, nalts + 2
-!           InvScaleHeightS = -Gravity_GB(1,1,iAlt,1) * &
-!                Mass(iSpecies) / (Temperature(1,1,iAlt,1)*Boltzmanns_Constant)
-!           NDensityS(1,1,ialt,iSpecies,1) = NDensityS(1,1,ialt-1,iSpecies,1) * &
-!                exp(-(altitude_gb(1,1,ialt,1)-altitude_gb(1,1,ialt-1,1))*invScaleheightS)
-!           
-!enddo
-!enddo
-
      MeanMajorMass(-1:nLons+2,-1:nLats+2,-1:nAlts+2) = 0.0
      MeanIonMass(-1:nLons+2,-1:nLats+2,-1:nAlts+2) = 0.0
 
@@ -360,7 +355,7 @@ subroutine init_msis
                       NDensityS(iLon,iLat,iAlt,iSpecies,iBlock)
               enddo
 
-              do iSpecies = 1,nSpecies
+              do iSpecies = 1,nSpeciesTotal
                  MeanMajorMass(iLon,iLat,iAlt) = &
                       MeanMajorMass(iLon,iLat,iAlt) + &
                       Mass(iSpecies)*NDensityS(iLon,iLat,iAlt,iSpecies,iBlock)/ &
@@ -384,7 +379,14 @@ subroutine init_msis
           MeanMajorMass(-1:nLons+2,-1:nLats+2,-1:nAlts+2)/&
           Boltzmanns_Constant
 
+! More recent data 
 
+     NDensityS(-1:nLons+2,-1:nLats+2,-1:nAlts+2,iHe_,iBlock) = &
+        (2.0e-06)*NDensity(-1:nLons+2,-1:nLats+2,-1:nAlts+2,iBlock) 
+
+! Previous EUV He observations
+!     NDensityS(-1:nLons+2,-1:nLats+2,-1:nAlts+2,iHe_,iBlock) = &
+!        (0.7e-06)*NDensity(-1:nLons+2,-1:nLats+2,-1:nAlts+2,iBlock) 
      !\
      ! Initialize Rho to 0.0
      !/
@@ -395,15 +397,10 @@ subroutine init_msis
           Temperature(-1:nLons+2,-1:nLats+2,-1:nAlts+2,iBlock) / &
           TempUnit(-1:nLons+2,-1:nLats+2,-1:nAlts+2)
 
+
      Rho(-1:nLons+2,-1:nLats+2,-1:nAlts+2,iBlock) = &
           MeanMajorMass(-1:nLons+2,-1:nLats+2,-1:nAlts+2)* &
           NDensity(-1:nLons+2,-1:nLats+2,-1:nAlts+2,iBlock)
-
-!     pressure(1,1,-1:nalts+2,1) = temperature(1,1,-1:nalts+2,1)*tempunit(1,1,-1:nalts+2)&
-!          *boltzmanns_constant * &
-!          ndensity(1,1,-1:nalts+2,1)
-      
-
 
      write(*,*) '==> Now Completing Mars Background Composition: END', iBlock   
 

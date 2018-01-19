@@ -1,7 +1,7 @@
 !  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 !------------------------------------------------------------------------------
-! $Id: advance.f90,v 1.16 2013/10/24 18:26:49 agburr Exp $
+! $Id: advance.f90,v 1.18 2017/10/30 14:05:36 ridley Exp $
 ! Author: Aaron Ridley, UMichigan
 !
 ! Modified:
@@ -37,7 +37,9 @@ subroutine advance
         call IO_set_f107_single(f107_est)
         call IO_set_f107a_single(f107_est)
      else if(RCMROutType == "PHOTOELECTRON") then
-        PhotoElectronHeatingEfficiency = PhotoElectronHeatingEfficiency_est
+        PhotoElectronHeatingEfficiency = PhotoElectronHeatingEfficiency_est 
+     else if(RCMROutType == "EDC") then
+        EddyDiffusionCoef = EDC_est(1,1)  !Ankit23May16: Added EDC_est out
      end if
   end if
 
