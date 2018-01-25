@@ -1188,7 +1188,7 @@ subroutine output_3dion(iBlock)
                 EField(iLon,iLat,iAlt,:), &  ! EField(Lon,lat,alt,3)
                 sqrt(sum(EField(iLon,iLat,iAlt,:)**2)), & ! magnitude of E.F.
                 Collisions(iLon,iLat,iAlt,iVIN_), & ! AGB: nu_in
-                PressureGradient(iLon,iLat,iAlt,:,iBlock) ! AGB: 3D Grad P
+                IonPressureGradient(iLon,iLat,iAlt,:,iBlock) ! AGB: 3D Grad P
         enddo
      enddo
   enddo
