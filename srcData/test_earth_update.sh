@@ -27,4 +27,4 @@ cp run_3d/UA/data/run_information.txt srcData/run_information.3d.txt
 cp run_3d/UA/data/3d.ps srcData
 
 rm srcData/*~
-cvs commit srcData/*.1d.* srcData/*.eclipse.* srcData/*3d.*
+#cvs commit srcData/*.1d.* srcData/*.eclipse.* srcData/*3d.*
