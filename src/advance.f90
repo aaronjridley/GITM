@@ -71,12 +71,12 @@ subroutine advance
   call time_real_to_int(CurrentTime, iTimeArray)
 
   DTime = CurrentTime - VernalTime
-  do while (DTime > SecondsPerYear)
-     VernalTime = VernalTime+int(DaysPerYear)*Rotation_Period
+  do while (DTime > DaysPerYearInput*RotationPeriodInput)
+     VernalTime = VernalTime+int(DaysPerYearInput)*RotationPeriodInput
      DTime = CurrentTime - VernalTime
   enddo
-  iDay  = DTime / Rotation_Period
-  uTime = (DTime / Rotation_Period - iDay) * Rotation_Period
+  iDay  = DTime / RotationPeriodInput
+  uTime = (DTime / RotationPeriodInput - iDay) * RotationPeriodInput
 
   iJulianDay = jday(iTimeArray(1), iTimeArray(2), iTimeArray(3)) 
 

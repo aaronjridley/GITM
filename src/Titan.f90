@@ -12,6 +12,7 @@
 subroutine fill_photo(photoion, photoabs, photodis)
 
   use ModPlanet
+  use ModInputs
   use ModEUV
 
   implicit none
@@ -1741,7 +1742,7 @@ end subroutine !set_planet_defaults
 
      a_titan = 1.22183e+09   ! Titan orbital semi-major axis (in m) 
      e_titan = 0.0292        ! Titan orbital eccentricity (e)
-     omega_titan = OMEGABody ! Titan orbital angular frequency (rads/s)
+     omega_titan = OMEGABodyInput ! Titan orbital angular frequency (rads/s)
      Mass_Saturn = 5.685e+26 ! Mass of Saturn
      GravConstant = 6.67259e-11  ! Graviational constant in SI units (N m^2/kg^2)
      !Note:  Titan is phase-locked so that it's rotation rate and orbit rate are the same
@@ -1783,19 +1784,19 @@ end subroutine !set_planet_defaults
                   RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
                  (3.0*cos(Latitude(iLat,iBlock))*cos(Latitude(iLat,iBlock))*&
                       cos(Longitude(iLon,iBlock))*cos(Longitude(iLon,iBlock)) - &
-                  1.0 )*(3.0*e_titan*cos(OmegaBody*tSimulation))
+                  1.0 )*(3.0*e_titan*cos(OmegaBodyInput*tSimulation))
               
             TideADep(iLon,iLat,iAlt,iNorth_,iBlock) = -1.0*GravScalar*&
                   RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
                  (3.0*cos(Latitude(iLat,iBlock))*sin(Latitude(iLat,iBlock))*&
                      cos(Longitude(iLon,iBlock))*cos(Longitude(iLon,iBlock)) )*&
-                 (3.0*e_titan*cos(OmegaBody*tSimulation))
+                 (3.0*e_titan*cos(OmegaBodyInput*tSimulation))
 !
             TideADep(iLon,iLat,iAlt,iEast_,iBlock) = -1.0*GravScalar*&
                   RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
                  (3.0*cos(Latitude(iLat,iBlock))*&
                      cos(Longitude(iLon,iBlock))*sin(Longitude(iLon,iBlock)) )*&
-                 (3.0*e_titan*cos(OmegaBody*tSimulation))
+                 (3.0*e_titan*cos(OmegaBodyInput*tSimulation))
  
 !             ! Add the Librational Tide to the Time-dependent part.
 !             ! This is due to the motion of Saturn in longitude about the Longitude 
@@ -1804,19 +1805,19 @@ end subroutine !set_planet_defaults
             TideADep(iLon,iLat,iAlt,iUp_,iBlock) + 1.0*GravScalar*&
                   RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
                  (6.0*e_titan*cos(Latitude(iLat,iBlock))*cos(Latitude(iLat,iBlock))*&
-                      sin(2.0*Longitude(iLon,iBlock)))*sin(OmegaBody*tSimulation)
+                      sin(2.0*Longitude(iLon,iBlock)))*sin(OmegaBodyInput*tSimulation)
 !                 
             TideADep(iLon,iLat,iAlt,iNorth_,iBlock) = &
             TideADep(iLon,iLat,iAlt,iNorth_,iBlock) - 1.0*GravScalar*&
                   RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
                  (6.0*e_titan*cos(Latitude(iLat,iBlock))*sin(Latitude(iLat,iBlock))*&
-                     sin(2.0*Longitude(iLon,iBlock)) )*sin(OmegaBody*tSimulation)
+                     sin(2.0*Longitude(iLon,iBlock)) )*sin(OmegaBodyInput*tSimulation)
 !
             TideADep(iLon,iLat,iAlt,iEast_,iBlock) = &
             TideADep(iLon,iLat,iAlt,iEast_,iBlock) + 1.0*GravScalar*&
                   RadialDistance_GB(iLon,iLat,iAlt,iBlock)*&
                  (6.0*e_titan*cos(Latitude(iLat,iBlock))*cos(2.0*Longitude(iLon,iBlock)))*&
-                  sin(OmegaBody*tSimulation)
+                  sin(OmegaBodyInput*tSimulation)
 
          enddo !iLon = -1, nLons+2
        enddo !iLat = -1, nLats+2

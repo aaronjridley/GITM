@@ -3,10 +3,10 @@
 subroutine advance_vertical(iLon,iLat,iBlock)
   use ModEUV, only: SZA
   use ModGITM
-  use ModPlanet, only: nSpecies, OmegaBody, nIonsAdvect
+  use ModPlanet, only: nSpecies, nIonsAdvect
   use ModConstants, only: pi
   use ModSources, only: EUVHeating, KappaEddyDiffusion
-  use ModInputs, only: UseAUSMSolver,UseIonAdvection, iDebugLevel, UseImprovedIonAdvection
+  use ModInputs
   use ModVertical, ONLY: &
        LogRho, &
        cMax1      => cMax,&
@@ -58,8 +58,8 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   endif
 
   Heating     = EuvHeating(iLon,iLat,:,iBlock)
-  Centrifugal = (CosLatitude(iLat,iBlock) * OmegaBody)**2
-  Coriolis    = 2 * CosLatitude(iLat,iBlock) * OmegaBody
+  Centrifugal = (CosLatitude(iLat,iBlock) * OmegaBodyInput)**2
+  Coriolis    = 2 * CosLatitude(iLat,iBlock) * OmegaBodyInput
   LogRho  = log(Rho(iLon,iLat,:,iBlock))
   do iDim = 1, 3 
      Vel_GD(:,iDim)  = Velocity(iLon,iLat,:,iDim,iBlock)

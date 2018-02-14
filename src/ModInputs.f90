@@ -4,7 +4,7 @@
 module ModInputs
 
   use ModConstants
-  use ModPlanet, only : nSpecies, Rotation_Period, nSpeciesTotal, nIons
+  use ModPlanet
   use ModIoUnit, only : UnitTmp_
   use ModKind, only:    Real8_
 
@@ -229,6 +229,13 @@ module ModInputs
   logical :: UseCO2Cooling = .true.
   real    :: CO2ppm = 225.0
 
+  ! Allow the user to change the planet's characteristics:
+  real :: RotationPeriodInput = Rotation_Period
+  real :: OmegaBodyInput = 2.0*pi/Rotation_Period
+  real :: HoursPerDayInput = Rotation_Period/3600.0
+  real :: DaysPerYearInput = DaysPerYear
+  real :: PlanetTiltInput = Tilt
+  
 
   real :: PhotoElectronHeatingEfficiency = 0.0
   real :: NeutralHeatingEfficiency = 0.05

@@ -4,7 +4,7 @@ subroutine advance_horizontal(iBlock)
 
   use ModConstants, only : pi
   use ModSizeGitm
-  use ModPlanet, only : nSpecies, nIonsAdvect, OmegaBody
+  use ModPlanet, only : nSpecies, nIonsAdvect
   use ModGITM
   use ModInputs
   use ModSources, only : HorizontalTempSource
@@ -470,10 +470,10 @@ contains
 
     do iLat=1,nLats
 
-       CoriolisSin = SinLat(iLat) * 2 * OmegaBody
-       CoriolisCos = CosLat(iLat) * 2 * OmegaBody
+       CoriolisSin = SinLat(iLat) * 2 * OmegaBodyInput
+       CoriolisCos = CosLat(iLat) * 2 * OmegaBodyInput
 
-       CentrifugalParameter = OmegaBody**2 * cosLat(iLat) * &
+       CentrifugalParameter = OmegaBodyInput**2 * cosLat(iLat) * &
             sinLat(iLat)
 
        do iLon=1,nLons

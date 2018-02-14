@@ -104,7 +104,7 @@ subroutine calc_physics(iBlock)
   orbitAngle = atan(y_ecl/x_ecl)
   if (x_ecl > 0) orbitangle = orbitangle+pi
   if (x_ecl < 0 .and. y_ecl > 0) orbitangle = orbitangle + 2*pi
-  SunDeclination = atan(tan(Tilt*pi/180.)*sin(OrbitAngle))
+  SunDeclination = atan(tan(PlanetTiltInput*pi/180.)*sin(OrbitAngle))
 
   SinDec = sin(SunDeclination)
   CosDec = cos(SunDeclination)
@@ -112,7 +112,7 @@ subroutine calc_physics(iBlock)
   ! Updated to work at all Planets
   ! We need the equivalent number of "hours" per planet rotation,
   ! assuming that there are 24.0 LT hours per planet day
-  LocalTime = mod((UTime/(Rotation_Period/24.0) + &
+  LocalTime = mod((UTime/(RotationPeriodInput/24.0) + &
        Longitude(:,iBlock) * 24.0/TwoPi), 24.0)
 
   if (UseApex) &
@@ -176,7 +176,7 @@ subroutine calc_physics(iBlock)
              CosDec*CosLatitude(iLat,iBlock) * &
              cos(pi*(LocalTime(iLon)- 24.0/2.0)/(24.0/2.)))
 
-        if (DtLTERadiation < Rotation_Period) then
+        if (DtLTERadiation < RotationPeriodInput) then
            call calc_avesza(iLon,iLat,iBlock, SinDec, CosDec)
         endif
 
@@ -206,19 +206,19 @@ end subroutine calc_physics
 subroutine get_subsolar(CurrentTime, VernalTime, lon_sp, lat_sp)
 
   use ModConstants, only : pi
-  use ModPlanet, only : Tilt, SecondsPerYear, Rotation_Period
+  use ModInputs, only : PlanetTiltInput, DaysPerYearInput, RotationPeriodInput
 
   implicit none
 
   real*8, intent(in) :: CurrentTime, VernalTime
   real*8, intent(out) :: lon_sp, lat_sp
 
-  lon_sp=(pi - ((CurrentTime - VernalTime)/Rotation_Period &
-       - floor((CurrentTime - VernalTime)/Rotation_Period))*2*pi)
+  lon_sp=(pi - ((CurrentTime - VernalTime)/RotationPeriodInput &
+       - floor((CurrentTime - VernalTime)/RotationPeriodInput))*2*pi)
   if (lon_sp<0.) lon_sp=lon_sp+2*pi
 
-  lat_sp=atan(tan(Tilt*pi/180.)*sin(2.*pi*(CurrentTime - VernalTime) &
-       /SecondsPerYear))
+  lat_sp=atan(tan(PlanetTiltInput*pi/180.)*sin(2.*pi*(CurrentTime - VernalTime) &
+       /(DaysPerYearInput*RotationPeriodInput)))
 
 end subroutine get_subsolar
 
@@ -245,17 +245,18 @@ subroutine get_sza(lon, lat, sza_calc)
   real(8) :: OrbitAngle_1, LocalTime_1
   real(8) :: SunDeclination_1, SinDec, CosDec
 
-  OrbitAngle_1 = 2.*pi*(CurrentTime - VernalTime)/SecondsPerYear
-  SunDeclination_1 = atan(tan(Tilt*pi/180.)*sin(OrbitAngle_1))
+  OrbitAngle_1 = 2.*pi*(CurrentTime - VernalTime) / &
+       (DaysPerYearInput*RotationPeriodInput)
+  SunDeclination_1 = atan(tan(PlanetTiltInput*pi/180.)*sin(OrbitAngle_1))
 
   SinDec = sin(SunDeclination_1)
   CosDec = cos(SunDeclination_1)
 
   LocalTime_1 = mod((UTime/3600.0 + &
-       lon * HoursPerDay / TwoPi), HoursPerDay)
+       lon * HoursPerDayInput / TwoPi), HoursPerDayInput)
 
   sza_calc = acos(SinDec*sin(Lat) + &
                   CosDec*Cos(lat) * &
-                  cos(pi*(LocalTime_1-HoursPerDay/2)/(HoursPerDay/2)))
+                  cos(pi*(LocalTime_1-HoursPerDayInput/2)/(HoursPerDayInput/2)))
 
 end subroutine get_sza

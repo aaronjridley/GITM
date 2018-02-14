@@ -29,7 +29,7 @@ subroutine calc_avesza(iLon,iLat,iBlock, SinDec, CosDec)
      if( floor((tSimulation - dT)/DtLTERadiation) /= &
           floor(tSimulation/DtLTERadiation)) then         
 
-        X5 = 2.0*PI/Rotation_Period
+        X5 = 2.0*PI/RotationPeriodInput
 
         ! Longitude needs to be multiplied by 180/pi to 
         ! convert from radians to degree
@@ -43,11 +43,11 @@ subroutine calc_avesza(iLon,iLat,iBlock, SinDec, CosDec)
         X3   = SinDec*sin(Latitude(iLat,iBlock))
         X4    = CosDec*cos(Latitude(iLat,iBlock))
         !   TOFDAY = localtime(ilon)-((Longitude(iLon,iBlock)/360.0)&
-             !             *HoursPerDay)
+             !             *HoursPerDayInput)
         TOFDAY = localtime(ilon)-((Longitude(iLon,iBlock)/(2.0*pi))&
-             *HoursPerDay)
-        if(TOFDAY.LT.0.0) TOFDAY=TOFDAY + HoursPerDay
-        XT1   = (TOFDAY*Rotation_Period/HoursPerDay)-0.5*DT
+             *HoursPerDayInput)
+        if(TOFDAY.LT.0.0) TOFDAY=TOFDAY + HoursPerDayInput
+        XT1   = (TOFDAY*RotationPeriodInput/HoursPerDayInput)-0.5*DT
         NDT   = DtLTERadiation 
         XT2   = XT1 + NDT
         COSZ1 = X3 + X4*COS(X5*XT1+X6)
@@ -78,9 +78,9 @@ subroutine calc_avesza(iLon,iLat,iBlock, SinDec, CosDec)
 
            IF(TRR.GE.XT1.AND.TRR.LE.XT2) GOTO 999
            IF(TRR.GT.XT2) GOTO 998
-           TRR = TRR+Rotation_Period
+           TRR = TRR+RotationPeriodInput
            IF(TRR.GE.XT1.AND.TRR.LE.XT2) GOTO 999
-           TRR = TRR+Rotation_Period
+           TRR = TRR+RotationPeriodInput
            IF(TRR.GE.XT1.AND.TRR.LE.XT2) GOTO 999
 
 998        CONTINUE
@@ -89,8 +89,8 @@ subroutine calc_avesza(iLon,iLat,iBlock, SinDec, CosDec)
            TRR = (TR1-X6)/X5
 
            IF(TRR.GE.XT1.AND.TRR.LE.XT2) GOTO 999
-           IF(TRR.LT.XT1) TRR = TRR+Rotation_Period
-           IF(TRR.GT.XT2) TRR = TRR-Rotation_Period
+           IF(TRR.LT.XT1) TRR = TRR+RotationPeriodInput
+           IF(TRR.GT.XT2) TRR = TRR-RotationPeriodInput
 
 999        CONTINUE
 

@@ -269,7 +269,7 @@ subroutine update_waccm_tides
 
   use ModSizeGITM
   use ModTime, only: uTime
-  use ModPlanet, only: Rotation_Period
+  use ModInputs, only: RotationPeriodInput
   use ModTides
   use ModConstants, only: pi
 
@@ -281,8 +281,8 @@ subroutine update_waccm_tides
 
   call report("update_waccm_tides",1)
   
-  ut1 = utime / Rotation_Period * 2.0 * Pi
-  ut2 = utime / Rotation_Period * 4.0 * Pi
+  ut1 = utime / RotationPeriodInput * 2.0 * Pi
+  ut2 = utime / RotationPeriodInput * 4.0 * Pi
 
   t_waccm = t0_waccm + &
        ta1_waccm * cos(ut1 - tp1_waccm) + &

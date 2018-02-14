@@ -339,8 +339,6 @@ subroutine set_inputs
               if (UseSecondsInFilename)  UseSecondsInFilename = .false.
            endif
 
- 
-
         case ("#DUSTDATA")
            call read_in_logical(UseDustDistribution,iError) 
            call read_in_string(cDustFile,iError)
@@ -786,6 +784,21 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
+        case ("#MODIFIYPLANET")
+           call read_in_real(RotationPeriodInput, iError)
+           call read_in_real(DaysPerYearInput, iError)
+           call read_in_real(PlanetTiltInput, iError)
+           OmegaBodyInput = 2.0*pi/RotationPeriodInput
+           HoursPerDayInput = RotationPeriodInput/3600.0
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #MODIFYPLANET:'
+              write(*,*) ''
+              write(*,*) '#MODIFYPLANET'
+              write(*,*) "RotationPeriodInput        (real)"
+              write(*,*) "DaysPerYearInput           (real)"
+              write(*,*) "DaysPerYearInput           (real)"
+           endif
+           
         case ("#USEIMPROVEDIONADVECTION")
            call read_in_logical(UseImprovedIonAdvection, iError)
            call read_in_logical(UseNighttimeIonBCs, iError)
@@ -1632,6 +1645,7 @@ subroutine fix_vernal_time
 
   use ModTime
   use ModPlanet
+  use ModInputs, only: DaysPerYearInput, RotationPeriodInput
 
   implicit none
 
@@ -1644,32 +1658,32 @@ subroutine fix_vernal_time
   if (DTime < 0.0) then
      n = 0
      do while (CurrentTime < VernalTime)
-        VernalTime = VernalTime-int(DaysPerYear)*Rotation_Period
+        VernalTime = VernalTime-int(DaysPerYearInput)*RotationPeriodInput
         n = n + 1
-        if (floor(n*(DaysPerYear - int(DaysPerYear))) > 0) then
+        if (floor(n*(DaysPerYearInput - int(DaysPerYearInput))) > 0) then
            VernalTime = VernalTime - &
-                floor(n*(DaysPerYear - int(DaysPerYear))) * &
-                Rotation_Period
+                floor(n*(DaysPerYearInput - int(DaysPerYearInput))) * &
+                RotationPeriodInput
            n = 0
         endif
      enddo
      DTime = CurrentTime - VernalTime
   else
      n = 0
-     do while (DTime > SecondsPerYear)
-        VernalTime = VernalTime+int(DaysPerYear)*Rotation_Period
+     do while (DTime > DaysPerYearInput*RotationPeriodInput)
+        VernalTime = VernalTime+int(DaysPerYearInput)*RotationPeriodInput
         n = n + 1
-        if (floor(n*(DaysPerYear - int(DaysPerYear))) > 0) then
+        if (floor(n*(DaysPerYearInput - int(DaysPerYearInput))) > 0) then
            VernalTime = VernalTime + &
-                floor(n*(DaysPerYear - int(DaysPerYear))) * &
-                Rotation_Period
+                floor(n*(DaysPerYearInput - int(DaysPerYearInput))) * &
+                RotationPeriodInput
            n = 0
         endif
         DTime = CurrentTime - VernalTime
      enddo
   endif
-  iDay  = DTime / Rotation_Period
-  uTime = (DTime / Rotation_Period - iDay) * Rotation_Period
+  iDay  = DTime / RotationPeriodInput
+  uTime = (DTime / RotationPeriodInput - iDay) * RotationPeriodInput
   iJulianDay = jday( &
        iTimeArray(1), iTimeArray(2), iTimeArray(3)) 
 

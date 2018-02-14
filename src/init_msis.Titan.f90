@@ -398,9 +398,9 @@ end subroutine init_msis
 subroutine calc_densityscaling(iBlock,T0, MeanMass, DenScaling)
    use ModSizeGITM, only : nLats, nLons
    use ModGITM, only : Latitude, Longitude, RadialDistance_GB
-   use ModInputs, only : EquatorialRadius, PolarRadius
+   use ModInputs, only : EquatorialRadius, PolarRadius, OmegaBodyInput
    use ModConstants
-   use ModPlanet, only : OMEGABody
+   use ModPlanet
  
    implicit none
 
@@ -420,7 +420,7 @@ subroutine calc_densityscaling(iBlock,T0, MeanMass, DenScaling)
 
    a_titan = 1.22183e+09   ! Titan orbital semi-major axis (in m) 
    e_titan = 0.0292        ! Titan orbital eccentricity (e)
-   omega_titan = OMEGABody ! Titan orbital angular frequency (rads/s)
+   omega_titan = OMEGABodyInput ! Titan orbital angular frequency (rads/s)
    Mass_Saturn = 5.685e+26 ! Mass of Saturn
    GravConstant = 6.67259e-11  ! Graviational constant in SI units (N m^2/kg^2)
    !Note:  Titan is phase-locked so that it's rotation rate and orbit rate are the same
