@@ -192,6 +192,10 @@ T               UseIonPressureGradient
 T               UseIonGravity
 T               UseNeutralDrag
 
+#USETESTVISCOSITY
+T
+1.0
+
 #USEIMPROVEDIONADVECTION
 T   		UseImprovedIonAdvection
 T               UseNighttimeIonBCs
@@ -204,6 +208,7 @@ T		UseDynamo
 1.0		MaxResidual
 F		IncludeCowling
 20.0		LongitudinalAveraging
+F               UseNewTrace
 
 #CHEMISTRY
 T		UseIonChemistry
