@@ -42,7 +42,7 @@ subroutine calc_chemistry(iBlock)
        ti3m0233d, ti3m1163d, ti10m0673d, ti3m0453d, ti10m2123d, ti3m0873d, &
        ti3m0523d, ti9m0923d, ti3m0553d, ti15m0233d, &
        te3m0393d, te3m0853d, te33d, te3m053d,te3m073d,&
-       te12m0563d,te227d, te3m0913d, te3m0813d
+       te12m0563d,te227d, te3m0913d, te3m0813d, te073d
 
   real, dimension(nLons,nLats,nAlts) :: &
        teffective_n2, teffective_o2, teffective_no, u2, mb, mbb, &
@@ -50,7 +50,7 @@ subroutine calc_chemistry(iBlock)
 
   real :: k1_n2_point, k2_o2_point, k3_no_point
 
-  real :: te3m05,te3m07,te12m056, tr3m044, tr3m04, tr3m08
+  real :: te3m05,te3m07,te12m056, tr3m044, tr3m04, tr3m08, te07
   real :: ti3m044, ti3m024, ti3m023, ti3m116, ti10m067, ti3m045
   real :: ti10m212, ti3m087, ti3m052, ti9m092, ti3m055, ti15m023
   real :: te3m039, te3m085, rr_opn2, te22m05, te3m091, te3m081
@@ -207,6 +207,7 @@ subroutine calc_chemistry(iBlock)
   te33d = eTemperature(1:nLons,1:nLats,1:nAlts,iBlock)/300.0
   te12d = eTemperature(1:nLons,1:nLats,1:nAlts,iBlock)/1200.0
   te227d = -22740.0/eTemperature(1:nLons,1:nLats,1:nAlts,iBlock)
+  te073d = (250.0/eTemperature(1:nLons,1:nLats,1:nAlts,iBlock))**0.7
 
   te3m073d    = te33d**(-0.7)
   te12m0563d  = te12d**(-0.56)
@@ -251,6 +252,7 @@ subroutine calc_chemistry(iBlock)
            te3      = te33d(iLon,iLat,iAlt)
            te3m05   = te3m053d(iLon,iLat,iAlt)
            te3m07   = te3m073d(iLon,iLat,iAlt)
+           te07     = te073d(iLon,iLat,iAlt)
            te3m085  = te3m0853d(iLon,iLat,iAlt)
            te3m091  = te3m0913d(iLon,iLat,iAlt)
            te3m081  = te3m0813d(iLon,iLat,iAlt)
@@ -1387,27 +1389,27 @@ subroutine calc_chemistry(iBlock)
 !              rr=EuvIonRateS(iLon,iLat,iAlt,iO_2PP_,iBlock) 
 
               rr=EuvIonRateS(iLon,iLat,iAlt,iO_2PP_,iBlock) + &
-                    OPERateS(iLon,iLat,iAlt,3,iBlock)
+                   OPERateS(iLon,iLat,iAlt,3,iBlock)
               Reaction = rr*Neutrals(iO_3P_)
 
-                 IonSources(iO_2PP_) = IonSources(iO_2PP_) + Reaction
+              IonSources(iO_2PP_) = IonSources(iO_2PP_) + Reaction
               NeutralLosses(iO_3P_)  = NeutralLosses(iO_3P_)  + Reaction
 
-! ----------------------------
-! Atomic N Photoionization
-! ----------------------------
+              ! ----------------------------
+              ! Atomic N Photoionization
+              ! ----------------------------
               ! ----------------------------------------------------------
               ! N(4S) + hv -> N+
               ! ----------------------------------------------------------
               Reaction = EuvIonRateS(iLon,iLat,iAlt,iNP_,iBlock) * &
                    Neutrals(iN_4S_)
 
-                 IonSources(iNP_) = IonSources(iNP_) + Reaction
+              IonSources(iNP_) = IonSources(iNP_) + Reaction
               NeutralLosses(iN_4S_)  = NeutralLosses(iN_4S_)  + Reaction
 
-! ----------------------------
-! Atomic He Photoionization
-! ----------------------------
+              ! ----------------------------
+              ! Atomic He Photoionization
+              ! ----------------------------
               ! ----------------------------------------------------------
               ! He + hv --> He+  + e-
               ! ----------------------------------------------------------
@@ -1420,8 +1422,8 @@ subroutine calc_chemistry(iBlock)
 ! ----------------------------
 ! NO Photoionization
 
-              IonSources(iO_2PP_) = IonSources(iO_2PP_) + Reaction
-              NeutralLosses(iO_3P_)  = NeutralLosses(iO_3P_)  + Reaction
+!              IonSources(iO_2PP_) = IonSources(iO_2PP_) + Reaction
+!              NeutralLosses(iO_3P_)  = NeutralLosses(iO_3P_)  + Reaction
 
 !!! Temp change to stop crash
 !               ! -----------
@@ -1452,48 +1454,107 @@ subroutine calc_chemistry(iBlock)
                ! N+
                ! ----------------------------------------------------------
                
-!!! Temp change to stop crash
-!               ! -----------
-!               ! O2+ + N(2D) -> N+ + O2 + 0.0 eV
-!               ! -----------
-!
-!               rr = 8.65e-17
-!
-!               Reaction = &
-!                    rr * &
-!                    Ions(iO2P_) * &
-!                    Neutrals(iN_2D_)
-!
-!               NeutralSources(iO2_)  = NeutralSources(iO2_)  + Reaction
-!               IonSources(iNP_)      = IonSources(iNP_)      + Reaction
-!               NeutralLosses(iN_2D_) = NeutralLosses(iN_2D_) + Reaction
-!               IonLosses(iO2P_)      = IonLosses(iO2P_)      + Reaction
-!               ChemicalHeatingSub = &
-!                    ChemicalHeatingSub + &
-!                    Reaction * 0.0
+              !! Temp change to stop crash
+              ! ! -----------
+              ! ! O2+ + N(2D) -> N+ + O2 + 0.0 eV
+              ! ! -----------
+              !
+              ! rr = 8.65e-17
+              !
+              ! Reaction = &
+              !      rr * &
+              !      Ions(iO2P_) * &
+              !      Neutrals(iN_2D_)
+              !
+              ! NeutralSources(iO2_)  = NeutralSources(iO2_)  + Reaction
+              ! IonSources(iNP_)      = IonSources(iNP_)      + Reaction
+              ! NeutralLosses(iN_2D_) = NeutralLosses(iN_2D_) + Reaction
+              ! IonLosses(iO2P_)      = IonLosses(iO2P_)      + Reaction
+              ! ChemicalHeatingSub = &
+              !      ChemicalHeatingSub + &
+              !      Reaction * 0.0
 
-!              ! -----------
-!              ! He+ + N2 -> N+ + N + He + 0.28 eV
-!              ! -----------
-!
-!              rr = 1.2e-9/1.0e6
-!
-!              Reaction = &
-!                   rr * &
-!                   Ions(iHeP_) * &
-!                   Neutrals(iN2_)
-!
-!              NeutralSources(iN_4S_) = NeutralSources(iN_4S_) + Reaction
-!              NeutralSources(iHe_)   = NeutralSources(iHe_)   + Reaction
-!              IonSources(iNP_)       = IonSources(iNP_)       + Reaction
-!              NeutralLosses(iN2_)    = NeutralLosses(iN2_)    + Reaction
-!              IonLosses(iHeP_)       = IonLosses(iHeP_)       + Reaction
-!
-!              ChemicalHeatingSub = &
-!                   ChemicalHeatingSub + &
-!                   Reaction * 0.28
+              ! -----------
+              ! Shunk and Nagy R29
+              ! He+ + N2 -> N+ + N + He + 0.28 eV
+              ! -----------
 
-               ! -----------
+              rr = 7.8e-10/1.0e6
+
+              Reaction = &
+                   rr * &
+                   Ions(iHeP_) * &
+                   Neutrals(iN2_)
+
+              NeutralSources(iN_4S_) = NeutralSources(iN_4S_) + Reaction
+              NeutralSources(iHe_)   = NeutralSources(iHe_)   + Reaction
+              IonSources(iNP_)       = IonSources(iNP_)       + Reaction
+              NeutralLosses(iN2_)    = NeutralLosses(iN2_)    + Reaction
+              IonLosses(iHeP_)       = IonLosses(iHeP_)       + Reaction
+
+              ChemicalHeatingSub = &
+                   ChemicalHeatingSub + &
+                   Reaction * 0.28
+
+              ! -----------
+              ! Shunk and Nagy R30
+              ! He+ + N2 -> N2+ + He ( + ??? eV)
+              ! -----------
+
+              rr = 5.2e-10/1.0e6
+
+              Reaction = &
+                   rr * &
+                   Ions(iHeP_) * &
+                   Neutrals(iN2_)
+
+              NeutralSources(iHe_)   = NeutralSources(iHe_)   + Reaction
+              IonSources(iN2P_)      = IonSources(iN2P_)      + Reaction
+              NeutralLosses(iN2_)    = NeutralLosses(iN2_)    + Reaction
+              IonLosses(iHeP_)       = IonLosses(iHeP_)       + Reaction
+
+              !ChemicalHeatingSub = &
+              !     ChemicalHeatingSub + &
+              !     Reaction * 0.28
+
+              ! -----------
+              ! Shunk and Nagy R31
+              ! He+ + O2 -> O+ O + He ( + ??? eV)
+              ! -----------
+
+              rr = 9.7e-10/1.0e6
+
+              Reaction = &
+                   rr * &
+                   Ions(iHeP_) * &
+                   Neutrals(iO2_)
+
+              NeutralSources(iHe_) = NeutralSources(iHe_) + Reaction
+              NeutralSources(iO_3P_) = NeutralSources(iO_3P_) + Reaction
+              IonSources(iO_4SP_) = IonSources(iO_4SP_) + Reaction
+              NeutralLosses(iO2_) = NeutralLosses(iO2_) + Reaction
+              IonLosses(iHeP_) = IonLosses(iHeP_) + Reaction
+
+              ! -----------
+              ! Shunk and Nagy Radiative Recombination
+              ! He+ + e- -> He ( + ??? eV)
+              ! -----------
+
+              rr = 4.8e-12/1.0e6 * te07
+
+              Reaction = &
+                   rr * &
+                   Ions(iHeP_) * &
+                   Ions(ie_)
+
+              NeutralSources(iHe_) = NeutralSources(iHe_) + Reaction
+              IonLosses(iHeP_) = IonLosses(iHeP_) + Reaction
+
+              !ChemicalHeatingSub = &
+              !     ChemicalHeatingSub + &
+              !     Reaction * 0.28
+
+              ! -----------
                ! O+(2P) + N -> N+ + O + 2.7 eV
                ! -----------
 
