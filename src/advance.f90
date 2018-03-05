@@ -158,16 +158,6 @@ contains
             call set_horizontal_bcs(iBlock)
     enddo
 
-!    Two stage
-!
-!     do iBlock = 1, nBlocks
-!        call calc_physics(iBlock)
-!        ! call calc_rates(iBlock)
-!        call advance_horizontal(iBlock)
-!     end do
-!
-!     call exchange_messages_sphere
-
     call end_timing("horizontal_all")
 
   end subroutine advance_horizontal_all
