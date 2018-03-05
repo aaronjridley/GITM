@@ -43,9 +43,9 @@ subroutine finalize_gitm
         if (.not.IsFrameWork) call stop_gitm("problem with finalize")
      endif
 
-     ! cleanup mpi
-     if (.not.IsFrameWork) call MPI_FINALIZE(iError)
-
   endif
+
+  ! cleanup mpi
+  if (.not.IsFrameWork) call MPI_FINALIZE(iError)
 
 end subroutine finalize_gitm
