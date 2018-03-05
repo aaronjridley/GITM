@@ -2294,9 +2294,10 @@ subroutine calc_chemistry(iBlock)
               Ions(ie_) = 0.0
               do iIon = 1, nIons-1
                  ionso = IonSources(iIon)
-                 ionlo = IonLosses(iIon)/Ions(iIon)
+                 ionlo = IonLosses(iIon)/(Ions(iIon)+1.0e-6)
                  Ions(iIon) = (Ions(iIon) + ionso * DtSub) / &
                       (1 + DtSub * ionlo)
+                 if (Ions(iIon) < 1.0e-6) Ions(iIon) = 1.0e-6
                  ! sum for e-
                  Ions(ie_) = Ions(ie_) + Ions(iIon)
               enddo
