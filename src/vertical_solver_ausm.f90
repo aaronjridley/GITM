@@ -12,13 +12,25 @@ subroutine check_ion_densities(iDen)
   use ModSizeGitm
   use ModPlanet, only: nIonsAdvect, nIons
   real, intent(inout) :: iDen(-1:nAlts+2,nIons)
+  logical :: IsFound
+  integer :: iAlt2
 
-  do iIon = 1, nIonsAdvect
-     do iAlt = 1, nAlts+2
+  do iAlt = -1, nAlts+2
+     IsFound = 0
+     if (iAlt > -1) then
+        iAlt2 = iAlt-1
+     else
+        iAlt2 = 0
+     endif    
+     do iIon = 1, nIons-1
         if (iDen(iAlt, iIon) < 0.0) then
-           iDen(iAlt,iIon) = max(iDen(iAlt-1,iIon)*0.99,10.0)
+           iDen(iAlt,iIon) = max(iDen(iAlt2,iIon)*0.99,10.0)
+           IsFound =1
         endif
      enddo
+     if (IsFound) then
+        iDen(iAlt,ie_) = sum(iDen(iAlt,1:nIons-1))
+     endif
   enddo
 
 end subroutine check_ion_densities
@@ -160,6 +172,7 @@ subroutine advance_vertical_1d_ausm
   NewVertVel = VertVel
 
   DtIn = 0.5*Dt  !!! Store this so that it doesn't change
+
   call advance_vertical_1stage_ausm(DtIn, &
        LogRho, LogNS, Vel_GD, Temp, NewLogRho, NewLogNS, NewVel_GD, NewTemp, &
        LogINS, NewLogINS, IVel, VertVel, NewVertVel)
@@ -206,6 +219,7 @@ subroutine advance_vertical_1d_ausm
   call set_vertical_bcs( &
        UpdatedLogRho, UpdatedLogNS, UpdatedVel_GD, &
        UpdatedTemp, UpdatedLogINS, IVel, UpdatedVS)
+
 
   LogNS = UpdatedLogNS
   LogINS = UpdatedLogINS
@@ -404,6 +418,8 @@ subroutine advance_vertical_1d_ausm
   Temp = FinalTemp
   VertVel = FinalVS
 
+  if (UseImprovedIonAdvection) call check_ion_densities(LogINS)
+
   if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
   if (iDebugLevel > 7) &
        write(*,*) "========> Done with advance_vertical_1d", iproc
@@ -491,6 +507,7 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
   real, dimension(1:nAlts,nSpecies) :: GradLogConS
   real, dimension(-1:nAlts+2,nSpecies) :: ConS, LogConS
   real, dimension(1:nAlts,nSpecies) :: EddyCoefRatio_1d
+  real, dimension(1:nAlts) :: EddyCoef_Small, Temp_Small
   !--------------------------------------------------------------------------
   ! 4th Order Gradients on a Non-Uniform Mesh (5-point Stencil)
   ! Used for calculating the d(ln[Chi])/dr -> Log of the concentration gradient
@@ -526,7 +543,7 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
 
   real :: PressureS(-1:nAlts+2,1:nSpecies)
   real :: NewNS(-1:nAlts+2,1:nSpecies)
-  real :: NewNT(-1:nAlts+2)
+  real :: NewNT(-1:nAlts+2), NewNT_Small(1:nAlts)
 
   real :: NS_small(nAlts,nSpecies)
   
@@ -594,6 +611,7 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
   ! Add geometrical correction to gradient and obtain divergence
   DivVel = GradVel_CD(:,iUp_) + 2*Vel_GD(1:nAlts,iUp_)*InvRadialDistance_C(1:nAlts)
   DiviVel = GradiVel_CD(:,iUp_) + 2*iVel(1:nAlts,iUp_)*InvRadialDistance_C(1:nAlts)
+
 
   do iSpecies=1,nSpecies
 
@@ -852,6 +870,7 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
 !------------------
         NewVertVel(iAlt,iSpecies) = &
            NewMomentumS(iAlt,iSpecies)/NewRhoS(iAlt,iSpecies) 
+
         ! Add Explicit Spherical Curvature Terms here
         NewVertVel(iAlt,iSpecies) = &
            NewVertVel(iAlt,iSpecies) + DtIn*&
@@ -874,15 +893,15 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
   enddo ! iAlt
 
   if (UseNeutralFriction) then
-     nVel(1:nAlts,1:nSpecies) = NewVertVel(1:nAlts,1:nSpecies)
+     nVel = NewVertVel(1:nAlts,1:nSpecies)
      NS_small = NewNS(1:nAlts,1:nSpecies)
-     call calc_neutral_friction(DtIn,nVel(1:nAlts,1:nSpecies), &
-                         EddyCoef_1d(1:nAlts), &
-                               NewNT(1:nAlts), &
-                               NS_small, &
-                         GradLogConS(1:nAlts,1:nSpecies), &
-                                Temp(1:nAlts))
-     NewVertVel(1:nAlts,1:nSpecies) = nVel(1:nAlts,1:nSpecies)
+     EddyCoef_Small = EddyCoef_1d(1:nAlts)
+     NewNT_Small = NewNT(1:nAlts)
+     Temp_Small = Temp(1:nAlts)
+
+     call calc_neutral_friction(DtIn, nVel, EddyCoef_Small, &
+          NewNT_Small, NS_small, GradLogConS, Temp_Small)
+     NewVertVel(1:nAlts,1:nSpecies) = nVel
   endif 
 
 
