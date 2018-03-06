@@ -1,8 +1,8 @@
 !  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 
-subroutine calc_neutral_friction(DtIn,oVel, EddyCoef_1d, NDensity_1d, NDensityS_1d, &
-                                 GradLogCon, Temp)
+subroutine calc_neutral_friction(DtIn, oVel, &
+     EddyCoef_1d, NDensity_1d, NDensityS_1d, GradLogCon, Temp)
 
   use ModGITM
   use ModSources
@@ -25,7 +25,7 @@ subroutine calc_neutral_friction(DtIn,oVel, EddyCoef_1d, NDensity_1d, NDensityS_
   real :: Vel(nSpecies), Parity
   integer :: iPivot(nSpecies)
 
-! Added by Jared 11-29-2007
+  ! Added by Jared 11-29-2007
   real :: TempDij
   real :: InvDij(nSpecies)
   real :: Dij(nSpecies)
@@ -63,22 +63,21 @@ subroutine calc_neutral_friction(DtIn,oVel, EddyCoef_1d, NDensity_1d, NDensityS_
         do jSpecies = 1, nSpecies
            if (jSpecies == iSpecies) cycle
 
-! TempDij are the Dij binary coefficients
-! Based upon the formulation by Banks and Kokarts.
-! These coefficients demand that 
-! (1) NDensity be in cm^-3 (hence the 1.0e-06) factor below
-! (2) Additionally, the Dij's are in cm^2/s, thus the 1.0e-04 factor
-           TempDij = (1.0e-04)*&              ! Scales the Dij from cm^2/s -> m^2/s
-              (   Diff0(iSpecies,jSpecies)*( Temp(iAlt)**DiffExp(iSpecies,jSpecies) )   ) / &
-              (   NDensity_1d(iAlt)*(1.0e-06) )     ! Converts to #/cm^-3
+           ! TempDij are the Dij binary coefficients
+           ! Based upon the formulation by Banks and Kokarts.
+           ! These coefficients demand that 
+           ! (1) NDensity be in cm^-3 (hence the 1.0e-06) factor below
+           ! (2) Additionally, the Dij's are in cm^2/s, thus the 1.0e-04 factor
+           TempDij = (1.0e-04) * &     ! Scales the Dij from cm^2/s -> m^2/s
+                (Diff0(iSpecies,jSpecies) * &
+                (Temp(iAlt)**DiffExp(iSpecies,jSpecies))) / &
+                (NDensity_1d(iAlt)*(1.0e-06))     ! Converts to #/cm^-3
 
            CoefMatrix(iSpecies, jSpecies) = &
-                kTOverM * denscale * NDensityS_1d(iAlt, jSpecies) / &
-                TempDij
+                kTOverM * denscale * NDensityS_1d(iAlt, jSpecies) / TempDij
 
            InvDij(iSpecies) = InvDij(iSpecies) + &
-                denscale*NDensityS_1d(iAlt, jSpecies)/ &
-                ( TempDij )
+                denscale*NDensityS_1d(iAlt, jSpecies) / TempDij
 
         enddo  ! End DO over jSpecies
 
@@ -91,12 +90,20 @@ subroutine calc_neutral_friction(DtIn,oVel, EddyCoef_1d, NDensity_1d, NDensityS_
      do iSpecies = 1, nSpecies
         Matrix(iSpecies,iSpecies) = &
              1.0 + DtIn*(sum(CoefMatrix(iSpecies,:)))
+
+        if (isnan(Matrix(iSpecies,iSpecies))) then
+           write(*,*) 'found nan in calc_neutral_friction :', iSpecies, iAlt
+           write(*,*) 'cm : ',CoefMatrix(iSpecies,:)
+        endif
      enddo
+
+     
+
      call ludcmp(Matrix, nSpecies, nSpecies, iPivot, Parity)
      call lubksb(Matrix, nSpecies, nSpecies, iPivot, Vel)
 
-     oVel(iAlt, 1:nSpecies) = Vel(1:nSpecies) + & 
-         EddyContribution(1:nSpecies) 
+     oVel(iAlt, 1:nSpecies) = Vel(1:nSpecies) + EddyContribution(1:nSpecies) 
+
   enddo
 
 end subroutine calc_neutral_friction
