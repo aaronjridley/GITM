@@ -13,8 +13,10 @@ subroutine advance_horizontal(iBlock)
 
   integer, intent(in) :: iBlock
 
-  integer :: iAlt, iIon, iLon, iLat, iSpecies
+  integer :: iAlt, iIon, iLon, iLat, iSpecies, iDir
   logical :: IsFound
+
+  real :: MaxDiff
 
   real :: cp_C(1:nLons,1:nLats)
   real :: Rho_C(-1:nLons+2,-1:nLats+2)
@@ -79,10 +81,8 @@ subroutine advance_horizontal(iBlock)
   real :: K4Num_CV(nLons,nLats, nSpecies)
   real :: K4VertVel_CV(nLons,nLats, nSpecies)
   real :: K4INum_CV(nLons,nLats, nIonsAdvect)
-
-  integer :: iError
-
   !----------------------------------------------------------------------------
+  MaxDiff = 0.0
 
   call report("advance_horizontal",2)
 
@@ -115,11 +115,9 @@ subroutine advance_horizontal(iBlock)
      OrigTemp_C     = Temp_C(1:nLons,1:nLats)
      OrigINum_CV    = INum_CV(1:nLons,1:nLats,:)
 
-     if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
-
-     ! 1st Update Step
+!!! 1st Update Step
      call horizontal_solver
-
+     
      K1Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
      K1Vel_CD     = NewVel_CD(1:nLons,1:nLats,1:3) - &
                    Vel_CD(1:nLons,1:nLats,1:3)
@@ -159,7 +157,7 @@ subroutine advance_horizontal(iBlock)
      NewINum_CV    = UpdatedINum_CV
 
 
-     ! 2nd Update Step
+!!! 2nd Update Step
      call horizontal_solver
      
      K2Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
@@ -194,6 +192,7 @@ subroutine advance_horizontal(iBlock)
      Temp_C(1:nLons,1:nLats)     = UpdatedTemp_C
      INum_CV(1:nLons,1:nLats,:)    = UpdatedINum_CV
 
+
      NewRho_C      = UpdatedRho_C
      NewVel_CD     = UpdatedVel_CD
      NewNum_CV     = UpdatedNum_CV
@@ -201,7 +200,7 @@ subroutine advance_horizontal(iBlock)
      NewTemp_C     = UpdatedTemp_C
      NewINum_CV    = UpdatedINum_CV
 
-     ! 3rd Update Step
+!!! 3rd Update Step
      call horizontal_solver
      
      K3Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
@@ -243,7 +242,7 @@ subroutine advance_horizontal(iBlock)
      NewTemp_C     = UpdatedTemp_C
      NewINum_CV    = UpdatedINum_CV
 
-     ! 4th (Final) Update Step
+!!! 4th (Final) Update Step
      call horizontal_solver
 
      K4Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
@@ -286,31 +285,74 @@ subroutine advance_horizontal(iBlock)
      ! ---------
      ! JMB:  06/2016
      ! After the RK-4 Update, we update the state variables
-     Rho(1:nLons,1:nLats,iAlt,iBlock) = NewRho_C
-     Velocity(1:nLons,1:nLats,iAlt,:,iBlock) = NewVel_CD
+     Rho(1:nLons,1:nLats,iAlt,iBlock)                     = NewRho_C
+     Velocity(1:nLons,1:nLats,iAlt,:,iBlock)              = NewVel_CD
+
      HorizontalTempSource(1:nLons,1:nLats,iAlt)           = &
           NewTemp_C-Temperature(1:nLons,1:nLats,iAlt,iBlock)
-     Temperature(1:nLons,1:nLats,iAlt,iBlock) = NewTemp_C
-     VerticalVelocity(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock) = NewVertVel_CV
 
-     if (minval(NewNum_CV(1:nLons,1:nLats,:)) < 0.0) then
-        where (NewNum_CV < 0) NewNum_CV = 1.0
+     Temperature(1:nLons,1:nLats,iAlt,iBlock)             = NewTemp_C
+     VerticalVelocity(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock)         = &
+         NewVertVel_CV
+
+     if (minval(NewNum_CV) < 0.0) then
         write(*,*) "Negative Density after horizontal advection!!"
         write(*,*) "Correcting...."
-        !\
-        ! New Rho
-        !/
-        Rho(1:nLons,1:nLats,iAlt,iBlock) = 0.0
-        do iSpecies = 1, nSpecies
-           Rho(1:nLons,1:nLats,iAlt,iBlock) = &
-                Rho(1:nLons,1:nLats,iAlt,iBlock) + &
-                NewNum_CV(1:nLons, 1:nLats, iSpecies)*Mass(iSpecies)
+        do iLon = 1, nLons
+           do iLat = 1, nLats
+              IsFound = .false.
+              do iSpecies = 1, nSpecies
+                 if (NewNum_CV(iLon, iLat, iSpecies) < 0.0) then
+                    write(*,*) "Species : ", iSpecies, iLon, iLat, iBlock
+                    stop
+                    NewNum_CV(iLon, iLat, iSpecies) = 1.0
+                    IsFound=.true.
+                 endif
+              enddo
+              If (IsFound) then
+                 Rho(iLon,iLat,iAlt,iBlock) = 0.0
+                 do iSpecies = 1, nSpecies
+                    Rho(iLon,iLat,iAlt,iBlock) = &
+                         Rho(iLon,iLat,iAlt,iBlock) + &
+                         NewNum_CV(iLon, iLat, iSpecies)*Mass(iSpecies)
+                 enddo
+              endif
+           enddo
         enddo
      endif
-     NDensityS(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock) = NewNum_CV
+ 
+     NDensityS(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock)    = NewNum_CV
+
+     do iLon = 1, nLons
+        do iLat = 1, nLats
+           do iDir = 1,3
+
+              if (isnan(Velocity(iLon,iLat,iAlt,iDir,1))) write(*,*) 'Velocity is nan : ',iLon,iLat,iAlt,iDir
+           enddo
+        enddo
+     enddo
+
 
      if (UseIonAdvection) then
-        where (NewINum_CV < 1.0e2) NewINum_CV = 1e2
+
+        if (minval(NewINum_CV) < 1.0e2) then
+!           write(*,*) "Negative Ion Density after horizontal advection!!"
+!           write(*,*) "Correcting...."
+           do iLon = 1, nLons
+              do iLat = 1, nLats
+                 do iIon = 1, nIonsAdvect
+                    if (NewINum_CV(iLon, iLat, iIon) < 1.0e2) then
+!                       write(*,*) "Location : ", &
+!                            Longitude(iLon,iBlock)*180/pi, &
+!                            Latitude(iLon,iBlock)*180/pi, &
+!                            Altitude(iAlt)/1000.0, iIon
+                       NewINum_CV(iLon, iLat, iIon) = 1.0e2
+                    endif
+                 enddo
+              enddo
+           enddo
+        endif
+
         IDensityS(1:nLons,1:nLats,iAlt,1:nIonsAdvect,iBlock) = NewINum_CV
         !\
         ! New Electron Density
@@ -326,9 +368,10 @@ subroutine advance_horizontal(iBlock)
   end do
 
   if (iDebugLevel > 2) &
-       write(*,*) "===> advance_horizontal, IVel, IDens, Dt : ", &
-       maxval(abs(IVel_CD)), &
+       write(*,*) "===> advance_horizontal, MaxDiff, IVel, IDens, Dt : ", &
+       MaxDiff, maxval(abs(IVel_CD)), &
        maxval(IDensityS(1:nLons,1:nLats,1:nAlts,1:nIonsAdvect,iBlock)), dt
+
 
 contains
 
@@ -340,25 +383,25 @@ contains
 
     integer :: iDim, iSpc
 
-    real, dimension(-1:nLons+2,-1:nLats+2) :: Quantity 
-
-    real, dimension(nLons,nLats) :: &
-         GradLonQuantity, GradLatQuantity, DiffQuantity, &
-         GradLonRho_C, GradLatRho_C, &
-         DiffLonRho_C, DiffLatRho_C, &
+    real, dimension(-1:nLons+2,-1:nLats+2):: &
+         Quantity 
+    real, dimension(nLons,nLats)          :: &
+         GradLonQuantity, GradLatQuantity, DiffQuantity
+    real, dimension(nLons,nLats)          :: &
+         GradLonRho_C, GradLatRho_C,   &
+         DiffLonRho_C, DiffLatRho_C
+    real, dimension(nLons,nLats)          :: &
          GradLonTemp_C, GradLatTemp_C, &
          DiffLonTemp_C, DiffLatTemp_C, DivVel_C
-
     real, dimension(nLons,nLats,3)        :: &
          GradLonVel_CD, GradLatVel_CD, &
          DiffLonVel_CD, DiffLatVel_CD
-
     real, dimension(nLons,nLats,nSpecies) :: &
          GradLonVertVel_CV, GradLatVertVel_CV, &
-         DiffLonVertVel_CV, DiffLatVertVel_CV, &
+         DiffLonVertVel_CV, DiffLatVertVel_CV
+    real, dimension(nLons,nLats,nSpecies) :: &
          GradLonNum_CV, GradLatNum_CV, &
          DiffLonNum_CV, DiffLatNum_CV
-
     real, dimension(nLons,nLats,nIonsAdvect) :: &
          GradLonINum_CV, GradLatINum_CV, &
          DiffLonINum_CV, DiffLatINum_CV
@@ -371,9 +414,9 @@ contains
 
     integer :: iLon, iLat
     !--------------------------------------------------------------------------
-
-    if (UseTopography) then
+    if(UseTopography)then
        HalfInvDAlt_C = 0.5/dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
+
        dVarDAlt_C = HalfInvDAlt_C * &
             ( Rho(1:nLons,1:nLats,iAlt+1,iBlock) &
             - Rho(1:nLons,1:nLats,iAlt-1,iBlock) )
@@ -381,7 +424,7 @@ contains
     call calc_rusanov_lons( Rho_C,  GradLonRho_C,  DiffLonRho_C)
     call calc_rusanov_lats( Rho_C,  GradLatRho_C,  DiffLatRho_C)
 
-    if (UseTopography) dVarDAlt_C = HalfInvDAlt_C * &
+    if(UseTopography) dVarDAlt_C = HalfInvDAlt_C * &
          ( Temperature(1:nLons,1:nLats,iAlt+1,iBlock) &
          - Temperature(1:nLons,1:nLats,iAlt-1,iBlock) )
     call calc_rusanov_lons( Temp_C, GradLonTemp_C, DiffLonTemp_C)
@@ -405,8 +448,7 @@ contains
     end do
 
     do iSpc = 1,nSpecies
-
-       if (UseTopography) dVarDAlt_C = HalfInvDAlt_C * &
+       if(UseTopography) dVarDAlt_C = HalfInvDAlt_C * &
             ( nDensityS(1:nLons,1:nLats,iAlt+1,iSpc,iBlock) &
             - nDensityS(1:nLons,1:nLats,iAlt-1,iSpc,iBlock) )
        call calc_rusanov_lons(Num_CV(:,:,iSpc), &
@@ -414,7 +456,7 @@ contains
        call calc_rusanov_lats(Num_CV(:,:,iSpc), &
             GradLatNum_CV(:,:,iSpc), DiffLatNum_CV(:,:,iSpc))
 
-       if (UseTopography) dVarDAlt_C = HalfInvDAlt_C * &
+       if(UseTopography) dVarDAlt_C = HalfInvDAlt_C * &
             ( VerticalVelocity(1:nLons,1:nLats,iAlt+1,iSpc,iBlock) &
             - VerticalVelocity(1:nLons,1:nLats,iAlt-1,iSpc,iBlock) )
        call calc_rusanov_lons( VertVel_CV(:,:,iSpc), &
@@ -442,7 +484,8 @@ contains
        CoriolisSin = SinLat(iLat) * 2 * OmegaBodyInput
        CoriolisCos = CosLat(iLat) * 2 * OmegaBodyInput
 
-       CentrifugalParameter = OmegaBodyInput**2 * cosLat(iLat) * sinLat(iLat)
+       CentrifugalParameter = OmegaBodyInput**2 * cosLat(iLat) * &
+            sinLat(iLat)
 
        do iLon=1,nLons
 
@@ -478,6 +521,11 @@ contains
 
           RhoTest = sum(Mass(1:nSpecies) * NewNum_CV(iLon,iLat,1:nSpecies))
 
+!          if (abs(RhoTest - NewRho_C(iLon,iLat))/RhoTest > 0.1) then
+!             write(*,*) "Problem!! ", RhoTest, NewRho_C(iLon,iLat)
+!!             call stop_gitm("Have to stop")
+!          endif
+
           ! dv_phi/dt = -(V grad V + (1/rho) grad P)_phi
           ! (1/rho) grad p = grad T + T/rho grad rho 
 
@@ -509,6 +557,10 @@ contains
                DiffLonVel_CD(iLon,iLat,iNorth_)+ &
                DiffLatVel_CD(iLon,iLat,iNorth_))
 
+!          if (iLon == 1) then
+!             write(*,*) "vel before cor : ",NewVel_CD(iLon,iLat,iNorth_) 
+!          endif
+
           ! dv_r/dt = -(V grad V)_r
 
           NewVel_CD(iLon,iLat,iUp_) = NewVel_CD(iLon,iLat,iUp_) &
@@ -529,7 +581,6 @@ contains
                   DiffLatVertVel_CV(iLon,iLat,iSpc) + &
                   DiffLonVertVel_CV(iLon,iLat,iSpc))
           enddo
-
 
           if (UseCoriolis) then
 
@@ -581,14 +632,17 @@ contains
     ! Calculate gradient and diffusive flux with respect to latitude
 
     do iLon = 1, nLons
-
        TempVar(-1:nLats+2) = Var(iLon,-1:nLats+2)
        InvdLat = InvDLatDist_GB(iLon, 1:nLats,iAlt,iBlock)
 
        call calc_facevalues_lats(iLon, iAlt, iBlock, TempVar, &
             VarSouth, VarNorth)
 
+!       call calc_facevalues_lats(iLon, iAlt, iBlock, Var(iLon,:), &
+!            VarSouth, VarNorth)
+
        ! Gradient based on averaged Left/Right values
+
        GradVar(iLon,:) = 0.5 * &
             (VarSouth(2:nLats+1)+VarNorth(2:nLats+1) - &
             VarSouth(1:nLats)-VarNorth(1:nLats)) * InvdLat
@@ -638,6 +692,7 @@ contains
             Var(:,iLat), VarWest, VarEast)
 
        ! Gradient based on averaged West/East values
+
        GradVar(:,iLat) = 0.5 * &
             (VarWest(2:nLons+1) + VarEast(2:nLons+1) - &
             VarWest(1:nLons)    - VarEast(1:nLons)) * InvdLon
@@ -698,8 +753,10 @@ subroutine calc_facevalues_lats(iLon, iAlt, iBlock, Var, VarLeft, VarRight)
      h = InvDLatDist_FB(iLon,i  ,iAlt,iBlock)*2
      dVarDown = h*(Factor1*(Var(i)  -Var(i-1)) - Factor2*(Var(i+1)-Var(i-2)))
 
-     dVarLimited(i)= Limiter_mc(dVarUp, dVarDown)
+!     dVarUp   = (Var(i+1) - Var(i))   * InvDLatDist_FB(iLon,i+1,iAlt,iBlock)
+!     dVarDown = (Var(i)   - Var(i-1)) * InvDLatDist_FB(iLon,i  ,iAlt,iBlock)
 
+     dVarLimited(i)= Limiter_mc(dVarUp, dVarDown)
   end do
 
   i = nLats+1
@@ -749,6 +806,8 @@ subroutine calc_facevalues_lons(iLat, iAlt, iBlock, Var, VarLeft, VarRight)
      dVarUp   = h*(Factor1*(Var(i+1)-Var(i)  ) - Factor2*(Var(i+2)-Var(i-1)))
      h  = InvDLonDist_FB(i  ,iLat,iAlt,iBlock)*2
      dVarDown = h*(Factor1*(Var(i)  -Var(i-1)) - Factor2*(Var(i+1)-Var(i-2)))
+!     dVarUp   = (Var(i+1) - Var(i))  *InvDLonDist_FB(i+1,iLat,iAlt,iBlock)
+!     dVarDown = (Var(i)   - Var(i-1))*InvDLonDist_FB(i  ,iLat,iAlt,iBlock)
      dVarLimited(i)= Limiter_mc(dVarUp, dVarDown)
   end do
 
