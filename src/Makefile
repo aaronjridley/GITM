@@ -103,7 +103,8 @@ OBJECTS = \
 	user.o \
 	calc_tec.o \
 	get_location.o \
-	RCMR_routines.o
+	RCMR_routines.o \
+	check_for_nans.o
 
 OBJECTS_EXE = main.o ${OBJECTS} ${MODULES}
 
@@ -154,7 +155,7 @@ ${MY_LIB}: ${LIBPREV} ${MF} ${MODULES} ${OBJECTS}
 	cp -f ${LIBPREV} ${MY_LIB}
 	${AR} ${MY_LIB} ${OBJECTS} ${MODULES}
 
-clean: cleanfiles
+
 
 distclean: clean
 	rm -f 	ModSize.f90 \
