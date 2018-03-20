@@ -537,7 +537,7 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
           NewRhoS(-1:nAlts+2,1:nSpecies),&
       AUSMRhoSFluxes(1:nAlts,1:nSpecies)
 
-  real :: InvScaleHeight, MeanGravity, MeanTemp, MeanMass
+  real :: InvScaleHeight, MeanGravity, MeanTemp, MeanMass, NumDen
 
   real ::   HydroNS(-1:nAlts+2,1:nSpecies),&
           HydroRhoS(-1:nAlts+2,1:nSpecies), &
@@ -816,7 +816,18 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
 
      do iSpecies=1,nSpecies
         NewRhoS(iAlt,iSpecies) = RhoS(iAlt,iSpecies) &
-               - DtIn*(AUSMRhoSFluxes(iAlt,iSpecies))
+             - DtIn*(AUSMRhoSFluxes(iAlt,iSpecies))
+
+        NumDen = NewRhoS(iAlt,iSpecies)/Mass(iSpecies)
+        if (NumDen < 0.0) then
+           NumDen = RhoS(iAlt,iSpecies)/Mass(iSpecies)
+           if (NumDen < 0.0) NumDen = 1.0
+	endif
+
+        ! alog( NewRhoS(iAlt,iSpecies)/Mass(iSpecies) )
+        NewLogNS(iAlt,iSpecies) = alog(NumDen) 
+        
+
         NewLogNS(iAlt,iSpecies) = alog( NewRhoS(iAlt,iSpecies)/Mass(iSpecies) )
      enddo
 
