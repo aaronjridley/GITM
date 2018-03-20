@@ -2304,7 +2304,7 @@ subroutine calc_chemistry(iBlock)
               do iNeutral = 1, nSpeciesTotal
 
                  neuso = NeutralSources(iNeutral)
-                 neulo = NeutralLosses(iNeutral) / Neutrals(iNeutral)
+                 neulo = NeutralLosses(iNeutral) / (Neutrals(iNeutral)+1.0e-6)
 
                  Neutrals(iNeutral)=(Neutrals(iNeutral) + neuso * DtSub) / &
                       (1 + DtSub * neulo)
