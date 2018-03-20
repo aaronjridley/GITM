@@ -270,7 +270,7 @@ iAlt = -1
 
       LogNS(iAlt  ,iSpecies) = alog(NS(iAlt,iSpecies))
 
-      if (iSpecies .eq. iO_3P_) then
+      if (iSpecies == iO_3P_) then
          LogNS(iAlt,iSpecies) = LogNS(0,iSpecies)  ! Assume 0 gradient below boundary
       endif 
 !       iAlt = -1
@@ -342,7 +342,15 @@ iAlt = -1
           if (dLogNS .le. 0.0) then
               LogNS(iAlt,iSpecies) = LogNS(iAlt+1,iSpecies)
           endif 
-        enddo !iAlt = 0,-1,-1
+
+          !!! Only allow the NO density to decrease by roughly 1/3 scale height max
+          if (iSpecies == iNO_) then
+             if (LogNS(iAlt,iSpecies) < LogNS(iAlt+1,iSpecies) - 0.333) then
+                LogNS(iAlt,iSpecies) = LogNS(iAlt+1,iSpecies) - 0.333
+             endif
+          endif
+
+       enddo !iAlt = 0,-1,-1
 
      endif ! PhotoChemical Check
   enddo  ! iSpecies loop
