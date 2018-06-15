@@ -24,7 +24,7 @@ subroutine EIE_FindPoint(LocIn, LocOut, iError)
   real, dimension(2), intent(in)  :: LocIn
   real, dimension(5), intent(out) :: LocOut
   integer, intent(out) :: iError
-  real :: MLTIn, LatIn
+  real :: MLTIn, LatIn, MLTUp, MLTDown
   integer :: j,i, iBLK
 
   logical :: IsFound
@@ -65,10 +65,14 @@ subroutine EIE_FindPoint(LocIn, LocOut, iError)
            ! Check to see if the point is within the current cell
            !/
 
+           MLTUp = EIEr3_HaveMLTs(j+1,i,iBLK)
+           MLTDown = EIEr3_HaveMLTs(j,i,iBLK)
+           if (MLTUp == 0.0 .and. MLTDown >= 23.0) MLTUp = 24.0
+
            if (LatIn <  EIEr3_HaveLats(j,i+1,iBLK) .and. &
                LatIn >= EIEr3_HaveLats(j,i,iBLK) .and. &
-               MLTIn <  EIEr3_HaveMLTs(j+1,i,iBLK) .and. &
-               MLTIn >= EIEr3_HaveMLTs(j,i,iBLK)) then
+               MLTIn <  MLTUp .and. &
+               MLTIn >= MLTDown) then
 
               !\
               ! If it is, then store the cell number and calculate
@@ -79,8 +83,8 @@ subroutine EIE_FindPoint(LocIn, LocOut, iError)
               LocOut(2) = j
               LocOut(3) = i
 
-              LocOut(4) = (MLTIn                    -EIEr3_HaveMLTs(j,i,iBLK))/&
-                          (EIEr3_HaveMLTs(j+1,i,iBLK)-EIEr3_HaveMLTs(j,i,iBLK))
+              LocOut(4) = (MLTIn - MLTDown)/&
+                          (MLTUp - MLTDown)
               LocOut(5) = (LatIn                    -EIEr3_HaveLats(j,i,iBLK))/&
                           (EIEr3_HaveLats(j,i+1,iBLK)-EIEr3_HaveLats(j,i,iBLK))
 
