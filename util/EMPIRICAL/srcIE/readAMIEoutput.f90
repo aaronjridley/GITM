@@ -158,7 +158,7 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
      endif
      TempLats = AMIE_Lats
      do i=1,AMIE_nLats
-        AMIE_Lats(i) = AMIE_Lats(AMIE_nLats+1-i)
+        AMIE_Lats(i) = TempLats(AMIE_nLats+1-i)
      enddo
      ReverseLats = .true.
   endif
