@@ -327,7 +327,20 @@ subroutine set_inputs
               if (UseGSWMTides)  UseMSISOnly = .true.
               if (UseWACCMTides) UseMSISOnly = .true.
            endif
+        
+        !Garima
+        case("#IAV")
+            call read_in_logical(noMSISAO,iError)
+            call read_in_logical(noMSISSAO,iError)
 
+            if (iError /= 0) then
+                write(*,*) 'Incorrect format for #IAV:'
+                write(*,*) 'This says how to Use MSIS'
+                write(*,*) 'The first one is using MSIS'
+                write(*,*) 'with no AO, and the second'
+                write(*,*) 'one is using MSIS with no SAO'
+            endif 
+           
         !xianjing
         case("#USESECONDSINFILENAME")
            call read_in_logical(UseSecondsInFilename,iError)

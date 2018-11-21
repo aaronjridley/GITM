@@ -62,6 +62,8 @@ subroutine get_msis_temperature(lon, lat, alt, t, h)
      write(*,*) "Code : ",iError
      call stop_gitm("Stopping in euv_ionization_heat")
   endif
+  
+  call set_msis_switches
 
   if(RCMRFlag .and. RCMROutType == "F107") then
      CALL GTD7(iJulianDay,utime,AltKm,LatDeg,LonDeg,LST, &
@@ -147,27 +149,9 @@ subroutine init_msis
   ! We want units of /m3 and not /cm3
 
   call meters(.true.)
-
-  if (UseMsisTides) then
-     sw = 1
-  ELSE IF (UseMSISOnly) THEN
-     ! Diurnal, semidiurnal, and terdiurnal variations are excluded, EYigit:16June09
-     CALL report("...Using MSIS without tidal variations...",0)
-     sw = 1
-     sw(7) = 0
-     sw(8) = 0
-     sw(14) = 0
-  ELSE
-     sw = 0
-     sw(1) = 1
-     sw(9) = 1
-  endif
-
-  sw(9) = 0
-  sw(2) = 0
-
-  call tselec(sw)
-
+    
+  call set_msis_switches
+  
   if (DoRestart) return
 
   !           The following is for test and special purposes:
@@ -493,3 +477,42 @@ subroutine calc_co2(iBlock)
   enddo
 
 end subroutine calc_co2
+
+subroutine set_msis_switches
+  use ModInputs
+  use EUA_ModMsis00, only: tselec
+
+  implicit none
+  real, dimension(25) :: sw
+
+  if (UseMsisTides) then
+     sw = 1
+  ELSE IF (UseMSISOnly) THEN
+     ! Diurnal, semidiurnal, and terdiurnal variations are excluded, EYigit:16June09
+     CALL report("...Using MSIS without tidal variations...",0)
+     sw = 1
+     sw(7) = 0 ! Diurnal
+     sw(8) = 0 ! Semidiurnal
+     sw(14) = 0 ! Terdiurnal 
+  ELSE
+     sw = 0
+     sw(1) = 1 ! F10.7 effect on mean
+     sw(9) = 1 ! Daily Ap
+  endif
+
+  sw(9) = 0 ! Daily Ap
+  sw(2) = 0 ! Time independent
+
+  if (noMSISAO) then
+      sw(3)=0 ! AO
+      sw(5)=0
+      
+  endif
+
+  if (noMSISSAO) then
+      sw(4)=0 ! SAO
+      sw(6)=0
+  endif
+    
+  call tselec(sw)
+end subroutine set_msis_switches
