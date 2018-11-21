@@ -149,8 +149,8 @@ module ModInputs
   logical :: UseIRI  = .true.
   logical :: UseMSISTides  = .true.
   logical :: UseMSISOnly   = .false.
-  logical :: noMSISSAO =.false.
-  logical :: noMSISAO=.false.
+  logical :: noMSISSAO = .false.
+  logical :: noMSISAO = .false.
   logical :: UseGSWMTides  = .false.
   logical :: UseWACCMTides = .false.
   logical :: UseStatisticalModelsOnly = .false.
