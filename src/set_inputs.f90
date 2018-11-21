@@ -329,12 +329,12 @@ subroutine set_inputs
            endif
         
         !Garima
-        case("#IAO")
+        case("#IAV")
             call read_in_logical(noMSISAO,iError)
             call read_in_logical(noMSISSAO,iError)
 
             if (iError /= 0) then
-                write(*,*) 'Incorrect format for #IAO:'
+                write(*,*) 'Incorrect format for #IAV:'
                 write(*,*) 'This says how to Use MSIS'
                 write(*,*) 'The first one is using MSIS'
                 write(*,*) 'with no AO, and the second'
