@@ -35,6 +35,7 @@ MODULES = \
 	ModUser.o \
 	ModRCMR.o \
 	ModOrbital.o\
+	ModReadGitm3d.o\
 	apexsh.o
 
 OBJECTS = \
@@ -60,6 +61,7 @@ OBJECTS = \
 	init_msis.o\
 	init_iri.o\
 	init_b0.o\
+	overwrite.o\
 	init_altitude.o\
 	finalize.o\
 	calc_neutral_friction.o\
