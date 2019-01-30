@@ -328,6 +328,22 @@ subroutine set_inputs
               if (UseWACCMTides) UseMSISOnly = .true.
            endif
 
+        case ("#MSISTIDES")
+           call read_in_logical(UseMSISDiurnal, iError)
+           call read_in_logical(UseMSISSemidiurnal, iError)
+           call read_in_logical(UseMSISTerdiurnal, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #MSISTIDES:'
+              write(*,*) 'This says how to use msis tides.  '
+              write(*,*) 'The first one is using diurnal tide'
+              write(*,*) 'The first one is using semi-diurnal tide'
+              write(*,*) 'The first one is using terdiurnal tide'
+              write(*,*) '#MSISTIDES'
+              write(*,*) 'UseMSISDiurnal        (logical)'
+              write(*,*) 'UseMSISSemidiurnal    (logical)'
+              write(*,*) 'UseMSISTerdiurnal     (logical)'
+           endif
+
         !xianjing
         case("#USESECONDSINFILENAME")
            call read_in_logical(UseSecondsInFilename,iError)
@@ -348,6 +364,16 @@ subroutine set_inputs
               write(*,*) '#DUST'
               write(*,*) 'cDustFile'
               write(*,*) 'cConrathFile'
+           endif
+
+        case ("#GITMBCS")
+           call read_in_logical(UseGitmBCs,iError) 
+           call read_in_string(GitmBCsDir,iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #GITMBCS'
+              write(*,*) '#GITMBCS'
+              write(*,*) 'UseGitmBCs'
+              write(*,*) 'GitmBCsDir'
            endif
 
         case ("#DUST")
@@ -799,6 +825,16 @@ subroutine set_inputs
               write(*,*) "DaysPerYearInput           (real)"
            endif
            
+        case ("#USEIMPLICITIONMOMENTUM")
+           call read_in_logical(UseImplicitFieldAlignedMomentum, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #USEIMPLICITIONMOMENTUM:'
+              write(*,*) ''
+              write(*,*) '#USEIMPLICITIONMOMENTUM'
+              write(*,*) "UseImplicitFieldAlignedMomentum      (logical)"
+           endif
+
+
         case ("#USEIMPROVEDIONADVECTION")
            call read_in_logical(UseImprovedIonAdvection, iError)
            call read_in_logical(UseNighttimeIonBCs, iError)

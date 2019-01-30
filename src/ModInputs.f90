@@ -151,6 +151,9 @@ module ModInputs
   logical :: UseMSISOnly   = .false.
   logical :: UseGSWMTides  = .false.
   logical :: UseWACCMTides = .false.
+  logical :: UseMSISDiurnal = .true.
+  logical :: UseMSISSemidiurnal = .true.
+  logical :: UseMSISTerdiurnal = .true.
   logical :: UseStatisticalModelsOnly = .false.
   real    :: DtStatisticalModels = 3600.0
 
@@ -214,6 +217,10 @@ module ModInputs
   logical :: UseImprovedIonAdvection = .false.
   logical :: UseNighttimeIonBCs = .false.
   real :: MinTEC = 2.0
+  logical :: UseImplicitFieldAlignedMomentum = .false.
+
+  logical :: UseGitmBCs = .false.
+  character(len=iCharLen_) :: GitmBCsDir
   
   logical :: UseSolarHeating   = .true.
   logical :: UseJouleHeating   = .true.
