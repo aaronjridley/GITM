@@ -53,6 +53,7 @@ subroutine advance
   if (.not. UseStatisticalModelsOnly) then
 
      call advance_vertical_all
+     if (DoOverwriteIonosphere) call overwrite_ionosphere
      call add_sources 
      if (.not. Is1D) call advance_horizontal_all
 
