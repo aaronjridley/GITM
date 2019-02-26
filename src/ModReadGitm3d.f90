@@ -158,10 +158,14 @@ contains
           if (InLons(iPoint) > GitmLons(nLonsGitm)) then
              GitmLonsIndex(iPoint) = -1
           else
-             i = 2
-             do while (GitmLons(i) <= InLons(iPoint))
-                i = i + 1
-             enddo
+             if (InLons(iPoint) == GitmLons(nLonsGitm)) then
+                i = nLonsGitm
+             else
+                i = 2
+                do while (GitmLons(i) <= InLons(iPoint))
+                   i = i + 1
+                enddo
+             endif
              GitmLonsIndex(iPoint) = i
              GitmLonsFactor(iPoint) = &
                   (GitmLons(i) - InLons(iPoint)) / &
@@ -176,10 +180,14 @@ contains
           if (InLats(iPoint) > GitmLats(nLatsGitm)) then
              i = -1
           else
-             i = 2
-             do while (GitmLats(i) <= InLats(iPoint))
-                i = i + 1
-             enddo
+             if (InLats(iPoint) == GitmLats(nLatsGitm)) then
+                i = nLatsGitm
+             else
+                i = 2
+                do while (GitmLats(i) <= InLats(iPoint))
+                   i = i + 1
+                enddo
+             endif
              GitmLatsIndex(iPoint) = i
              GitmLatsFactor(iPoint) = &
                   (GitmLats(i) - InLats(iPoint)) / &
@@ -449,7 +457,6 @@ contains
     integer :: nLons, nLats, nAlts, nVars
     real :: Version
     integer, dimension(7) :: iTime
-    real, allocatable :: data(:,:,:)
 
     iError = 0
     
@@ -489,6 +496,8 @@ contains
     deallocate(GitmInAlts)
     deallocate(GitmOutData)
 
+
+    
   end subroutine GitmShutDown
 
   !---------------------------------------------------------------------------
