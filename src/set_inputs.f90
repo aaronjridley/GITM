@@ -366,6 +366,21 @@ subroutine set_inputs
               write(*,*) 'cConrathFile'
            endif
 
+        case ("#OVERWRITEIONOSPHERE")
+           call read_in_logical(DoOverwriteIonosphere,iError) 
+           call read_in_logical(DoOverwriteWithIRI,iError) 
+           call read_in_logical(DoOverwriteWithSami,iError)
+           if (DoOverwriteWithSami) &
+                call read_in_string(SamiInFile,iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #OVERWRITEIONOSPHERE'
+              write(*,*) '#OVERWRITEIONOSPHERE'
+              write(*,*) 'DoOverwriteIonosphere'
+              write(*,*) 'DoOverwriteWithIRI'
+              write(*,*) 'DoOverwriteWithSami'
+              write(*,*) 'SamiInFile'
+           endif
+
         case ("#GITMBCS")
            call read_in_logical(UseGitmBCs,iError) 
            call read_in_string(GitmBCsDir,iError)
