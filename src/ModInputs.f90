@@ -60,6 +60,11 @@ module ModInputs
   logical :: UseOvationSMEMono = .false.
   logical :: UseOvationSMEWave = .false.
   logical :: UseOvationSMEIon  = .false.
+
+  logical :: DoOverwriteIonosphere = .false.
+  logical :: DoOverwriteWithIRI    = .true.
+  logical :: DoOverwriteWithSami   = .false.
+  character (len=iCharLen_) :: SamiInFile
   
   real :: AuroralHeightFactor = 1.0
   logical :: NormalizeAuroraToHP = .true.
