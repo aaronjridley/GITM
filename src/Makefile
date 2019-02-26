@@ -36,6 +36,7 @@ MODULES = \
 	ModRCMR.o \
 	ModOrbital.o\
 	ModReadGitm3d.o\
+	ModSami.o\
 	apexsh.o
 
 OBJECTS = \
