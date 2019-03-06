@@ -113,14 +113,14 @@ subroutine ionosphere_overwrite_sami(iBlock)
      do iLat = -1, nLats+2
         do iAlt = 1, nAlts
            !write(*,*) iLon,iLat,iAlt,iPoint
-           IDensityS(iLon,iLat,iAlt,iBlock,iO_4SP_) = SamiFileData(iPoint, iSami_Op_)*1e6
-           IDensityS(iLon,iLat,iAlt,iBlock,iO2P_) = SamiFileData(iPoint, iSami_O2p_)*1e6
-           IDensityS(iLon,iLat,iAlt,iBlock,iNOP_) = SamiFileData(iPoint, iSami_NOp_)*1e6
-           IDensityS(iLon,iLat,iAlt,iBlock,iHP_) = SamiFileData(iPoint, iSami_Hp_)*1e6
-           IDensityS(iLon,iLat,iAlt,iBlock,iHeP_) = SamiFileData(iPoint, iSami_Hep_)*1e6
+           IDensityS(iLon,iLat,iAlt,iO_4SP_,iBlock) = SamiFileData(iPoint, iSami_Op_)*1e6
+           IDensityS(iLon,iLat,iAlt,iO2P_,iBlock) = SamiFileData(iPoint, iSami_O2p_)*1e6
+           IDensityS(iLon,iLat,iAlt,iNOP_,iBlock) = SamiFileData(iPoint, iSami_NOp_)*1e6
+           IDensityS(iLon,iLat,iAlt,iHP_,iBlock) = SamiFileData(iPoint, iSami_Hp_)*1e6
+           IDensityS(iLon,iLat,iAlt,iHeP_,iBlock) = SamiFileData(iPoint, iSami_Hep_)*1e6
 
-           IDensityS(iLon,iLat,iAlt,iBlock,ie_) = &
-                sum(IDensityS(iLon,iLat,iAlt,iBlock,1:nIons-1))
+           IDensityS(iLon,iLat,iAlt,ie_,iBlock) = &
+                sum(IDensityS(iLon,iLat,iAlt,1:nIons-1,iBlock))
 
            eTemperature(iLon,iLat,iAlt,iBlock) = SamiFileData(iPoint, iSami_Te_)
            iTemperature(iLon,iLat,iAlt,iBlock) = SamiFileData(iPoint, iSami_Ti_)
