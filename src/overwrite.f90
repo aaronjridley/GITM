@@ -7,17 +7,18 @@ subroutine overwrite_ionosphere
 
   use ModInputs
   use ModSizeGitm
+  use ModGITM, only : iProc
   
   implicit none
 
   integer :: iBlock
 
-  write(*,*) 'Overwriting Ionosphere!'
-  
   if (DoOverwriteWithIRI) then
+     if (iProc == 0) write(*,*) 'Overwriting Ionosphere with IRI!'
      ! This doesn't include the velocities
      call init_iri
   else
+     if (iProc == 0) write(*,*) 'Overwriting Ionosphere with SAMI-3!'
      do iBlock = 1, nBlocks
         call ionosphere_overwrite_sami(iBlock)
      enddo
@@ -102,6 +103,26 @@ subroutine ionosphere_overwrite_sami(iBlock)
      
   endif
 
+  if (CorotationAdded) then 
+     ! This then implies that the grid is in local time, so we need to 
+     ! feed SAMI the local time (still 0-360, though).
+
+     iPoint = 1
+
+     do iLon = -1,nLons+2
+        do iLat = -1, nLats+2
+           do iAlt = 1, nAlts
+              GitmLons(iPoint) = LocalTime(iLon)*15.0
+              if (iAlt == 1 .and. iLat == 1) write(*,*) iLon, LocalTime(iLon), GitmLons(iPoint) 
+              iPoint = iPoint + 1
+           enddo
+        enddo
+     enddo
+
+     if (iPoint > 1) call SamiSetGrid(GitmLons,GitmLats,GitmAlts)
+
+  endif
+
   call SamiUpdateTime(CurrentTime, iErr)
   if (iErr == 0) then 
      call SamiGetData(SamiFileData)
@@ -124,7 +145,7 @@ subroutine ionosphere_overwrite_sami(iBlock)
 
            eTemperature(iLon,iLat,iAlt,iBlock) = SamiFileData(iPoint, iSami_Te_)
            iTemperature(iLon,iLat,iAlt,iBlock) = SamiFileData(iPoint, iSami_Ti_)
-           
+
            iPoint = iPoint + 1
         enddo
      enddo

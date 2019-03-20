@@ -27,7 +27,7 @@ module ModReadSami3d
 
   real :: dtor = 3.141592653589793 / 180.0
 
-  integer :: iSamiUnit = 31
+  integer :: iSamiUnit = 39
 
   character (len=nSamiCharLength) :: SamiFileList(nMaxVars)
   character (len=nSamiVarCharLength) :: SamiVariables(nMaxVars)
@@ -54,6 +54,8 @@ module ModReadSami3d
   real, allocatable :: SamiOutData(:,:)
   integer :: nPointsToGet = 0
   integer :: nPointsToGetSami = 0
+
+  logical :: CorotationAdded = .true.
   
 contains
 
@@ -132,8 +134,11 @@ contains
           itime(3) = day
           call time_int_to_real(iTime, SamiStartTime)
           
+       case ("#COROTATIONPOTENTIALADDED")
+          read(iSamiUnit,'(L)',iostat=iError) CorotationAdded
+
        case ("#DIR")
-          read(iSamiUnit,*) SamiDir
+           read(iSamiUnit,'(a)',iostat=iError) SamiDir
 
        case ("#VARS")
           iVar = 1
@@ -141,6 +146,7 @@ contains
              read(iSamiUnit,'(a)',iostat=iError) line
              SamiVariables(iVar) = trim(line)
              iVar = iVar+1
+              write(*,*) 'Dir:',trim(SamiDir)
           enddo
           nVarsSami = iVar-2
           
@@ -194,8 +200,8 @@ contains
     integer :: iT, iHour, iMinute, iSecond, n
     real :: tHours, uts
 
-    open(iSamiUnit, file = trim(SamiDir)//'/'//infile, status = 'old')
-
+    !open(iSamiUnit, file = trim(SamiDir)//'/'//infile, status = 'old')
+      open(iSamiUnit, file =infile, status = 'old')
     iError = 0
     iT = 1
     
@@ -227,8 +233,9 @@ contains
     real :: lon
 
     ! Stupid way of doing it:
-
+      write(*,*) trim(SamiDir)
     open(iSamiUnit, file = trim(SamiDir)//'/'//infile, status = 'old')
+    
     iError = 0
     iLon = 1
     do while (iError == 0)
