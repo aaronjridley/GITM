@@ -43,13 +43,13 @@ GITM:
 POST:
 	@cd $(MAINDIR);  make POST
 
-GITM2 = ${DIR}/UA/GITM2
+GITM = ${DIR}/UA/GITM
 
 LIB:
 	cd $(ABDIR)     ; make                                         LIB
-	cd $(GLDIR)     ; make LIBPREV=${GITM2}/${ABDIR}/libSphere.a   LIBADD
-	cd $(MAINDIR)   ; make LIBPREV=${GITM2}/${GLDIR}/libUPTOGL.a   libGITM.a
-	cd srcInterface ; make LIBPREV=${GITM2}/${MAINDIR}/libUA.a     LIB
+	cd $(GLDIR)     ; make LIBPREV=${GITM}/${ABDIR}/libSphere.a   LIBADD
+	cd $(MAINDIR)   ; make LIBPREV=${GITM}/${GLDIR}/libUPTOGL.a   libGITM.a
+	cd srcInterface ; make LIBPREV=${GITM}/${MAINDIR}/libUA.a     LIB
 
 nompirun:
 	make GITM
@@ -101,7 +101,7 @@ TESTDIR = run_test
 MPIRUN = mpirun -np 2
 
 test:
-	echo "GITM2 is not tested nightly" > notest.diff
+	echo "GITM is not tested nightly" > notest.diff
 
 test_ignored:
 	-@(make test_earth)
