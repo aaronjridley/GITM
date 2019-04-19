@@ -73,6 +73,13 @@ allclean:
 	@cd $(MAINDIR);  make distclean
 	@cd srcInterface;make distclean
 	rm -f *~ srcData/UAM.in
+	# If util and share were moved because of GITM being
+	# used in SWMF component mode, put them back.
+	if[-d component_util]; then     \
+		mv component_util  util;  \
+		mv component_share share; \
+	fi
+
 #
 #       Create run directories
 #
