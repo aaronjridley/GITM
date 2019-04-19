@@ -9,10 +9,16 @@ our $MakefileDefOrig = 'srcMake/Makefile.def';
 our @Arguments       = @ARGV;
 
 my $config     = "share/Scripts/Config.pl";
-if(-f $config){
+my $IsCompGitm = 0; # Is this code an SWMF component?
+if(-f "../../$config"){
+    # This is an indication of component mode:
+    require "../../$config";
+    $IsCompGitm = 1;
+}elsif(-f $config){    
+    # This is an indication of stand-alone mode:
     require $config;
 }else{
-    require "../../$config";
+    die("GITM cannot find $config!");
 }
 
 # These are inherited from $config
@@ -147,6 +153,15 @@ sub get_settings{
 
 sub install_code{
 
+    # Import the file copy function to avoid calls to system.
+    use File::Copy;
+
+    if($IsCompGitm){
+	# Move Util and Share:
+	move('share', 'component_share');
+	move('util',  'component_util');
+    }
+    
     return unless $Compiler =~ /ifort/ and $OS =~ /Linux/;
     # Unfix object list for Linux/ifort compiler (this is not kosher)
     @ARGV = ($SrcMakefile);
@@ -154,6 +169,7 @@ sub install_code{
 	s/-lSHARE.*ModIons.o/-lSHARE/;
 	print;
     }
+
 }
 
 #############################################################################
