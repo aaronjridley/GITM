@@ -96,10 +96,12 @@ rundir:
 		ln -s ${BINDIR}/pGITM .; \
 		ln -s ${UADIR}/srcData/* DataIn; rm -f DataIn/CVS; \
 		ln -s ${UADIR}/data/* DataIn;    rm -f DataIn/CVS
-	cd ${RUNDIR} ; \
-		ln -s ${BINDIR}/GITM.exe . ; \
-		cp UA/DataIn/UAM.in . ; \
-		touch core ; chmod 444 core ; \
+	cd ${RUNDIR} ;                                   \
+		if [ -e ${BINDIR}/GITM.exe ]; then       \
+			ln -s ${BINDIR}/GITM.exe . ;     \
+		fi;                                      \
+		cp UA/DataIn/UAM.in . ;                  \
+		touch core ; chmod 444 core ;            \
 		ln -s UA/* .
 
 
