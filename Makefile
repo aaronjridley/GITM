@@ -89,17 +89,19 @@ rundir:
 		if [ ! -e "EIE/README" ]; then \
 			ln -s ${EMPIRICALIEDIR}/data EIE;\
 		fi;)
-	cd ${RUNDIR}; rm -f ./PostGITM.exe ; ln -s ${BINDIR}/PostProcess.exe ./PostGITM.exe
+	cd ${RUNDIR}; rm -f ./PostGITM.exe ; ln -s ${UADIR}/src/PostProcess.exe ./PostGITM.exe
 	cd ${RUNDIR}/UA; \
 		mkdir restartOUT data DataIn; \
 		ln -s restartOUT restartIN; \
-		ln -s ${BINDIR}/pGITM .; \
+		ln -s ${UADIR}/src/pGITM .; \
 		ln -s ${UADIR}/srcData/* DataIn; rm -f DataIn/CVS; \
 		ln -s ${UADIR}/data/* DataIn;    rm -f DataIn/CVS
-	cd ${RUNDIR} ; \
-		ln -s ${BINDIR}/GITM.exe . ; \
-		cp UA/DataIn/UAM.in . ; \
-		touch core ; chmod 444 core ; \
+	cd ${RUNDIR} ;                                   \
+		if [ -e ${BINDIR}/GITM.exe ]; then       \
+			ln -s ${BINDIR}/GITM.exe . ;     \
+		fi;                                      \
+		cp UA/DataIn/UAM.in . ;                  \
+		touch core ; chmod 444 core ;            \
 		ln -s UA/* .
 
 
