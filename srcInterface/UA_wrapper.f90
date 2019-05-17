@@ -218,22 +218,40 @@ contains
 
   subroutine UA_init_session(iSession, SWMFTime)
 
+    use ModTimeConvert, ONLY: TimeType
     use CON_physics,    ONLY: get_time
-    use ModTime, only : StartTime, iTimeArray, CurrentTime
+    use ModTime, only : StartTime, EndTime, iTimeArray, CurrentTime
 
     real, intent(in)    :: SWMFTime
     integer, intent(in) :: iSession
 
+    type(TimeType) :: TimeSwmfEnd
     logical :: IsFirstTime = .true.
 
+    ! Debug variables:
+    logical :: DoTest, DoTestMe
+    character(len=*), parameter :: NameSub = 'UA_init_session'
+    !-------------------------------------------------------------------------
+    call CON_set_do_test(NameSub,DoTest,DoTestMe)
+    
     if (IsFirstTime) then
 
        ! Set time related variables for UA
-       call get_time(tStartOut = StartTime)
+       call get_time(tStartOut  = StartTime)
+       call get_time(TimeEndOut = TimeSwmfEnd)
 
+       ! Get times as real numbers:
+       EndTime = TimeSwmfEnd % Time  ! End time as a real.
        CurrentTime = StartTime + SWMFTime
-       call time_real_to_int(StartTime, iTimeArray)
+       call time_real_to_int(StartTime, iTimeArray) ! get time as integers
 
+       if(DoTestMe) then
+          write(*,*) NameSub//' Timing for UA:'
+          write(*,*) NameSub//' Start time   = ', StartTime
+          write(*,*) NameSub//' End time     = ', EndTime
+          write(*,*) NameSub//' Current time = ', CurrentTime
+       end if
+          
        call fix_vernal_time
 
        call initialize_gitm(CurrentTime)
