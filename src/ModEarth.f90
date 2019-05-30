@@ -106,6 +106,9 @@ module ModPlanet
   !C: Longitude of perihelion
   !D: Mean Longitude
   !E: For calulating actual Longitude
+
+  ! Use paper "A guide to computing orbital positions of major solar system 
+  ! bodies: forward and inverse calculations." (Bannister, R. 2001) for A-E
  real, parameter :: SunOrbit_A = 1.0000001124
  real, parameter :: SunOrbit_B = 0.0167
  real, parameter :: SunOrbit_C = 102.94719
