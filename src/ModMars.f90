@@ -103,6 +103,8 @@ module ModPlanet
 ! real, parameter :: SunOrbit_D = 0.00
 ! real, parameter :: SunOrbit_E = 0.00
 
+  ! Use paper "A guide to computing orbital positions of major solar system 
+  ! bodies: forward and inverse calculations." (Bannister, R. 2001) for A-E
   real, parameter :: SunOrbit_A = 1.52369
   real, parameter :: SunOrbit_B = 0.093379
   real, parameter :: SunOrbit_C = 335.538

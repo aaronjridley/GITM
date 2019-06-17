@@ -1,0 +1,68 @@
+
+#DIR
+SamiData
+
+#STARTDATE
+2015
+03
+15
+
+From Joe:
+   dene0: electron density
+   deni10: H+ density
+   deni20: O+ density
+   deni30: NO+ density
+   deni40: 02+ density
+   deni50: He+ density
+   te0: Te
+   ti10: Ti - H+
+   ti20: Ti - O+
+   u1p0: E x B velocity in meridional/radial direction
+   u3h0_nocr: E x B velocity in zonal direction
+              (with corotation velocity removed)
+   vsi10: Vi - H+ (along B)
+   vsi20: Vi - O+ (along B)
+   vsi50: Vi - He+ (along B)
+
+#VARS
+time
+lon
+lat
+alt
+O+
+O2+
+NO+
+H+
+He+
+e-
+Te
+TiO+
+ViExB-NV
+ViExB-E
+ViB-O+
+
+
+
+#VARFILES
+time.dat
+gitm_lon.dat
+gitm_lat.dat
+gitm_alt.dat
+deni20_gitm.dat
+deni40_gitm.dat
+deni30_gitm.dat
+deni10_gitm.dat
+deni50_gitm.dat
+dene0_gitm.dat
+te0_gitm.dat
+ti20_gitm.dat
+u1p0_gitm.dat
+u3h0_nocr_gitm.dat
+vsi10_gitm.dat
+
+
+
+
+vsi20_gitm.dat
+vsi50_gitm.dat
+ti10_gitm.dat

@@ -68,3 +68,6 @@ glow: 	${OBJECTS} ${MODULES}
 
 
 
+clean:
+	rm -f *~ core *.o *.mod fort.* a.out *.exe *.a *.so *.protex
+

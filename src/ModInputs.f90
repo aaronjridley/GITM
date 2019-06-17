@@ -19,7 +19,7 @@ module ModInputs
 
   integer                   :: useDART = 0 !alexey, default is to not use DART
 
-  integer, parameter        :: iCharLen_     = 100
+  integer, parameter        :: iCharLen_     = 400
 
   integer                   :: iOutputUnit_  = UnitTmp_
   integer                   :: iInputUnit_   = UnitTmp_
@@ -195,7 +195,7 @@ module ModInputs
   logical :: UseGravity          = .true.
   logical :: UseIonDrag          = .true.
   logical :: UseViscosity        = .true.
-  logical :: UseTestViscosity    = .false.
+  logical :: UseTestViscosity    = .true.
   real    :: TestViscosityFactor = 1.0
   logical :: UseCoriolis         = .true.
   logical :: UseGravityWave      = .false.

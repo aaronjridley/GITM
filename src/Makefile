@@ -13,6 +13,7 @@ MODULES = \
 	ModSize.o\
 	ModTime.o\
 	ModConstants.o\
+	ModOrbital.o\
 	ModPlanet.o\
 	ModGITM.o\
 	ModSources.o\
@@ -35,7 +36,6 @@ MODULES = \
 	ModHwm14.o\
 	ModUser.o \
 	ModRCMR.o \
-	ModOrbital.o\
 	ModReadGitm3d.o\
 	ModSami.o\
 	apexsh.o
@@ -159,6 +159,8 @@ ${MY_LIB}: ${LIBPREV} ${MF} ${MODULES} ${OBJECTS}
 	cp -f ${LIBPREV} ${MY_LIB}
 	${AR} ${MY_LIB} ${OBJECTS} ${MODULES}
 
+clean:
+	rm -f *~ core *.o *.mod fort.* a.out *.exe *.a *.so *.protex
 
 
 distclean: clean
