@@ -1,0 +1,17 @@
+Instructions for processing FISM data for use in GITM
+
+For information on the FISM dataset itself, see FISM_Readme.txt
+
+FISM results are stored in daily .sav files that contain the full VUV spectrum from .1nm - 195nm 
+at 1 min resolution.  Currently, GITM uses 59 wavelength bins, and so the FISM spectra
+need to be rebinned.
+
+There are two idl routines which can be used to accomplish this.  rebin_fism.pro does the actual
+rebinning, and run_rebinfism.pro is a wrapper that automatically runs rebin_fism.pro for 1 year.
+
+rebin_fism.pro takes a string date as input in the form yyyymmdd and produces a new file
+that contains 1 days worth of data in some directory (currently
+/bigdisk1/Data/FISM/BinnedFiles/'year').
+
+The routine plot_fism is a crude plotting routine that allows you to select 4 wavelengths for 
+viewing the data quickly. 
