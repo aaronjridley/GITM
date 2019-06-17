@@ -377,7 +377,8 @@ contains
 
   subroutine horizontal_solver
 
-    use ModInputs, only: UseCoriolis
+    !use ModInputs, only: UseCoriolis
+    use ModInputs, only: UseCoriolis,UseImprovedIonAdvection
 
     ! Solve horizontal equations for a single block
 
@@ -390,12 +391,18 @@ contains
     real, dimension(nLons,nLats)          :: &
          GradLonRho_C, GradLatRho_C,   &
          DiffLonRho_C, DiffLatRho_C
+!    real, dimension(nLons,nLats)          :: &
+!         GradLonTemp_C, GradLatTemp_C, &
+!         DiffLonTemp_C, DiffLatTemp_C, DivVel_C
     real, dimension(nLons,nLats)          :: &
          GradLonTemp_C, GradLatTemp_C, &
-         DiffLonTemp_C, DiffLatTemp_C, DivVel_C
+         DiffLonTemp_C, DiffLatTemp_C, DivVel_C,DivIVel_C
     real, dimension(nLons,nLats,3)        :: &
          GradLonVel_CD, GradLatVel_CD, &
          DiffLonVel_CD, DiffLatVel_CD
+    real, dimension(nLons,nLats,3)        :: &
+         GradLonIVel_CD, GradLatIVel_CD, &
+         DiffLonIVel_CD, DiffLatIVel_CD
     real, dimension(nLons,nLats,nSpecies) :: &
          GradLonVertVel_CV, GradLatVertVel_CV, &
          DiffLonVertVel_CV, DiffLatVertVel_CV
@@ -438,12 +445,24 @@ contains
             GradLonVel_CD(:,:,iDim), DiffLonVel_CD(:,:,iDim))
        call calc_rusanov_lats(Vel_CD(:,:,iDim), &
             GradLatVel_CD(:,:,iDim), DiffLatVel_CD(:,:,iDim))
+      
+        !GradLatIVel_C and DiffLatIVel_CD did not be used. -Chen
+        call calc_rusanov_lons(IVel_CD(:,:,iDim), &
+            GradLonIVel_CD(:,:,iDim), DiffLonIVel_CD(:,:,iDim))
+       call calc_rusanov_lats(IVel_CD(:,:,iDim), &
+            GradLatIVel_CD(:,:,iDim), DiffLatIVel_CD(:,:,iDim))
     end do
 
     do iLat = 1, nLats
        DivVel_C(:,iLat) = &
             GradLatVel_CD(:,iLat,iNorth_) + GradLonVel_CD(:,iLat,iEast_) &
             - TanLatitude(iLat,iBlock) * Vel_CD(1:nLons,iLat,iNorth_) * &
+            InvRadialDistance_GB(1:nLons,iLat,iAlt,iBlock)
+       
+!.......add DivIVel_C        
+        DivIVel_C(:,iLat) = &
+            GradLatIVel_CD(:,iLat,iNorth_) + GradLonIVel_CD(:,iLat,iEast_) &
+            - TanLatitude(iLat,iBlock) * IVel_CD(1:nLons,iLat,iNorth_) * &
             InvRadialDistance_GB(1:nLons,iLat,iAlt,iBlock)
     end do
 
@@ -509,14 +528,38 @@ contains
                   DiffLonNum_CV(iLon,iLat,iSpc)+DiffLatNum_CV(iLon,iLat,iSpc))
           enddo
 
+
+!...........add divergence term to the horizontal solver of the IONS...........
+!...........below is the original codes -chen
+
+!          do iSpc = 1, nIonsAdvect
+!             NewINum_CV(iLon,iLat,iSpc) = NewINum_CV(iLon,iLat,iSpc) - Dt * ( &
+!!                  INum_CV(iLon,iLat,iSpc) * DivVel_C(iLon,iLat) &
+!                  + GradLatINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iNorth_) &
+!                  + GradLonINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iEast_)) &
+!                  + Dt * (&
+!                  DiffLonINum_CV(iLon,iLat,iSpc)+&
+!                  DiffLatINum_CV(iLon,iLat,iSpc))
+!          enddo
+          
           do iSpc = 1, nIonsAdvect
-             NewINum_CV(iLon,iLat,iSpc) = NewINum_CV(iLon,iLat,iSpc) - Dt * ( &
-!                  INum_CV(iLon,iLat,iSpc) * DivVel_C(iLon,iLat) &
-                  + GradLatINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iNorth_) &
-                  + GradLonINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iEast_)) &
-                  + Dt * (&
-                  DiffLonINum_CV(iLon,iLat,iSpc)+&
-                  DiffLatINum_CV(iLon,iLat,iSpc))
+             if (UseImprovedIonAdvection) then
+                 NewINum_CV(iLon,iLat,iSpc) = NewINum_CV(iLon,iLat,iSpc) - Dt * ( &
+                     INum_CV(iLon,iLat,iSpc) * DivIVel_C(iLon,iLat) &
+                     + GradLatINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iNorth_) &
+                     + GradLonINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iEast_)) &
+                     + Dt * (&
+                     DiffLonINum_CV(iLon,iLat,iSpc)+&
+                     DiffLatINum_CV(iLon,iLat,iSpc))
+             else
+                 NewINum_CV(iLon,iLat,iSpc) = NewINum_CV(iLon,iLat,iSpc) - Dt * ( &
+                  
+                     + GradLatINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iNorth_) &
+                     + GradLonINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iEast_)) &
+                     + Dt * (&
+                     DiffLonINum_CV(iLon,iLat,iSpc)+&
+                     DiffLatINum_CV(iLon,iLat,iSpc))
+             endif
           enddo
 
           RhoTest = sum(Mass(1:nSpecies) * NewNum_CV(iLon,iLat,1:nSpecies))
