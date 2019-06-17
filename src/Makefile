@@ -28,6 +28,7 @@ MODULES = \
 	ModTides.o\
 	ModNewell.o\
 	ModOvationSME.o\
+	ModAeAuroralModel.o\
 	ModMagTrace.o\
 	ModChemistry.o\
 	ModGITMImplicit.o\

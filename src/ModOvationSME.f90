@@ -27,6 +27,7 @@ module ModOvationSME
 contains
 
   ! ------------------------------------------------------------------------
+  ! Run the ovation model
   ! ------------------------------------------------------------------------
 
   subroutine run_ovationsme(GitmStartTime, GitmCurrentTime, iBlock)

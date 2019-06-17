@@ -31,7 +31,12 @@ subroutine read_al_onset_list(iOutputError, StartTime, EndTime)
   npts = 0
   TimeDelay = 0.0
 
-  if (NameOfSecondIndexFile == "none" .and. nIndices_V(onsetut_) == 1) return
+  ! Not sure how to set the onsets to 1, so I am changing it...
+  ! if (NameOfSecondIndexFile == "none" .and. nIndices_V(onsetut_) == 1) return
+  if (NameOfSecondIndexFile == "none" .and. nIndices_V(onsetut_) == 0) then
+     nIndices_V(onsetut_) = 1
+     return
+  endif
 
   call init_mod_indices
 

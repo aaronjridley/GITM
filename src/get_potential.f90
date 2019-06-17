@@ -10,6 +10,7 @@ subroutine init_get_potential
   use ModUserGITM
   use ModNewell
   use ModOvationSME
+  use ModAeAuroralModel
 
   implicit none
 
@@ -35,13 +36,17 @@ subroutine init_get_potential
      call read_ovationsm_files
   endif
 
+  if (UseAeModel) then
+     call read_ae_model_files(iError)
+  endif
+
   if (index(cAMIEFileNorth,"none") > 0) then
 
      Lines(1) = "#BACKGROUND"
      Lines(2) = "EIE/"
 
      UseHPI = .true.
-     if (UseNewellAurora .or. UseOvationSME) UseHPI = .false.
+     if (UseNewellAurora .or. UseOvationSME .or. UseAeModel) UseHPI = .false.
 
      call get_IMF_Bz(CurrentTime+TimeDelayHighLat, bz, iError)
 
@@ -231,6 +236,7 @@ subroutine get_potential(iBlock)
   use ModUserGITM
   use ModNewell
   use ModOvationSME, only: run_ovationsme
+  use ModAeAuroralModel, only: run_ae_model
 
   implicit none
 
@@ -358,6 +364,8 @@ subroutine get_potential(iBlock)
         call run_newell(iBlock)
      elseif (UseOvationSME) then 
         call run_ovationsme(StartTime, CurrentTime, iBlock)
+     elseif (UseAeModel) then
+        call run_ae_model(CurrentTime, iBlock)
      else
 
         call UA_SetGrid(                    &

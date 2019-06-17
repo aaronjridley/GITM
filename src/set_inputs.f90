@@ -614,6 +614,17 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
+        case ("#AEMODEL")
+           call read_in_logical(UseAeModel, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #AEMODEL'
+              write(*,*) 'This is for using Dongjies aurora.'
+              write(*,*) ''
+              write(*,*) '#AEMODEL'
+              write(*,*) 'UseAeModel        (logical)'
+              IsDone = .true.
+           endif
+
         case ("#AMIEFILES")
            call read_in_string(cAMIEFileNorth, iError)
            call read_in_string(cAMIEFileSouth, iError)
