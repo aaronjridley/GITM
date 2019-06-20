@@ -61,7 +61,7 @@ module ModInputs
   logical :: UseOvationSMEWave = .false.
   logical :: UseOvationSMEIon  = .false.
 
-  logical :: UseAeModel        = .true.
+  logical :: UseAeModel        = .false.
   
   logical :: DoOverwriteIonosphere = .false.
   logical :: DoOverwriteWithIRI    = .true.
