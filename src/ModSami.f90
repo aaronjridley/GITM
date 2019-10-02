@@ -1,6 +1,8 @@
 
 module ModReadSami3d
 
+  use ModInputs, only: iCharLen_
+
   implicit none
 
   integer :: iSami_Op_ = 1
@@ -15,7 +17,7 @@ module ModReadSami3d
   integer :: iSami_ViE_ = 10
   integer :: iSami_ViB_ = 11
   
-  integer, parameter :: nSamiCharLength = 100
+  integer, parameter :: nSamiCharLength = iCharLen_
   integer, parameter :: nSamiVarCharLength = 40
 
   integer, parameter :: nMaxVars = 200

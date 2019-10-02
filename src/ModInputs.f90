@@ -288,10 +288,10 @@ module ModInputs
   integer, parameter :: cSubCycleChemType_    = 3
   integer, parameter :: nChemTypes_       = 3
 
-  character (len=100), dimension(nChemTypes_) :: sChemType 
+  character (len=iCharLen_), dimension(nChemTypes_) :: sChemType 
 
-  character (len=100)                         :: sInputIonChemType
-  character (len=100)                         :: sInputNeutralChemType
+  character (len=iCharLen_)                         :: sInputIonChemType
+  character (len=iCharLen_)                         :: sInputNeutralChemType
   integer :: iInputIonChemType, iInputNeutralChemType
 
   real :: LogNS0(nSpecies)

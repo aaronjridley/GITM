@@ -1,10 +1,12 @@
 
 module ModReadGitm3d
 
+  use ModInputs, only: iCharLen_
+  
   integer, parameter :: Real8_ = selected_real_kind(12,100)
   integer, parameter :: i3dall_ = 1
   integer, parameter :: i3dlst_ = 2
-  integer, parameter :: nGitmCharLength = 100
+  integer, parameter :: nGitmCharLength = iCharLen_
   integer, parameter :: nGitmVarCharLength = 40
 
   integer :: iRho_ = 4

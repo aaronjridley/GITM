@@ -107,7 +107,6 @@ contains
     real, parameter :: DefaultState_V(nSpeciesAll) = 1
 
     character(len=*), parameter:: NameSub='update_point_implicit'
-    character (len=100) :: test_string=''
 
     logical :: DoTest, DoTestMe,DoTestCell
     logical :: DoReplaceDensity = .true.

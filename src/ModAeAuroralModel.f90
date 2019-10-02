@@ -105,8 +105,8 @@ contains
     integer :: ae, iAe, iLat, iMlt
 
     character (len=3) :: cAe1, cAe2
-    character (len=100) :: cFile
-    character (len=100) :: cDummyLine
+    character (len=iCharLen_) :: cFile
+    character (len=iCharLen_) :: cDummyLine
     logical :: IsThere
     
     do ae = 0, MaxAe, AeBinSize

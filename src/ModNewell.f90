@@ -5,21 +5,21 @@ module ModNewell
 
   implicit none
 
-  integer, parameter        :: iCharLen_     = 100
+  integer, parameter        :: iCharLenNewell_     = 100
 
-  character (len=iCharLen_) :: dir="UA/DataIn/Aurora/"
+  character (len=iCharLenNewell_) :: dir="UA/DataIn/Aurora/"
 
-  character (len=iCharLen_) :: cFileDiffef="diff.txt"
-  character (len=iCharLen_) :: cFileDiffnf="diff_n.txt"
-  character (len=iCharLen_) :: cFileDiffp ="prob_b_diff.txt"
-  character (len=iCharLen_) :: cFileMonoef="mono.txt"
-  character (len=iCharLen_) :: cFileMononf="mono_n.txt"
-  character (len=iCharLen_) :: cFileMonop ="prob_b_mono.txt"
-  character (len=iCharLen_) :: cFileWaveef="wave.txt"
-  character (len=iCharLen_) :: cFileWavenf="wave_n.txt"
-  character (len=iCharLen_) :: cFileWavep ="prob_b_wave.txt"
-  character (len=iCharLen_) :: cFileIonsef="ions.txt"
-  character (len=iCharLen_) :: cFileIonsnf="ions_n.txt"
+  character (len=iCharLenNewell_) :: cFileDiffef="diff.txt"
+  character (len=iCharLenNewell_) :: cFileDiffnf="diff_n.txt"
+  character (len=iCharLenNewell_) :: cFileDiffp ="prob_b_diff.txt"
+  character (len=iCharLenNewell_) :: cFileMonoef="mono.txt"
+  character (len=iCharLenNewell_) :: cFileMononf="mono_n.txt"
+  character (len=iCharLenNewell_) :: cFileMonop ="prob_b_mono.txt"
+  character (len=iCharLenNewell_) :: cFileWaveef="wave.txt"
+  character (len=iCharLenNewell_) :: cFileWavenf="wave_n.txt"
+  character (len=iCharLenNewell_) :: cFileWavep ="prob_b_wave.txt"
+  character (len=iCharLenNewell_) :: cFileIonsef="ions.txt"
+  character (len=iCharLenNewell_) :: cFileIonsnf="ions_n.txt"
 
   integer, parameter :: nMlts  = 96
   integer, parameter :: nMLats = 160
@@ -587,7 +587,7 @@ contains
 
   subroutine read_all_regression_files
 
-    character (len=iCharLen_) :: cFile
+    character (len=iCharLenNewell_) :: cFile
 
     cFile = cFileDiffef
     call merge_str(dir,cFile)
@@ -623,7 +623,7 @@ contains
 
   subroutine read_all_probability_files
 
-    character (len=iCharLen_) :: cFile
+    character (len=iCharLenNewell_) :: cFile
 
     cFile = cFileDiffp
     call merge_str(dir,cFile)

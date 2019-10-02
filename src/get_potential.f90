@@ -14,8 +14,8 @@ subroutine init_get_potential
 
   implicit none
 
-  character (len=100), dimension(100) :: Lines
-  character (len=100) :: TimeLine
+  character (len=iCharLen_), dimension(100) :: Lines
+  character (len=iCharLen_) :: TimeLine
   real    :: bz
 
 !  real    :: dynamo(-1:nLons+2,-1:nLats+2)

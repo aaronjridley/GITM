@@ -16,7 +16,7 @@ subroutine read_MHDIMF_Indices_new(iOutputError, StartTime, EndTime)
   logical :: done, done_inner, IsFirstLine = .true.
 
   ! One line of input
-  character (len=100) :: line
+  character (len=iCharLenIndices_) :: line
 
   real (Real8_) :: TimeDelay, BufferTime = 1800.0, FirstTime, DeltaT = -1.0e32
 

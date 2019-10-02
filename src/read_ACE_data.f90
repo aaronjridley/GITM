@@ -19,7 +19,7 @@ subroutine read_ACE_data(iOutputError)
   logical :: done, done_inner
 
   ! One line of input
-  character (len=100) :: line
+  character (len=iCharLenIndices_) :: line
 
   real (Real8_) :: TimeDelay
 
