@@ -2,6 +2,8 @@
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 module ModErrors
 
+  use ModCharSize
+  
   integer, parameter :: ecBeforeStartTime_ = 1
   integer, parameter :: ecAfterEndTime_    = 2
   integer, parameter :: ecTimeNotSet_      = 3
@@ -20,7 +22,7 @@ module ModErrors
 
   integer, parameter :: nErrorsMax = 1000
 
-  character (len=100), dimension(nErrorsMax) :: cErrorCodes
+  character (len=iCharLenIE_), dimension(nErrorsMax) :: cErrorCodes
 
 contains
 

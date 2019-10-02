@@ -6,6 +6,8 @@ subroutine readMHDoutput(iBLK, iError)
   use ModEIEFiles
   use ModTimeConvert, ONLY: time_int_to_real
   use ModIoUnit, ONLY : UNITTMP_
+
+  use ModCharSize
   
   implicit none
 
@@ -31,12 +33,12 @@ subroutine readMHDoutput(iBLK, iError)
   integer :: nCellsPad
 
   integer :: strpos
-  character (len=100) :: FileName, cLine
+  character (len=iCharLenIE_) :: FileName, cLine
   character (len=6)   :: cDate
   character (len=6)   :: cTime
   logical :: IsThere, IsDone
   logical :: IsFile(1440)
-  character (len=100) :: FileNameList(1440)
+  character (len=iCharLenIE_) :: FileNameList(1440)
   integer :: iFirstFile, iMLT, iLat
 
   real*4, allocatable,dimension(:,:,:,:) :: SigmaP, SigmaH

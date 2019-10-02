@@ -9,10 +9,11 @@ subroutine ReadIonHeat(filename, IsIonizationFile)
 
   use ModIons
   use ModIoUnit, ONLY: UnitTmp_
-
+  use ModCharSize
+  
   implicit none
 
-  character (len=100), intent(in) :: filename
+  character (len=iCharLenIE_), intent(in) :: filename
   logical, intent(in)             :: IsIonizationFile
 
   integer ::            ilng,jlat,kalt,i

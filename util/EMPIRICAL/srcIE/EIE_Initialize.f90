@@ -6,14 +6,15 @@ subroutine EIE_Initialize(iOutputError)
   use ModEIE_Interface
   use ModEIEFiles
   use ModIoUnit, only : UnitTmp_
-
+  use ModCharSize
+  
   use EIE_ModWeimer, only: readcoef96, readcoef01
   use read_data,only: read_potential,read_schatable,read_bndy
 
   implicit none
 
   integer, intent(out) :: iOutputError
-  character (len=100)  :: inFileName
+  character (len=iCharLenIE_)  :: inFileName
   integer              :: iError
 
   integer, parameter  :: South_ = 1

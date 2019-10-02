@@ -3,15 +3,17 @@
 
 Module ModEIEFiles
 
-  character (len=100) :: ihp_file              = 'hpke.noaa'
-  character (len=100) :: pem_file              = 'hpke2.pem'
-  character (len=100) :: izmem_file            = 'iz94.cofcnts'
-  character (len=100) :: hepner_maynard_file   = 'hmr89.cofcnts'
-  character (len=100) :: millstone_hill_i_file = 'mhi.cofcnts'
-  character (len=100) :: millstone_hill_s_file = 'mhs.cofcnts'
-  character (len=100) :: stat_amie_file        = 'amie.ascii'
-  character (len=100) :: weimer96_file         = 'wei96.cofcnts'
-  character (len=100) :: weimer01_file         = 'wei01.cofcnts'
-  character (len=100) :: AMIEFileNorth, AMIEFileSouth
+  use ModCharSize
+  
+  character (len=iCharLenIE_) :: ihp_file              = 'hpke.noaa'
+  character (len=iCharLenIE_) :: pem_file              = 'hpke2.pem'
+  character (len=iCharLenIE_) :: izmem_file            = 'iz94.cofcnts'
+  character (len=iCharLenIE_) :: hepner_maynard_file   = 'hmr89.cofcnts'
+  character (len=iCharLenIE_) :: millstone_hill_i_file = 'mhi.cofcnts'
+  character (len=iCharLenIE_) :: millstone_hill_s_file = 'mhs.cofcnts'
+  character (len=iCharLenIE_) :: stat_amie_file        = 'amie.ascii'
+  character (len=iCharLenIE_) :: weimer96_file         = 'wei96.cofcnts'
+  character (len=iCharLenIE_) :: weimer01_file         = 'wei01.cofcnts'
+  character (len=iCharLenIE_) :: AMIEFileNorth, AMIEFileSouth
 
 end Module ModEIEFiles

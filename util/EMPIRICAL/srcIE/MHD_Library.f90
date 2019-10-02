@@ -4,8 +4,9 @@
 
 subroutine MHD_SetFileName(cFileNameIn)
   use ModMHD_Interface
+  use ModCharSize
   implicit none
-  character (len=100), intent(in) :: cFileNameIn
+  character (len=iCharLenIE_), intent(in) :: cFileNameIn
   MHD_FileName = cFileNameIn
 end subroutine MHD_SetFileName
 
@@ -40,8 +41,9 @@ end subroutine MHD_SetDay
 
 subroutine MHD_GetFileName(cFileNameOut)
   use ModMHD_Interface
+  use ModCharSize
   implicit none
-  character (len=100), intent(out) :: cFileNameOut
+  character (len=iCharLenIE_), intent(out) :: cFileNameOut
   cFileNameOut = MHD_FileName
 end subroutine MHD_GetFileName
 

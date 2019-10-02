@@ -3,7 +3,8 @@
 module ModEIE_Interface
 
   use ModKind
-
+  use ModCharSize
+  
   real, allocatable, dimension(:,:,:) :: EIEr3_HaveLats, EIEr3_HaveMLTs
   real, allocatable, dimension(:,:,:) :: EIEr3_HavePotential
   real, allocatable, dimension(:,:,:) :: EIEr3_HaveEFlux
@@ -53,10 +54,10 @@ module ModEIE_Interface
   integer, parameter                :: EIE_After_       = 2
   integer, parameter                :: EIE_Interpolate_ = 3
 
-  character (len=100) :: EIE_NameOfEFieldModel
-  character (len=100) :: EIE_NameOfAuroralModel
-  character (len=100) :: EIE_NameOfSolarModel
-  character (len=100) :: EIE_NameOfModelDir
+  character (len=iCharLenIE_) :: EIE_NameOfEFieldModel
+  character (len=iCharLenIE_) :: EIE_NameOfAuroralModel
+  character (len=iCharLenIE_) :: EIE_NameOfSolarModel
+  character (len=iCharLenIE_) :: EIE_NameOfModelDir
 
   logical :: UAl_UseGridBasedEIE
   logical :: UseGridBasedEIE

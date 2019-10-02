@@ -2,7 +2,9 @@
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 Module ModAMIE_Interface
 
-  character (len=100) :: AMIE_FileName
+  use ModCharSize
+  
+  character (len=iCharLenIE_) :: AMIE_FileName
   integer :: AMIE_nLats, AMIE_nMlts, AMIE_nTimes
 
   ! For a single file

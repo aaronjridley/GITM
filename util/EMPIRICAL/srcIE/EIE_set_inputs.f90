@@ -6,11 +6,12 @@ subroutine EIE_set_inputs(StringInputLines)
   use ModEIE_Interface
   use ModEIEFiles
   use ModExtras
-
+  use ModCharSize
+  
   implicit none
 
-  character (len=100), dimension(*), intent(in) :: StringInputLines
-  character (len=100) :: StringLine
+  character (len=iCharLenIE_), dimension(*), intent(in) :: StringInputLines
+  character (len=iCharLenIE_) :: StringLine
   logical :: IsDone
   integer :: iLine, iDebugProc
 
@@ -129,7 +130,7 @@ contains
   end subroutine read_in_logical
 
   subroutine read_in_string(variable)
-    character (len=100), intent(out) :: variable
+    character (len=iCharLenIE_), intent(out) :: variable
     iline = iline + 1
     variable = StringInputLines(iline)
   end subroutine read_in_string

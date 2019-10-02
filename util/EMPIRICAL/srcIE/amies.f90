@@ -391,11 +391,11 @@ subroutine read_amies(unitin)
   use ModAMIE
   use ModEField
   use ModsAMIE
-
+  
   implicit none
 
   integer, intent(in) :: unitin
-  character*100 ::line, fmt
+  character (len=100) ::line, fmt
   integer :: inlon, inlat, ierr, i, k
 
   read(unitin,'(2I8)',iostat = ierr) inlat,inlon

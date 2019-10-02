@@ -10,6 +10,7 @@ include Makefile.DEPEND
 #include Makefile.RULES
 
 OBJECTS = \
+	ModCharSize.o\
 	ModEIEConductance.o\
 	ModAMIE_Interface.o\
 	ModErrors.o\

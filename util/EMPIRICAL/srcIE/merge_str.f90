@@ -2,7 +2,9 @@
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 subroutine merge_str(str1, str2)
 
-  character (len=100) :: str1, str2, temp
+  use ModCharSize
+  
+  character (len=iCharLenIE_) :: str1, str2, temp
   integer :: i, j, k
 
   i = 1
@@ -34,7 +36,9 @@ end subroutine merge_str
 
 subroutine strlen(str1, len)
 
-  character (len=100) :: str1
+  use ModCharSize
+  
+  character (len=iCharLenIE_) :: str1
   integer :: len
 
   len = 1
