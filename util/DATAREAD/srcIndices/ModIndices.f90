@@ -8,6 +8,8 @@ Module ModIndices
 
   implicit none
 
+  integer, parameter :: iCharLenIndices_     = 400
+  
   integer, parameter :: MaxInputLines=10000
 
   integer, parameter :: GSM_ = 1
@@ -53,18 +55,18 @@ Module ModIndices
   real :: Propagation_Plane_XY, Propagation_Plane_XZ
   real :: Satellite_X_Pos, Satellite_Y_Pos, Satellite_Z_Pos
 
-  character (len=100) :: NameOfIndexFile
-  character (len=100) :: NameOfSecondIndexFile
+  character (len=iCharLenIndices_) :: NameOfIndexFile
+  character (len=iCharLenIndices_) :: NameOfSecondIndexFile
   integer             :: LunIndices_ = UnitTmp_
 
   logical :: ReReadIMFFile  = .false.
   logical :: ReReadHPIFile  = .false.
   logical :: ReReadSMEFile  = .false.
   logical :: ReReadOnsetFile = .false.
-  character (len=100) :: NameOfIMFFile = "none"
-  character (len=100) :: NameOfHPIFile = "none"
-  character (len=100) :: NameOfSMEFile = "none"
-  character (len=100) :: NameOfOnsetFile = "none"
+  character (len=iCharLenIndices_) :: NameOfIMFFile = "none"
+  character (len=iCharLenIndices_) :: NameOfHPIFile = "none"
+  character (len=iCharLenIndices_) :: NameOfSMEFile = "none"
+  character (len=iCharLenIndices_) :: NameOfOnsetFile = "none"
 
 contains
 

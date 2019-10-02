@@ -15,7 +15,7 @@ subroutine read_MHDIMF_Indices(iOutputError)
   logical :: done, done_inner
 
   ! One line of input
-  character (len=100) :: line
+  character (len=iCharLenIndices_) :: line
 
 
 

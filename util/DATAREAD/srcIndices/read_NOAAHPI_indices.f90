@@ -17,7 +17,7 @@ subroutine read_NOAAHPI_Indices(iOutputError)
   logical :: done
 
   ! One line of input
-  character (len=100) :: line
+  character (len=iCharLenIndices_) :: line
 
   real, dimension(6,MaxIndicesEntries) :: tmp
 

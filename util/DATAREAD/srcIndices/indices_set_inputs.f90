@@ -7,8 +7,8 @@ subroutine indices_set_inputs(StringInputLines)
 
   implicit none
 
-  character (len=100), dimension(*), intent(in) :: StringInputLines
-  character (len=100) :: StringLine
+  character (len=iCharLenIndices_), dimension(*), intent(in) :: StringInputLines
+  character (len=iCharLenIndices_) :: StringLine
   logical :: IsDone
   integer :: iLine
 
@@ -65,7 +65,7 @@ contains
   end subroutine read_in_logical
 
   subroutine read_in_string(variable)
-    character (len=100), intent(out) :: variable
+    character (len=iCharLenIndices_), intent(out) :: variable
     iline = iline + 1
     variable = StringInputLines(iline)
   end subroutine read_in_string
