@@ -414,6 +414,15 @@ iAlt = -1
                                      dAlt_F(iAlt+1)*dVertVel 
     enddo ! nSpecies
 
+    ! Update NS & LogRho to use in the vertical wind calculation
+    NS(iAlt,1:nSpecies) = exp(LogNS(iAlt,1:nSpecies))
+    SumRho = 0.0     
+    do iSpecies=1,nSpecies
+       SumRho  = SumRho  + &
+            Mass(iSpecies)*NS(iAlt,iSpecies)
+    enddo
+    LogRho(iAlt) = alog(SumRho)
+
     ! Set the Bulk Winds
     Vel_GD(iAlt,iUp_) = 0.0
     do iSpecies = 1, nSpecies
