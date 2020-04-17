@@ -19,7 +19,7 @@ module ModInputs
 
   integer                   :: useDART = 0 !alexey, default is to not use DART
 
-  integer, parameter        :: iCharLen_     = 400
+  integer, parameter        :: iCharLen_     = 100
 
   integer                   :: iOutputUnit_  = UnitTmp_
   integer                   :: iInputUnit_   = UnitTmp_
@@ -61,7 +61,7 @@ module ModInputs
   logical :: UseOvationSMEWave = .false.
   logical :: UseOvationSMEIon  = .false.
 
-  logical :: UseAeModel        = .false.
+  logical :: UseAeModel        = .true.
   
   logical :: DoOverwriteIonosphere = .false.
   logical :: DoOverwriteWithIRI    = .true.
@@ -85,6 +85,7 @@ module ModInputs
   integer :: iAltTest = -1
   integer :: iDebugLevel = 0
   logical :: UseBarriers = .false.
+  logical :: DoCheckForNans = .false.
   integer :: nSteps = 10
 
   logical :: UsePerturbation = .false., DuringPerturb = .false.
@@ -195,7 +196,7 @@ module ModInputs
   logical :: UseGravity          = .true.
   logical :: UseIonDrag          = .true.
   logical :: UseViscosity        = .true.
-  logical :: UseTestViscosity    = .true.
+  logical :: UseTestViscosity    = .false.
   real    :: TestViscosityFactor = 1.0
   logical :: UseCoriolis         = .true.
   logical :: UseGravityWave      = .false.
@@ -225,6 +226,7 @@ module ModInputs
   logical :: UseNighttimeIonBCs = .false.
   real :: MinTEC = 2.0
   logical :: UseImplicitFieldAlignedMomentum = .false.
+  real    :: DivIonVelCoef = 1.0
 
   logical :: UseGitmBCs = .false.
   character(len=iCharLen_) :: GitmBCsDir
@@ -288,10 +290,10 @@ module ModInputs
   integer, parameter :: cSubCycleChemType_    = 3
   integer, parameter :: nChemTypes_       = 3
 
-  character (len=iCharLen_), dimension(nChemTypes_) :: sChemType 
+  character (len=100), dimension(nChemTypes_) :: sChemType 
 
-  character (len=iCharLen_)                         :: sInputIonChemType
-  character (len=iCharLen_)                         :: sInputNeutralChemType
+  character (len=100)                         :: sInputIonChemType
+  character (len=100)                         :: sInputNeutralChemType
   integer :: iInputIonChemType, iInputNeutralChemType
 
   real :: LogNS0(nSpecies)

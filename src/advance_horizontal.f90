@@ -323,15 +323,16 @@ subroutine advance_horizontal(iBlock)
  
      NDensityS(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock)    = NewNum_CV
 
-     do iLon = 1, nLons
-        do iLat = 1, nLats
-           do iDir = 1,3
-
-              if (isnan(Velocity(iLon,iLat,iAlt,iDir,1))) write(*,*) 'Velocity is nan : ',iLon,iLat,iAlt,iDir
+     if (DoCheckForNans) then
+        do iLon = 1, nLons
+           do iLat = 1, nLats
+              do iDir = 1,3
+                 if (isnan(Velocity(iLon,iLat,iAlt,iDir,1))) &
+                      write(*,*) 'Velocity is nan : ',iLon,iLat,iAlt,iDir
+              enddo
            enddo
         enddo
-     enddo
-
+     endif
 
      if (UseIonAdvection) then
 
@@ -378,7 +379,7 @@ contains
   subroutine horizontal_solver
 
     !use ModInputs, only: UseCoriolis
-    use ModInputs, only: UseCoriolis,UseImprovedIonAdvection
+    use ModInputs, only: UseCoriolis
 
     ! Solve horizontal equations for a single block
 
@@ -460,10 +461,18 @@ contains
             InvRadialDistance_GB(1:nLons,iLat,iAlt,iBlock)
        
 !.......add DivIVel_C        
-        DivIVel_C(:,iLat) = &
-            GradLatIVel_CD(:,iLat,iNorth_) + GradLonIVel_CD(:,iLat,iEast_) &
-            - TanLatitude(iLat,iBlock) * IVel_CD(1:nLons,iLat,iNorth_) * &
-            InvRadialDistance_GB(1:nLons,iLat,iAlt,iBlock)
+!        DivIVel_C(:,iLat) = &
+!            DivIonVelCoef * ( &
+!            GradLatIVel_CD(:,iLat,iNorth_) + GradLonIVel_CD(:,iLat,iEast_) &
+!            - TanLatitude(iLat,iBlock) * IVel_CD(1:nLons,iLat,iNorth_) * &
+!            InvRadialDistance_GB(1:nLons,iLat,iAlt,iBlock))
+!
+!       ! Let's simply zero out the divergence of the horizontal ion velocity
+!       ! at latitudes > 75 deg
+!       if (abs(Latitude(iLat,iBlock)) >= 1.31) then
+!          DivIVel_C(:,iLat) = 0.0          
+!       endif
+
     end do
 
     do iSpc = 1,nSpecies
@@ -543,15 +552,15 @@ contains
 !          enddo
           
           do iSpc = 1, nIonsAdvect
-             if (UseImprovedIonAdvection) then
-                 NewINum_CV(iLon,iLat,iSpc) = NewINum_CV(iLon,iLat,iSpc) - Dt * ( &
-                     INum_CV(iLon,iLat,iSpc) * DivIVel_C(iLon,iLat) &
-                     + GradLatINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iNorth_) &
-                     + GradLonINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iEast_)) &
-                     + Dt * (&
-                     DiffLonINum_CV(iLon,iLat,iSpc)+&
-                     DiffLatINum_CV(iLon,iLat,iSpc))
-             else
+!             if (UseImprovedIonAdvection) then
+!                 NewINum_CV(iLon,iLat,iSpc) = NewINum_CV(iLon,iLat,iSpc) - Dt * ( &
+!                     INum_CV(iLon,iLat,iSpc) * DivIVel_C(iLon,iLat) &
+!                     + GradLatINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iNorth_) &
+!                     + GradLonINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iEast_)) &
+!                     + Dt * (&
+!                     DiffLonINum_CV(iLon,iLat,iSpc)+&
+!                     DiffLatINum_CV(iLon,iLat,iSpc))
+!             else
                  NewINum_CV(iLon,iLat,iSpc) = NewINum_CV(iLon,iLat,iSpc) - Dt * ( &
                   
                      + GradLatINum_CV(iLon,iLat,iSpc)*IVel_CD(iLon,iLat,iNorth_) &
@@ -559,7 +568,7 @@ contains
                      + Dt * (&
                      DiffLonINum_CV(iLon,iLat,iSpc)+&
                      DiffLatINum_CV(iLon,iLat,iSpc))
-             endif
+!             endif
           enddo
 
           RhoTest = sum(Mass(1:nSpecies) * NewNum_CV(iLon,iLat,1:nSpecies))

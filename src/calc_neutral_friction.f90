@@ -7,7 +7,7 @@ subroutine calc_neutral_friction(DtIn,oVel, EddyCoef_1d, NDensity_1d, NDensityS_
   use ModGITM
   use ModSources
   use ModPlanet, only: Diff0, DiffExp, IsEarth
-  use ModInputs, only: UseNeutralFriction
+  use ModInputs, only: UseNeutralFriction, DoCheckForNans
 
   implicit none
 
@@ -63,11 +63,17 @@ subroutine calc_neutral_friction(DtIn,oVel, EddyCoef_1d, NDensity_1d, NDensityS_
         do jSpecies = 1, nSpecies
            if (jSpecies == iSpecies) cycle
 
-! TempDij are the Dij binary coefficients
-! Based upon the formulation by Banks and Kokarts.
-! These coefficients demand that 
-! (1) NDensity be in cm^-3 (hence the 1.0e-06) factor below
-! (2) Additionally, the Dij's are in cm^2/s, thus the 1.0e-04 factor
+           if (DoCheckForNans) then
+              if (isnan(Temp(iAlt))) write(*,*) "Friction : Temp is nan", iAlt
+              if (isnan(NDensity_1d(iAlt))) write(*,*) "Friction : NDen is nan", iAlt
+              if (isnan(NDensityS_1d(iAlt,jSpecies))) write(*,*) "Friction : NDenS is nan", iAlt,jSpecies
+           endif
+
+           ! TempDij are the Dij binary coefficients
+           ! Based upon the formulation by Banks and Kokarts.
+           ! These coefficients demand that 
+           ! (1) NDensity be in cm^-3 (hence the 1.0e-06) factor below
+           ! (2) Additionally, the Dij's are in cm^2/s, thus the 1.0e-04 factor
            TempDij = (1.0e-04)*&              ! Scales the Dij from cm^2/s -> m^2/s
               (   Diff0(iSpecies,jSpecies)*( Temp(iAlt)**DiffExp(iSpecies,jSpecies) )   ) / &
               (   NDensity_1d(iAlt)*(1.0e-06) )     ! Converts to #/cm^-3

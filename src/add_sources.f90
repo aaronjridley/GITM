@@ -12,12 +12,14 @@ subroutine add_sources
   implicit none
 
   integer :: iBlock, iLon, iLat, iAlt, iSpecies
-  integer :: iDir
+  integer :: iDir, iIon
   logical :: IsFirstTime=.true.
 
   real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1) :: &
        eHeatingp, iHeatingp, eHeatingm, iHeatingm, iHeating, lame, lami
 
+  real :: change(1:nLons,1:nLats,1:nAlts)
+  
   call report("add_sources",2)
 
   if (floor((tSimulation-dt)/DtPotential) /= &
@@ -103,30 +105,6 @@ subroutine add_sources
         enddo
      enddo
 
-     if (iDebugLevel > 2 .and. Is1D) then
-!        do iAlt = 1,nAlts
-iAlt = 10
-           write(*,*) "===> Temp Sources : ", iAlt, dt,&
-                EuvHeating(1, 1, iAlt, iBlock)*dt, &
-!                NOCooling(1,1,iAlt)*dt, &
-!                OCooling(1,1,iAlt)*dt, &
-                AuroralHeating(1,1,iAlt)*dt, &
-                JouleHeating(1,1,iAlt)*dt, &
-                ChemicalHeatingRate(1,1,iAlt), &
-                Conduction(1,1,iAlt), temperature(1,1,iAlt,iBlock)
-!        enddo
-     endif
-
-     iAlt = nAlts-2
-     if (iDebugLevel > 2) &
-          write(*,*) "===> Sum Temp Sources : ", &
-          sum(EuvHeating(1:nLons, 1:nLats, iAlt, iBlock))*dt, &
-          sum(NOCooling(:,:,iAlt))*dt, &
-          sum(OCooling(:,:,iAlt))*dt, &
-          sum(AuroralHeating(:,:,iAlt))*dt, &
-          sum(JouleHeating(:,:,iAlt))*dt, &
-          sum(Conduction(:,:,iAlt))
-
      !! To turn off IonDrag, turn UseIonDrag=.false. in UAM.in
      do iDir = 1, 3
        Velocity(1:nLons, 1:nLats, 1:nAlts, iDir, iBlock) = &
@@ -153,8 +131,34 @@ iAlt = 10
 
      enddo
 
+     if (DoCheckForNans) call check_for_nans_ions('before e-temp')
     
-     call calc_electron_temperature(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeatingm,iHeating,lame,lami)
+     call calc_electron_temperature(&
+          iBlock,eHeatingp,iHeatingp,eHeatingm,iHeatingm,iHeating,lame,lami)
+
+     ! New Source Term for the ion density:
+
+     if (UseImprovedIonAdvection) then
+     
+        do iIon = 1, nIonsAdvect
+
+           change = dt * DivIVelocity(:,:,:,iBlock)
+
+           IDensityS(1:nLons,1:nLats,1:nAlts,iIon,iBlock) = &
+                IDensityS(1:nLons,1:nLats,1:nAlts,iIon,iBlock) / (1 + change)
+
+        enddo
+        
+        IDensityS(:,:,:,ie_,iBlock) = 0.0
+        do iIon = 1, nIons-1
+           IDensityS(:,:,:,ie_,iBlock) = &
+                IDensityS(:,:,:,ie_,iBlock) + &
+                IDensityS(:,:,:,iIon,iBlock)
+        enddo
+
+        if (DoCheckForNans) call check_for_nans_ions('After divergence')
+
+     endif
 
      !! To turn off Diffusion, turn UseDiffusion=.false. in UAM.in
      do iLon = 1, nLons

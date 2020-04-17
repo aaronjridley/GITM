@@ -379,27 +379,21 @@ iAlt = -1
     MeshCoef4 = -1.0*( MeshH1*MeshH2*MeshH3)/(MeshH4*(h2+h3+h4)*(h3+h4)*h4)
 
     ! Ions Float at the LBC
-    do iSpecies = 1, nIonsAdvect
+    do iSpecies = 1, nIons-1
 
        ! Simply assume no gradient, since this is a region in which chemitry
        ! is dominant.  It shouldn't matter, really:
        LogINS(iAlt,iSpecies) = LogINS(iAlt+1,iSpecies)
 
-!        dLogINS = MeshCoef0*LogINS(iAlt+1,iSpecies) + &  ! LogNS(0)
-!                  MeshCoef1*LogINS(iAlt+2,iSpecies) + &  ! LogNS(1)
-!                  MeshCoef2*LogINS(iAlt+3,iSpecies) + &  ! LogNS(2)
-!                  MeshCoef3*LogINS(iAlt+4,iSpecies) + &  ! LogNS(2)
-!                  MeshCoef4*LogINS(iAlt+5,iSpecies)      ! LogNS(2)
-!
-!        ! Make sure that the ions decrease in the ghost cells!
-!        if (dLogINS .gt. 0.0) then
-!          LogINS(iAlt,iSpecies) = LogINS(iAlt+1,iSpecies)&
-!                              - dAlt_F(iAlt+1)*dLogINS 
-!        else
-!          LogINS(iAlt,iSpecies) = LogINS(iAlt+1,iSpecies)
-!        endif 
     enddo ! Ions Advect 
 
+    ! Electon Density:
+    if (UseImprovedIonAdvection) then
+       LogINS(iAlt,nIons) = sum(LogINS(iAlt,1:nIons-1))
+    else
+       LogINS(iAlt,nIons) = alog(sum(exp(LogINS(iAlt,1:nIons-1))))
+    endif
+       
     do iSpecies = 1, nSpecies
          ! For Photochemical Species
          ! We enforce zero flux at the LBC
@@ -615,7 +609,7 @@ iAlt = -1
      MeshCoefm4 =  1.0*( MeshHm1*MeshHm2*MeshHm3)/&
           (MeshHm4*(hm2+hm3+hm4)*(hm3+hm4)*hm4)
            
-     do iSpecies=1,nIonsAdvect
+     do iSpecies=1,nIons-1
 
         if (UseImprovedIonAdvection) then
            n0 = alog(LogINS(iAlt  ,iSpecies))
@@ -624,12 +618,14 @@ iAlt = -1
            n3 = alog(LogINS(iAlt-3,iSpecies))
            n4 = alog(LogINS(iAlt-4,iSpecies))
            n5 = alog(LogINS(iAlt-5,iSpecies))
-           if (isnan(n0)) write(*,*) 'n0 :',iAlt, LogINS(iAlt  ,iSpecies)
-           if (isnan(n1)) write(*,*) 'n1 :',iAlt-1, LogINS(iAlt-1  ,iSpecies)
-           if (isnan(n2)) write(*,*) 'n2 :',iAlt-2, LogINS(iAlt-2  ,iSpecies)
-           if (isnan(n3)) write(*,*) 'n3 :',iAlt-3, LogINS(iAlt-3  ,iSpecies)
-           if (isnan(n4)) write(*,*) 'n4 :',iAlt-4, LogINS(iAlt-4  ,iSpecies)
-           if (isnan(n5)) write(*,*) 'n5 :',iAlt-5, LogINS(iAlt-5  ,iSpecies)
+           if (DoCheckForNans) then
+              if (isnan(n0)) write(*,*) 'n0 :',iAlt, LogINS(iAlt  ,iSpecies)
+              if (isnan(n1)) write(*,*) 'n1 :',iAlt-1, LogINS(iAlt-1  ,iSpecies)
+              if (isnan(n2)) write(*,*) 'n2 :',iAlt-2, LogINS(iAlt-2  ,iSpecies)
+              if (isnan(n3)) write(*,*) 'n3 :',iAlt-3, LogINS(iAlt-3  ,iSpecies)
+              if (isnan(n4)) write(*,*) 'n4 :',iAlt-4, LogINS(iAlt-4  ,iSpecies)
+              if (isnan(n5)) write(*,*) 'n5 :',iAlt-5, LogINS(iAlt-5  ,iSpecies)
+           endif
         else
            n0 = LogINS(iAlt  ,iSpecies)
            n1 = LogINS(iAlt-1,iSpecies)
@@ -663,12 +659,23 @@ iAlt = -1
 
         endif
               
-        if (isnan(LogINS(iAlt,1))) write(*,*) 'svbc ',iAlt,LogINS(iAlt,1), n0, dn, &
-             n1, n2, n3, n4, n5, tec, MinTEC, UsePlasmasphereBC, &
-             dAlt_F(iAlt)
+        if (DoCheckForNans) then
+           if (isnan(LogINS(iAlt,1))) write(*,*) 'svbc ',iAlt,LogINS(iAlt,1), n0, dn, &
+                n1, n2, n3, n4, n5, tec, MinTEC, UsePlasmasphereBC, &
+                dAlt_F(iAlt)
+        endif
 
      enddo
 
+     ! Electon Density:
+     if (UseImprovedIonAdvection) then
+        LogINS(iAlt,nIons) = sum(LogINS(iAlt,1:nIons-1))
+     else
+        LogINS(iAlt,nIons) = alog(sum(exp(LogINS(iAlt,1:nIons-1))))
+     endif
+       
+
+     
   enddo
 
   do iAlt = nAlts+1, nAlts+2

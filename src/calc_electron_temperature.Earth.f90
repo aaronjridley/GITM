@@ -52,6 +52,8 @@ subroutine calc_electron_temperature(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
 
   integer :: iLon, iLat, iAlt
 
+  logical :: NanFound
+
   tn = Temperature(1:nLons,1:nLats,0:nAlts+1,iBlock)*TempUnit(1:nLons,1:nLats,0:nAlts+1)
   nn = NDensity(1:nLons,1:nLats,0:nAlts+1,iBlock)
   ne = IDensityS(1:nLons,1:nLats,0:nAlts+1,ie_,iBlock)
@@ -114,12 +116,6 @@ subroutine calc_electron_temperature(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
      enddo
   enddo
 
- ! eflux = eflux*10.
- ! eflux = 1.e-9
- ! mlats = MLatitude(1:nLons,1:nLats,nAlts,iBlock)
- ! where(mlats .GE. 50. .AND. mlats .LE. -50.) eflux=1.e-5
-
-
   sinI2 =  (B0(0:nLons+1,0:nLats+1,0:nAlts+1,iUp_,iBlock) / &
        B0(0:nLons+1,0:nLats+1,0:nAlts+1,iMag_,iBlock))**2
   where(sinI2 .LE. 0.01) sinI2=0.01
@@ -138,6 +134,8 @@ subroutine calc_electron_temperature(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
   call calc_thermoelectric_current
   UserData3D(:,:,:,2,iBlock) = 0.0
   UserData3D(1:nLons,1:nLats,nAlts,2,iBlock) = JParaAlt(1:nLons,1:nLats)
+
+  NanFound = .false.
 
   ! Use tri-diagnal solver to solve the equation
   do iLon = 1, nLons
@@ -169,9 +167,41 @@ subroutine calc_electron_temperature(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
            a(iAlt) = 2*ilam/hcoef*zu - fcoef*zu**2
            d(iAlt) = -xcoef*tte - eHeatingm(iLon,iLat,iAlt)
 
+           if (DoCheckForNans) then
+
+              if (isnan(a(iAlt))) then
+                 write(*,*) "a : ",iLon,iLat,iAlt
+                 NanFound = .true.
+              endif
+
+              if (isnan(b(iAlt))) then
+                 write(*,*) "b : ",iLon,iLat,iAlt
+                 NanFound = .true.
+              endif
+
+              if (isnan(c(iAlt))) then
+                 write(*,*) "c : ",iLon,iLat,iAlt
+                 NanFound = .true.
+              endif
+
+              if (isnan(d(iAlt))) then
+                 write(*,*) "d : ",iLon,iLat,iAlt
+                 write(*,*) xcoef, tte, eHeatingm(iLon,iLat,iAlt)
+                 NanFound = .true.
+              endif
+
+           endif
+
            eConduction(iLon,iLat,iAlt) = c(iAlt)*te(iLon,iLat,iAlt+1) + &
                 a(iAlt)*te(iLon,iLat,iAlt+1) + &
                 (-2*ilam/hcoef*(zu+zl) + fcoef*(zu**2-zl**2))*tte
+
+           if (DoCheckForNans) then
+              if (isnan(eConduction(iLon,iLat,iAlt) )) then
+                 write(*,*) "eCondu : ",iLon,iLat,iAlt
+                 NanFound = .true.
+              endif
+           endif
 
            if (abs(MLatitude(iLon,iLat,nAlts,iBlock)) .GE. 45.) then
 
@@ -189,6 +219,14 @@ subroutine calc_electron_temperature(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
                    /nne/Element_Charge * tte *&
                    (zl**2*neu+zu**2*nel)/hcoef
               
+
+              if (DoCheckForNans) then
+                 if (isnan(JParaAlt(iLon,iLat))) then
+                    write(*,*) "jpar : ",iLon,iLat,iAlt
+                    NanFound = .true.
+                 endif
+              endif
+
               ! use thermoelectric heating                                                
 
               a(iAlt) = a(iAlt)-4*Boltzmanns_Constant &
@@ -246,6 +284,8 @@ subroutine calc_electron_temperature(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
         etemp(iLon,iLat,1:nAlts) = u(1:nAlts)
         etemp(iLon,iLat,nAlts+1) = etemp(iLon,iLat,nAlts)
         etemp(iLon,iLat,0) = etemp(iLon,iLat,1)
+
+        if (NanFound) call stop_gitm('must stop')
        
      enddo
   enddo
@@ -424,28 +464,38 @@ subroutine calc_electron_ion_sources(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
   implicit none
   integer, intent(in) :: iBlock
 
-  real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1), intent(out) :: eHeatingp, iHeatingp, eHeatingm, &
+  real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1), intent(out) :: &
+       eHeatingp, iHeatingp, eHeatingm, &
        iHeatingm, iHeating, lame, lami
   real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1) :: &
        nn, ni, ne, nh, nhe, no, nn2, no2, nnr, nno, &
        tn, te, ti, temp, te_6000, te_exc, tn_exc, &
        nop, no2p, nn2p, nnop, nhp, nhep, nnp, &
        nu_oop, nu_nnp, nu_o2o2p, nu_o2op, nu_n2op, nu_n2o2p, &
-       nu_oo2p, nu_n2n2p, tr, dv2, dv2_en, dv2_ei 
+       nu_oo2p, nu_n2n2p, tr, dv2, dv2_en, dv2_ei, &
+       nu_onop, nu_o2nop, nu_n2nop
+       
   real(kind=8), dimension(-1:nLons+2,-1:nLats+2,0:nAlts+1) :: te_con, ti_con
-  real(kind=8), dimension(-1:nLons+2,-1:nLats+2) :: dtedphe, dtidphe, dtedtheta, dtidtheta
-  real(kind=8), dimension(-1:nLons+2,-1:nLats+2) :: dledphe, dlidphe, dledtheta, dlidtheta
-  real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1) :: Qphe, Qenc, Qeic, Qiec, &
+  real(kind=8), dimension(-1:nLons+2,-1:nLats+2) :: &
+       dtedphe, dtidphe, dtedtheta, dtidtheta
+  real(kind=8), dimension(-1:nLons+2,-1:nLats+2) :: &
+       dledphe, dlidphe, dledtheta, dlidtheta
+  real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1) :: &
+       Qphe, Qenc, Qeic, Qiec, &
        Qinc_t, Qinc_v, Qnic_t, Qnic_v, iAdvection, Qaurora, QprecipIon, &
        Qencp, Qeicp, Qiecp, Qinc_tp, Qrotp, Qfp, Qexcp, Qvib_o2p, Qvib_n2p, &
        Qencm, Qeicm, Qiecm, Qinc_tm, Qrotm, Qfm, Qexcm, Qvib_o2m, Qvib_n2m, &
        Qrot, Qf, Qeic_v, Qenc_v, Qexc, Qvib_o2, Qvib_n2, &
-       Qeconhm, Qeconhp,Qiconhm, Qiconhp  !! Conduction perpendicular to field lines  
+       Qeconhm, Qeconhp,Qiconhm, Qiconhp
+  !! Conduction perpendicular to field lines  
   !! Magnetic dip/declination angles, Conductivities
-  real(kind=8), dimension(nLons,nLats,0:nAlts+1) :: cos2dip, magh2, sin2dec, cos2dec, sindec, cosdec 
-  real(kind=8), dimension(nLons,nLats) :: sin2theta, sintheta, costheta !! polar angle
+  real(kind=8), dimension(nLons,nLats,0:nAlts+1) :: &
+       cos2dip, magh2, sin2dec, cos2dec, sindec, cosdec 
+  real(kind=8), dimension(nLons,nLats) :: &
+       sin2theta, sintheta, costheta !! polar angle
   real(kind=8) :: dLon, dLat
-  real, dimension(0:nLons+1,0:nLats+1,0:nAlts+1) :: lam_op, lam_o2p, lam_n2p, lam_nop, lam_np
+  real, dimension(0:nLons+1,0:nLats+1,0:nAlts+1) :: &
+       lam_op, lam_o2p, lam_n2p, lam_nop, lam_np
   integer :: Ao=16, Ao2=32, An2=28, Ano=30, An=14
 
   real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1) :: x, epsilon, logx
@@ -465,7 +515,7 @@ subroutine calc_electron_ion_sources(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
   real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1,10)  :: logQv0
   real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1,2:9) :: logQv1 
   real(kind=8) :: tte, ttn, tte_6000
-  integer :: iLevel
+  integer :: iLevel, iIon, iSpecies
 
 
 ! for O fine structure
@@ -518,15 +568,15 @@ subroutine calc_electron_ion_sources(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
  
   alts = Altitude_GB(0:nLons+1,0:nLats+1,0:nAlts+1,iBlock)
 
- where(ti .LE. tn) ti = tn*1.0001
- where(te .LE. tn) te = tn*1.0001
- where(ti .GE. te*tipct) te=ti/tipct
- te_6000 = te
- te_exc = te
- where(te_6000 .GT. 6000.) te_6000 = 6000.0
- where(te_exc .GT. 18000.) te_exc = 18000.
+  where(ti .LE. tn) ti = tn*1.0001
+  where(te .LE. tn) te = tn*1.0001
+  where(ti .GE. te*tipct) te=ti/tipct
+  te_6000 = te
+  te_exc = te
+  where(te_6000 .GT. 6000.) te_6000 = 6000.0
+  where(te_exc .GT. 18000.) te_exc = 18000.
 
-! 1. Photoelectron heating from swartz and nisbet 1972
+  ! 1. Photoelectron heating from swartz and nisbet 1972
 
   Qphe=0.0
   x = ne/(nn2+ no2 + no)
@@ -550,6 +600,27 @@ subroutine calc_electron_ion_sources(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
         + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_2DP_,iBlock)*no(1:nLons,1:nLats,1:nAlts)  &
         + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_2PP_,iBlock)*no(1:nLons,1:nLats,1:nAlts)  &
         ) 
+
+   if (DoCheckForNans) then
+      do iLon = 1, nLons
+         do iLat = 1, nLats
+            do iAlt = 1, nAlts
+               if (isnan(Qphe(iLon,iLat,iAlt))) then
+                  write(*,*) iLon,iLat,iAlt
+                  write(*,*) 'x : ', x(iLon,iLat,iAlt)
+                  write(*,*) 'ne : ',ne(iLon,iLat,iAlt)
+                  write(*,*) 'nn2 : ',nn2(iLon,iLat,iAlt)
+                  write(*,*) 'no2 : ',no2(iLon,iLat,iAlt)
+                  write(*,*) 'no : ',no(iLon,iLat,iAlt)
+                  write(*,*) 'ep : ',epsilon(iLon,iLat,iAlt)
+                  write(*,*) 'qphe : ',qphe(iLon,iLat,iAlt)
+                  call stop_gitm('epsilon')
+               endif
+            enddo
+         enddo
+      enddo
+   endif
+
 
 ! Auroral heating
    Qaurora = 0.0
@@ -786,6 +857,7 @@ subroutine calc_electron_ion_sources(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
 
 !!!!! Ion-neutral heating rate
   tr = (tn+ti)/2.
+
   nu_nnp   = 0.0
   nu_oop   = 0.0
   nu_o2o2p = 0.0
@@ -794,83 +866,158 @@ subroutine calc_electron_ion_sources(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
   nu_n2op  = 0.0
   nu_n2o2p = 0.0
   nu_oo2p  = 0.0
-  where(tr .GT. 275.) nu_nnp = 3.83e-11 * nnr*1.e-6 * tr**0.5 * (1 - 0.063*log10(tr))**2
-  where(tr <= 275) nu_nnp = 1.0e-9 * nnr*1.0e-6 ! T < 550
+
+  nu_onop  = 0.0
+  nu_o2nop = 0.0
+  nu_n2nop = 0.0
+  nu_n2o2p = 0.0
+
+  ! Schunk and Nagy v2, page 105:
+  nu_onop  = 2.44e-16 * no
+  nu_o2nop = 4.27e-16 * no2
+  nu_n2nop = 4.34e-16 * nn2
+  
+  where(tr .GT. 275.) nu_nnp = 3.83e-17 * nnr * tr**0.5 * (1 - 0.063*log10(tr))**2
+  where(tr <= 275) nu_nnp = 1.0e-15 * nnr ! T < 550
 
   where(tr .GT. 235.) nu_oop = 3.67e-11 * no*1.e-6 * tr**0.5 * (1 - 0.064*log10(tr))**2
-  where(tr <= 235) nu_oop = 8.6e-10 * no*1.0e-6 ! T < 470
+  where(tr <= 235) nu_oop = 8.6e-16 * no  ! T < 470
 
-  where(tr .GT. 800.) nu_o2o2p = 2.59e-11 * no2*1.e-6 * tr**0.5 * (1 - 0.073*log10(tr))**2
-  where(tr <= 800) nu_o2o2p = 8.2e-10 * no2*1.0e-6  ! T < 1600
+  where(tr .GT. 800.) nu_o2o2p = 2.59e-17 * no2 * tr**0.5 * (1 - 0.073*log10(tr))**2
+  where(tr <= 800) nu_o2o2p = 8.2e-16 * no2 ! T < 1600
 
   !where(tr .GT. 170.) nu_n2n2p = 5.14e-11 * nn2*1.e-6 * tr**0.5 * (1 - 0.069*log10(tr))**2
-  nu_n2n2p = 5.14e-11 * nn2*1.e-6 * tr**0.5 * (1 - 0.069*log10(tr))**2
-  ! Banks:
+  nu_n2n2p = 5.14e-17 * nn2 * tr**0.5 * (1 - 0.069*log10(tr))**2
 
-  nu_o2op = 6.64 * 1.e-10 * no2*1.e-6
-  nu_n2op = 6.82*1.e-10 * nn2*1.e-6
-  nu_n2o2p = 4.13*1.e-10 * nn2*1.e-6
-  nu_oo2p = 2.31*1.e-10 * no*1.e-6
+  ! Banks:
+  nu_o2op  = 6.64e-16 * no2
+  nu_n2op  = 6.82e-16 * nn2
+  nu_n2o2p = 4.13e-16 * nn2
+  nu_oo2p  = 2.31e-16 * no
   
   dv2 = 0.0
   do iDir = 1, 3
      dv2 = dv2 + (IVelocity(0:nLons+1,0:nLats+1,0:nAlts+1,iDir,iBlock) &
              -Velocity(0:nLons+1,0:nLats+1,0:nAlts+1,iDir,iBlock))**2
   enddo
-  
-  Qinc_t = nop*MassI(iO_4SP_)*nu_oop * (3.*Boltzmanns_Constant*(tn-ti) )/(MassI(iO_4SP_) + Mass(iO_3P_)) &
-       + nnp*MassI(iNP_)*nu_nnp * (3.*Boltzmanns_Constant*(tn-ti) )/(MassI(iNP_) + Mass(iN_2P_)) &
-       + nop*MassI(iO_4SP_)*nu_o2op * (3.*Boltzmanns_Constant*(tn-ti) )/(MassI(iO_4SP_) + Mass(iO2_)) &
-       + nop*MassI(iO_4SP_)*nu_n2op * (3.*Boltzmanns_Constant*(tn-ti) )/(MassI(iO_4SP_) + Mass(iN2_)) &
-       + no2p*MassI(iO2P_)*nu_o2o2p * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iO2P_) + Mass(iO2_)) &
-       + no2p*MassI(iO2P_)*nu_n2o2p * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iO2P_) + Mass(iN2_)) &
-       + nn2p*MassI(iN2P_) * nu_n2n2p *(3.*Boltzmanns_Constant*(tn-ti))/(MassI(iN2P_) + Mass(iN2_)) &
-       + no2p*MassI(iO2P_)*nu_oo2p * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iO2P_) + Mass(iO_3P_)) 
 
-  Qinc_tp = nop*MassI(iO_4SP_)*nu_oop * 3.*Boltzmanns_Constant/(MassI(iO_4SP_) + Mass(iO_3P_)) &
-       + nnp*MassI(iNP_)*nu_nnp * 3.*Boltzmanns_Constant/(MassI(iNP_) + Mass(iN_2P_)) &
-       + nop*MassI(iO_4SP_)*nu_o2op * 3.*Boltzmanns_Constant/(MassI(iO_4SP_) + Mass(iO2_)) &
-       + nop*MassI(iO_4SP_)*nu_n2op * 3.*Boltzmanns_Constant/(MassI(iO_4SP_) + Mass(iN2_)) &
-       + no2p*MassI(iO2P_)*nu_o2o2p * 3.*Boltzmanns_Constant/(MassI(iO2P_) + Mass(iO2_)) &
-       + no2p*MassI(iO2P_)*nu_n2o2p * 3.*Boltzmanns_Constant/(MassI(iO2P_) + Mass(iN2_)) &
-       + nn2p*MassI(iN2P_) * nu_n2n2p *3.*Boltzmanns_Constant/(MassI(iN2P_) + Mass(iN2_)) &
-       + no2p*MassI(iO2P_)*nu_oo2p * 3.*Boltzmanns_Constant/(MassI(iO2P_) + Mass(iO_3P_)) 
+  ! Changed this to use the ion-neutral collision frequencies defined in
+  ! calc_rates.  These should be used for consistency throughout the code
+  ! now. - AJR, Nov 2, 2019.
+  
+  Qinc_t = 0.0
+  do iSpecies = 1, nSpecies
+     do iIon = 1, nIons-1
+
+        Qinc_t = Qinc_t + &
+             IDensityS(0:nLons+1,0:nLats+1,0:nAlts+1,iIon,iBlock) * &
+             MassI(iIon) * &
+             IonCollisions(0:nLons+1,0:nLats+1,0:nAlts+1,iIon,iSpecies) * &
+             (3.*Boltzmanns_Constant*(tn-ti)) / &
+             (MassI(iIon) + Mass(iSpecies))
+        
+        Qinc_tp = Qinc_tp + &
+             IDensityS(0:nLons+1,0:nLats+1,0:nAlts+1,iIon,iBlock) * &
+             MassI(iO_4SP_) * &
+             IonCollisions(0:nLons+1,0:nLats+1,0:nAlts+1,iIon,iSpecies) * &
+             (3.*Boltzmanns_Constant) / &
+             (MassI(iIon) + Mass(iSpecies))
+
+        Qinc_v = Qinc_v + &
+             IDensityS(0:nLons+1,0:nLats+1,0:nAlts+1,iIon,iBlock) * &
+             MassI(iIon) * &
+             IonCollisions(0:nLons+1,0:nLats+1,0:nAlts+1,iIon,iSpecies) * &
+             MassI(iSpecies) * &
+             dv2 / &
+             (MassI(iIon) + Mass(iSpecies))
+
+        ! Ion-neutral heating rate from Banks 1967
+        ! because ns * ms * nu_st = nt * mt * nu_ts,
+        ! the only thing that changes is the neutral mass to ion mass:
+  
+        Qnic_v = Qnic_v + &
+             IDensityS(0:nLons+1,0:nLats+1,0:nAlts+1,iIon,iBlock) * &
+             MassI(iIon) * MassI(iIon) * &
+             IonCollisions(0:nLons+1,0:nLats+1,0:nAlts+1,iIon,iSpecies) * &
+             dv2 * &
+             (MassI(iIon) + Mass(iSpecies))
+        
+     enddo
+  enddo
+
+!  Qinc_t = &
+!       nop  * MassI(iO_4SP_) * nu_oop   * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iO_4SP_) + Mass(iO_3P_)) + &
+!       nnp  * MassI(iNP_)    * nu_nnp   * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iNP_) + Mass(iN_2P_)) + &
+!       nop  * MassI(iO_4SP_) * nu_o2op  * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iO_4SP_) + Mass(iO2_)) + &
+!       nop  * MassI(iO_4SP_) * nu_n2op  * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iO_4SP_) + Mass(iN2_)) + &
+!       no2p * MassI(iO2P_)   * nu_o2o2p * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iO2P_) + Mass(iO2_)) + &
+!       no2p * MassI(iO2P_)   * nu_n2o2p * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iO2P_) + Mass(iN2_)) + &
+!       nn2p * MassI(iN2P_)   * nu_n2n2p * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iN2P_) + Mass(iN2_)) + &
+!       no2p * MassI(iO2P_)   * nu_oo2p  * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iO2P_) + Mass(iO_3P_)) + &
+!       ! Just added Nov. 1, 2019 :
+!       nnop * MassI(iNOP_)   * nu_onop  * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iNOP_) + Mass(iO_3P_)) + &
+!       nnop * MassI(iNOP_)   * nu_o2nop * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iNOP_) + Mass(iO2_)) + &
+!       nnop * MassI(iNOP_)   * nu_n2nop * (3.*Boltzmanns_Constant*(tn-ti))/(MassI(iNOP_) + Mass(iN2_))
+!
+!  Qinc_tp = &
+!       nop  * MassI(iO_4SP_) * nu_oop   * 3.*Boltzmanns_Constant/(MassI(iO_4SP_) + Mass(iO_3P_)) + &
+!       nnp  * MassI(iNP_)    * nu_nnp   * 3.*Boltzmanns_Constant/(MassI(iNP_) + Mass(iN_2P_)) + &
+!       nop  * MassI(iO_4SP_) * nu_o2op  * 3.*Boltzmanns_Constant/(MassI(iO_4SP_) + Mass(iO2_)) + &
+!       nop  * MassI(iO_4SP_) * nu_n2op  * 3.*Boltzmanns_Constant/(MassI(iO_4SP_) + Mass(iN2_)) + &
+!       no2p * MassI(iO2P_)   * nu_o2o2p * 3.*Boltzmanns_Constant/(MassI(iO2P_) + Mass(iO2_)) + &
+!       no2p * MassI(iO2P_)   * nu_n2o2p * 3.*Boltzmanns_Constant/(MassI(iO2P_) + Mass(iN2_)) + &
+!       nn2p * MassI(iN2P_)   * nu_n2n2p * 3.*Boltzmanns_Constant/(MassI(iN2P_) + Mass(iN2_)) + &
+!       no2p * MassI(iO2P_)   * nu_oo2p  * 3.*Boltzmanns_Constant/(MassI(iO2P_) + Mass(iO_3P_)) + &
+!       ! Just added Nov. 1, 2019 :
+!       nnop * MassI(iNOP_)   * nu_onop  * 3.*Boltzmanns_Constant/(MassI(iNOP_) + Mass(iO_3P_)) + &
+!       nnop * MassI(iNOP_)   * nu_o2nop * 3.*Boltzmanns_Constant/(MassI(iNOP_) + Mass(iO2_)) + &
+!       nnop * MassI(iNOP_)   * nu_n2nop * 3.*Boltzmanns_Constant/(MassI(iNOP_) + Mass(iN2_))
 
   Qinc_tm = Qinc_tp * tn
 
-  Qinc_v = nop*MassI(iO_4SP_)*nu_oop * Mass(iO_3P_)*dv2/(MassI(iO_4SP_) + Mass(iO_3P_)) &
-       + nnp*MassI(iNP_)*nu_nnp * Mass(iN_2P_)*dv2/(MassI(iNP_) + Mass(iN_2P_)) &
-       + nop*MassI(iO_4SP_)*nu_o2op * Mass(iO2_)*dv2/(MassI(iO_4SP_) + Mass(iO2_)) &
-       + nop*MassI(iO_4SP_)*nu_n2op * Mass(iN2_)*dv2/(MassI(iO_4SP_) + Mass(iN2_)) &
-       + no2p*MassI(iO2P_)*nu_o2o2p * Mass(iO2_)*dv2/(MassI(iO2P_) + Mass(iO2_)) &
-       + no2p*MassI(iO2P_)*nu_n2o2p * Mass(iN2_)*dv2/(MassI(iO2P_) + Mass(iN2_)) &
-       + nn2p*MassI(iN2P_) * nu_n2n2p * Mass(iN2_)*dv2/(MassI(iN2P_) + Mass(iN2_))&
-       + no2p*MassI(iO2P_)*nu_oo2p * Mass(iO_3P_)*dv2/(MassI(iO2P_) + Mass(iO_3P_)) 
-
-  ! Ion-neutral heating rate from Banks 1967
-  ! because ns * ms * nu_st = nt * mt * nu_ts, the only thing that changes is the neutral mass to ion mass:
-
-  Qnic_v = nop * MassI(iO_4SP_)**2 *nu_oop *dv2/(MassI(iO_4SP_) + Mass(iO_3P_)) &
-       + nnp * MassI(iNP_)**2 *nu_nnp *dv2/(MassI(iNP_) + Mass(iN_2P_)) &
-       + nop * MassI(iO_4SP_)**2 *nu_o2op *dv2/(MassI(iO_4SP_) + Mass(iO2_)) &
-       + nop *MassI(iO_4SP_)**2 *nu_n2op *dv2/(MassI(iO_4SP_) + Mass(iN2_)) &
-       + no2p *MassI(iO2P_)**2 *nu_o2o2p *dv2/(MassI(iO2P_) + Mass(iO2_)) &
-       + no2p *MassI(iO2P_)**2 *nu_n2o2p *dv2/(MassI(iO2P_) + Mass(iN2_)) &
-       + nn2p *MassI(iN2P_)**2 * nu_n2n2p *dv2/(MassI(iN2P_) + Mass(iN2_)) &
-       + no2p *MassI(iO2P_)**2 *nu_oo2p *dv2/(MassI(iO2P_) + Mass(iO_3P_)) 
+!  Qinc_v = &
+!       nop  * MassI(iO_4SP_) * nu_oop   * Mass(iO_3P_) * dv2/(MassI(iO_4SP_) + Mass(iO_3P_)) + &
+!       nnp  * MassI(iNP_)    * nu_nnp   * Mass(iN_2P_) * dv2/(MassI(iNP_) + Mass(iN_2P_)) + &
+!       nop  * MassI(iO_4SP_) * nu_o2op  * Mass(iO2_)   * dv2/(MassI(iO_4SP_) + Mass(iO2_)) + &
+!       nop  * MassI(iO_4SP_) * nu_n2op  * Mass(iN2_)   * dv2/(MassI(iO_4SP_) + Mass(iN2_)) + &
+!       no2p * MassI(iO2P_)   * nu_o2o2p * Mass(iO2_)   * dv2/(MassI(iO2P_) + Mass(iO2_)) + &
+!       no2p * MassI(iO2P_)   * nu_n2o2p * Mass(iN2_)   * dv2/(MassI(iO2P_) + Mass(iN2_)) + &
+!       nn2p * MassI(iN2P_)   * nu_n2n2p * Mass(iN2_)   * dv2/(MassI(iN2P_) + Mass(iN2_)) + &
+!       no2p * MassI(iO2P_)   * nu_oo2p  * Mass(iO_3P_) * dv2/(MassI(iO2P_) + Mass(iO_3P_)) + & 
+!       ! Just added Nov. 1, 2019 :
+!       nnop * MassI(iNOP_)   * nu_onop  * Mass(iO_3P_) * dv2/(MassI(iNOP_) + Mass(iO_3P_)) + &
+!       nnop * MassI(iNOP_)   * nu_o2nop * Mass(iO2_)   * dv2/(MassI(iNOP_) + Mass(iO2_)) + &
+!       nnop * MassI(iNOP_)   * nu_n2nop * Mass(iN2_)   * dv2/(MassI(iNOP_) + Mass(iN2_))
+!
+!  ! Ion-neutral heating rate from Banks 1967
+!  ! because ns * ms * nu_st = nt * mt * nu_ts, the only thing that changes is the neutral mass to ion mass:
+!  
+!  Qnic_v = &
+!       nop  * MassI(iO_4SP_)**2 * nu_oop   * dv2/(MassI(iO_4SP_) + Mass(iO_3P_)) + &
+!       nnp  * MassI(iNP_)**2    * nu_nnp   * dv2/(MassI(iNP_) + Mass(iN_2P_)) + &
+!       nop  * MassI(iO_4SP_)**2 * nu_o2op  * dv2/(MassI(iO_4SP_) + Mass(iO2_)) + &
+!       nop  * MassI(iO_4SP_)**2 * nu_n2op  * dv2/(MassI(iO_4SP_) + Mass(iN2_)) + &
+!       no2p * MassI(iO2P_)**2   * nu_o2o2p * dv2/(MassI(iO2P_) + Mass(iO2_)) + &
+!       no2p * MassI(iO2P_)**2   * nu_n2o2p * dv2/(MassI(iO2P_) + Mass(iN2_)) + &
+!       nn2p * MassI(iN2P_)**2   * nu_n2n2p * dv2/(MassI(iN2P_) + Mass(iN2_)) + &
+!       no2p * MassI(iO2P_)**2   * nu_oo2p  * dv2/(MassI(iO2P_) + Mass(iO_3P_)) + &
+!       ! Just added Nov. 1, 2019 :
+!       nnop * MassI(iNOP_)**2   * nu_onop  * dv2/(MassI(iNOP_) + Mass(iO_3P_)) + &
+!       nnop * MassI(iNOP_)**2   * nu_o2nop * dv2/(MassI(iNOP_) + Mass(iO2_)) + &
+!       nnop * MassI(iNOP_)**2   * nu_n2nop * dv2/(MassI(iNOP_) + Mass(iN2_))
 
   ! because ns * ms * nu_st = nt * mt * nu_ts, this is symmetric:
   Qnic_t = - Qinc_t
  
 !!! Thermal Conduction Perpendicular to Magnetic Field Lines
-   cos2dip =  1.- (B0(1:nLons,1:nLats,0:nAlts+1,iUp_,iBlock)/B0(1:nLons,1:nLats,0:nAlts+1,iMag_,iBlock))**2
-   magh2 =  B0(1:nLons,1:nLats,0:nAlts+1,iEast_,iBlock)**2 + B0(1:nLons,1:nLats,0:nAlts+1,iNorth_,iBlock)**2
-   cos2dec = B0(1:nLons,1:nLats,0:nAlts+1,iNorth_,iBlock)**2/magh2
-   sin2dec = B0(1:nLons,1:nLats,0:nAlts+1,iEast_,iBlock)**2/magh2  
-   sindec = B0(1:nLons,1:nLats,0:nAlts+1,iEast_,iBlock)/magh2**0.5
-   cosdec = B0(1:nLons,1:nLats,0:nAlts+1,iNorth_,iBlock)/magh2**0.5  
-   dLat = Latitude(1,iBlock) - Latitude(0,iBlock)
-   dLon = Longitude(1,iBlock) - Longitude(0,iBlock)
+  cos2dip =  1.- (B0(1:nLons,1:nLats,0:nAlts+1,iUp_,iBlock)/B0(1:nLons,1:nLats,0:nAlts+1,iMag_,iBlock))**2
+  magh2 =  B0(1:nLons,1:nLats,0:nAlts+1,iEast_,iBlock)**2 + B0(1:nLons,1:nLats,0:nAlts+1,iNorth_,iBlock)**2
+  cos2dec = B0(1:nLons,1:nLats,0:nAlts+1,iNorth_,iBlock)**2/magh2
+  sin2dec = B0(1:nLons,1:nLats,0:nAlts+1,iEast_,iBlock)**2/magh2  
+  sindec = B0(1:nLons,1:nLats,0:nAlts+1,iEast_,iBlock)/magh2**0.5
+  cosdec = B0(1:nLons,1:nLats,0:nAlts+1,iNorth_,iBlock)/magh2**0.5  
+  dLat = Latitude(1,iBlock) - Latitude(0,iBlock)
+  dLon = Longitude(1,iBlock) - Longitude(0,iBlock)
 
   ! Electron Conductivity 
   lame = 7.7e5*te**2.5/(1+3.22e4*te**2/ne*nn*1.e-16)  !Unit: eV cm-1 from Schunk and Nagy Page 147 eq 5.146
@@ -1050,5 +1197,27 @@ subroutine calc_electron_ion_sources(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
   iHeatingm(1:nLons,1:nLats,1:nAlts) = iHeatingm(1:nLons,1:nLats,1:nAlts) + ChemicalHeatingRateIon
   iHeatingp = Qiecp + Qinc_tp + Qiconhp
   iHeating = Qiec+ Qinc_t + Qinc_v
+
+  if (DoCheckForNans) then
+     do iLon = 1, nLons
+        do iLat = 1, nLats
+           do iAlt = 1, nAlts
+              if (isnan(qphe(iLon,iLat,iAlt))) call stop_gitm('qphe')
+              if (isnan(Qencm(iLon,iLat,iAlt))) call stop_gitm('Qencm')
+              if (isnan(Qeicm(iLon,iLat,iAlt))) call stop_gitm('Qeicm')
+              if (isnan(Qrotm(iLon,iLat,iAlt))) call stop_gitm('Qrotm')
+              if (isnan(Qf(iLon,iLat,iAlt))) call stop_gitm('Qf')
+              if (isnan(Qexc(iLon,iLat,iAlt))) call stop_gitm('Qexc')
+              if (isnan(Qvib_o2(iLon,iLat,iAlt))) call stop_gitm('Qvib_o2')
+              if (isnan(Qvib_n2(iLon,iLat,iAlt))) call stop_gitm('Qvib_n2')
+              if (isnan(Qaurora(iLon,iLat,iAlt))) call stop_gitm('Qaurora')
+              if (isnan(QprecipIon(iLon,iLat,iAlt))) call stop_gitm('QprecipIon')
+              if (isnan(Qenc_v(iLon,iLat,iAlt))) call stop_gitm('Qenc_v')
+              if (isnan(Qeic_v(iLon,iLat,iAlt))) call stop_gitm('Qeic_v')
+              if (isnan(Qeconhm(iLon,iLat,iAlt))) call stop_gitm('Qeconhm')
+           enddo
+        enddo
+     enddo
+  endif
 
 end subroutine calc_electron_ion_sources

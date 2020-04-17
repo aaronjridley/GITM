@@ -9,7 +9,7 @@ subroutine calc_chemistry(iBlock)
   use ModRates
   use ModEUV
   use ModSources
-  use ModInputs, only: iDebugLevel, UseIonChemistry, UseNeutralChemistry,f107,f107a
+  use ModInputs, only: iDebugLevel, UseIonChemistry, UseNeutralChemistry,f107,f107a, DoCheckForNans
   use ModConstants
   use ModTime, only: istep,utime,ijulianday
   use EUA_ModMsis90, only: meter6, gtd6
@@ -103,9 +103,15 @@ subroutine calc_chemistry(iBlock)
 
 !  AuroralIonRateS = 0.0
 
-  u2 = IVelocity(1:nLons,1:nLats,1:nAlts,iEast_,iBlock)**2 + &
-       IVelocity(1:nLons,1:nLats,1:nAlts,iNorth_,iBlock)**2 + &
-       IVelocity(1:nLons,1:nLats,1:nAlts,iUp_,iBlock)**2
+  if (DoCheckForNans) then
+     call check_for_nans_ions('before chemistry')
+     call check_for_nans_neutrals('before chemistry')
+     call check_for_nans_temps('before chemistry')
+  endif
+
+  u2 = IVelocityPerp(1:nLons,1:nLats,1:nAlts,iEast_,iBlock)**2 + &
+       IVelocityPerp(1:nLons,1:nLats,1:nAlts,iNorth_,iBlock)**2 + &
+       IVelocityPerp(1:nLons,1:nLats,1:nAlts,iUp_,iBlock)**2
 
   mb  = 0.0
   mbb = 0.0
@@ -124,17 +130,17 @@ subroutine calc_chemistry(iBlock)
   mb = mb/mbb
 
   teffective_n2 = iTemperature(1:nLons,1:nLats,1:nAlts,iBlock) + &
-       MassI(iO_4SP_)/(MassI(iO_4SP_) - Mass(iN2_)) * &
-       (Mass(iN2_) + mb)/(3*Boltzmanns_Constant) * u2
+       MassI(iO_4SP_)/(MassI(iO_4SP_) + Mass(iN2_)) * &
+       (Mass(iN2_) - mb)/(3*Boltzmanns_Constant) * u2
        
   teffective_o2 = iTemperature(1:nLons,1:nLats,1:nAlts,iBlock) + &
-       MassI(iO_4SP_)/(MassI(iO_4SP_) - Mass(iO2_)) * &
-       (Mass(iO2_) + mb)/(3*Boltzmanns_Constant) * u2
+       MassI(iO_4SP_)/(MassI(iO_4SP_) + Mass(iO2_)) * &
+       (Mass(iO2_) - mb)/(3*Boltzmanns_Constant) * u2
        
   teffective_no = iTemperature(1:nLons,1:nLats,1:nAlts,iBlock) + &
-       MassI(iO_4SP_)/(MassI(iO_4SP_) - Mass(iNO_)) * &
-       (Mass(iNO_) + mb)/(3*Boltzmanns_Constant) * u2
-       
+       MassI(iO_4SP_)/(MassI(iO_4SP_) + Mass(iNO_)) * &
+       (Mass(iNO_) - mb)/(3*Boltzmanns_Constant) * u2
+
   where (teffective_n2 < 350.0)
      teffective_n2 = 350.0
   endwhere
@@ -1407,17 +1413,17 @@ subroutine calc_chemistry(iBlock)
               IonSources(iNP_) = IonSources(iNP_) + Reaction
               NeutralLosses(iN_4S_)  = NeutralLosses(iN_4S_)  + Reaction
 
-!              ! ----------------------------
-!              ! Atomic He Photoionization
-!              ! ----------------------------
-!              ! ----------------------------------------------------------
-!              ! He + hv --> He+  + e-
-!              ! ----------------------------------------------------------
-!              Reaction = EuvIonRateS(iLon,iLat,iAlt,iHeP_,iBlock) * &
-!                   Neutrals(iHe_)
-!
-!              NeutralLosses(iHe_) = NeutralLosses(iHe_) + Reaction
-!              IonSources(iHeP_) = IonSources(iHeP_) + Reaction
+              ! ----------------------------
+              ! Atomic He Photoionization
+              ! ----------------------------
+              ! ----------------------------------------------------------
+              ! He + hv --> He+  + e-
+              ! ----------------------------------------------------------
+              Reaction = EuvIonRateS(iLon,iLat,iAlt,iHeP_,iBlock) * &
+                   Neutrals(iHe_)
+
+              NeutralLosses(iHe_) = NeutralLosses(iHe_) + Reaction
+              IonSources(iHeP_) = IonSources(iHeP_) + Reaction
 
 ! ----------------------------
 ! NO Photoionization
@@ -1474,81 +1480,81 @@ subroutine calc_chemistry(iBlock)
               !      ChemicalHeatingSub + &
               !      Reaction * 0.0
 
-!              ! -----------
-!              ! Shunk and Nagy R29
-!              ! He+ + N2 -> N+ + N + He + 0.28 eV
-!              ! -----------
-!
-!              rr = 7.8e-10/1.0e6
-!
-!              Reaction = &
-!                   rr * &
-!                   Ions(iHeP_) * &
-!                   Neutrals(iN2_)
-!
-!              NeutralSources(iN_4S_) = NeutralSources(iN_4S_) + Reaction
-!              NeutralSources(iHe_)   = NeutralSources(iHe_)   + Reaction
-!              IonSources(iNP_)       = IonSources(iNP_)       + Reaction
-!              NeutralLosses(iN2_)    = NeutralLosses(iN2_)    + Reaction
-!              IonLosses(iHeP_)       = IonLosses(iHeP_)       + Reaction
-!
-!              ChemicalHeatingSub = &
-!                   ChemicalHeatingSub + &
-!                   Reaction * 0.28
-!
-!              ! -----------
-!              ! Shunk and Nagy R30
-!              ! He+ + N2 -> N2+ + He ( + ??? eV)
-!              ! -----------
-!
-!              rr = 5.2e-10/1.0e6
-!
-!              Reaction = &
-!                   rr * &
-!                   Ions(iHeP_) * &
-!                   Neutrals(iN2_)
-!
-!              NeutralSources(iHe_)   = NeutralSources(iHe_)   + Reaction
-!              IonSources(iN2P_)      = IonSources(iN2P_)      + Reaction
-!              NeutralLosses(iN2_)    = NeutralLosses(iN2_)    + Reaction
-!              IonLosses(iHeP_)       = IonLosses(iHeP_)       + Reaction
-!
-!              !ChemicalHeatingSub = &
-!              !     ChemicalHeatingSub + &
-!              !     Reaction * 0.28
-!
-!              ! -----------
-!              ! Shunk and Nagy R31
-!              ! He+ + O2 -> O+ O + He ( + ??? eV)
-!              ! -----------
-!
-!              rr = 9.7e-10/1.0e6
-!
-!              Reaction = &
-!                   rr * &
-!                   Ions(iHeP_) * &
-!                   Neutrals(iO2_)
-!
-!              NeutralSources(iHe_) = NeutralSources(iHe_) + Reaction
-!              NeutralSources(iO_3P_) = NeutralSources(iO_3P_) + Reaction
-!              IonSources(iO_4SP_) = IonSources(iO_4SP_) + Reaction
-!              NeutralLosses(iO2_) = NeutralLosses(iO2_) + Reaction
-!              IonLosses(iHeP_) = IonLosses(iHeP_) + Reaction
-!
-!              ! -----------
-!              ! Shunk and Nagy Radiative Recombination
-!              ! He+ + e- -> He ( + ??? eV)
-!              ! -----------
-!
-!              rr = 4.8e-12/1.0e6 * te07
-!
-!              Reaction = &
-!                   rr * &
-!                   Ions(iHeP_) * &
-!                   Ions(ie_)
-!
-!              NeutralSources(iHe_) = NeutralSources(iHe_) + Reaction
-!              IonLosses(iHeP_) = IonLosses(iHeP_) + Reaction
+              ! -----------
+              ! Shunk and Nagy R29
+              ! He+ + N2 -> N+ + N + He + 0.28 eV
+              ! -----------
+
+              rr = 7.8e-10/1.0e6
+
+              Reaction = &
+                   rr * &
+                   Ions(iHeP_) * &
+                   Neutrals(iN2_)
+
+              NeutralSources(iN_4S_) = NeutralSources(iN_4S_) + Reaction
+              NeutralSources(iHe_)   = NeutralSources(iHe_)   + Reaction
+              IonSources(iNP_)       = IonSources(iNP_)       + Reaction
+              NeutralLosses(iN2_)    = NeutralLosses(iN2_)    + Reaction
+              IonLosses(iHeP_)       = IonLosses(iHeP_)       + Reaction
+
+              ChemicalHeatingSub = &
+                   ChemicalHeatingSub + &
+                   Reaction * 0.28
+
+              ! -----------
+              ! Shunk and Nagy R30
+              ! He+ + N2 -> N2+ + He ( + ??? eV)
+              ! -----------
+
+              rr = 5.2e-10/1.0e6
+
+              Reaction = &
+                   rr * &
+                   Ions(iHeP_) * &
+                   Neutrals(iN2_)
+
+              NeutralSources(iHe_)   = NeutralSources(iHe_)   + Reaction
+              IonSources(iN2P_)      = IonSources(iN2P_)      + Reaction
+              NeutralLosses(iN2_)    = NeutralLosses(iN2_)    + Reaction
+              IonLosses(iHeP_)       = IonLosses(iHeP_)       + Reaction
+
+              !ChemicalHeatingSub = &
+              !     ChemicalHeatingSub + &
+              !     Reaction * 0.28
+
+              ! -----------
+              ! Shunk and Nagy R31
+              ! He+ + O2 -> O+ O + He ( + ??? eV)
+              ! -----------
+
+              rr = 9.7e-10/1.0e6
+
+              Reaction = &
+                   rr * &
+                   Ions(iHeP_) * &
+                   Neutrals(iO2_)
+
+              NeutralSources(iHe_) = NeutralSources(iHe_) + Reaction
+              NeutralSources(iO_3P_) = NeutralSources(iO_3P_) + Reaction
+              IonSources(iO_4SP_) = IonSources(iO_4SP_) + Reaction
+              NeutralLosses(iO2_) = NeutralLosses(iO2_) + Reaction
+              IonLosses(iHeP_) = IonLosses(iHeP_) + Reaction
+
+              ! -----------
+              ! Shunk and Nagy Radiative Recombination
+              ! He+ + e- -> He ( + ??? eV)
+              ! -----------
+
+              rr = 4.8e-12/1.0e6 * te07
+
+              Reaction = &
+                   rr * &
+                   Ions(iHeP_) * &
+                   Ions(ie_)
+
+              NeutralSources(iHe_) = NeutralSources(iHe_) + Reaction
+              IonLosses(iHeP_) = IonLosses(iHeP_) + Reaction
 
               !ChemicalHeatingSub = &
               !     ChemicalHeatingSub + &
@@ -2304,7 +2310,11 @@ subroutine calc_chemistry(iBlock)
               do iNeutral = 1, nSpeciesTotal
 
                  neuso = NeutralSources(iNeutral)
-                 neulo = NeutralLosses(iNeutral) / (Neutrals(iNeutral)+1.0e-6)
+                 neulo = NeutralLosses(iNeutral) / (Neutrals(iNeutral)+0.1)
+
+                 !!!
+                 if (Neutrals(iNeutral) == 0) &
+                      write(*,*) "Neutral is zero : ", iLon,iLat,iAlt,iNeutral
 
                  Neutrals(iNeutral)=(Neutrals(iNeutral) + neuso * DtSub) / &
                       (1 + DtSub * neulo)
@@ -2367,9 +2377,21 @@ subroutine calc_chemistry(iBlock)
 
            Emissions(iLon, iLat, iAlt, :, iBlock) =  &
                 Emissions(iLon, iLat, iAlt, :, iBlock) + EmissionTotal
+           
+           if (DoCheckForNans) then
+              do iNeutral=1,nSpeciesTotal
+                 if (isnan(Neutrals(iNeutral))) then 
+                    write(*,*) "chemistry : Neutral is nan", iLon,iLat,iAlt,iNeutral
+                    call stop_gitm("Must stop now.")
+                 endif
+              enddo
+           endif
 
         enddo
      enddo
+
+
+
   enddo
  
   if (iDebugLevel > 3) then

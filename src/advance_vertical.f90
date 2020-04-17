@@ -80,7 +80,7 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   enddo
 
   do iSpecies = 1, nIons-1 !Advect
-     if (UseImprovedIonAdvection) then
+     if (UseImprovedIonAdVection) then
         LogINS(:,iSpecies)  = IDensityS(iLon,iLat,:,iSpecies,iBlock)
      else
         LogINS(:,iSpecies)  = log(IDensityS(iLon,iLat,:,iSpecies,iBlock))
@@ -141,32 +141,6 @@ subroutine advance_vertical(iLon,iLat,iBlock)
      LogNS(iLon,iLat,:,iSpecies,iBlock)              = LogNS1(:,iSpecies)
   enddo
 
-  if (minval(Temp) < 0.0) then
-     write(*,*) "Temperature is negative!!!"
-     do iAlt = -1,nAlts+2
-        if (Temp(iAlt) < 0.0) then
-           write(*,*) "iAlt : ", iAlt, Temp(iAlt)
-        endif
-     enddo
-     call stop_gitm("Can't continue")
-  endif
-
-  if (Maxval(LogNS1) > 75.0) then
-     write(*,*) "Maxval of LogNS too high!!!"
-     do iAlt = -1,nAlts+2
-        do iSpecies = 1, nSpecies
-           if (LogNS1(iAlt,iSpecies) > 75.0) then
-              write(*,*) "iSpecies, iBlock, Alt,Lon, Lat, maxval : ",&
-                   iSpecies,iBlock,&
-                   Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0, &
-                   longitude(iLon,iBlock)*180/pi, &
-                   latitude(iLat,iBlock)*180/pi, LogNS1(iAlt,ispecies)
-           endif
-        enddo
-     enddo
-     call stop_gitm("Can't continue")
-  endif
-
   nDensity(iLon,iLat,:,iBlock) = 0.0
   do iSpecies = 1, nSpecies
      nDensityS(iLon,iLat,:,iSpecies,iBlock) = exp(LogNS1(:,iSpecies))
@@ -179,6 +153,12 @@ subroutine advance_vertical(iLon,iLat,iBlock)
      do iIon = 1, nIons-1 !Advect
         if (UseImprovedIonAdvection) then
            IDensityS(iLon,iLat,:,iIon,iBlock) = LogINS(:,iIon)
+           ! Put in a floor on ion densities....
+           do iAlt = 1,nAlts
+              if (IDensityS(iLon,iLat,iAlt,iIon,iBlock) < 1) then
+                 IDensityS(iLon,iLat,iAlt,iIon,iBlock) = 1.0
+              endif
+           enddo
         else
            IDensityS(iLon,iLat,:,iIon,iBlock) = exp(LogINS(:,iIon))
         endif

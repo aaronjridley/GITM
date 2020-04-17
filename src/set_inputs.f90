@@ -668,12 +668,24 @@ subroutine set_inputs
                    write(*,*) "===>Beta Limiter set to ",BetaLimiter
            endif
 
+        case ("#NANCHECK")
+           call read_in_logical(DoCheckForNans, iError) 
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #NANCHECK:'
+              write(*,*) 'This will turn on all of the NaN checks in the code!'
+              write(*,*) '#NANCHECK'
+              write(*,*) 'DoCheckForNans (logical)'
+              IsDone = .true.
+           endif
+
+
+
         case ("#DEBUG")
            call read_in_int(iDebugLevel, iError)
            call read_in_int(iDebugProc, iError)
            call read_in_real(DtReport, iError)
-           call read_in_logical(UseBarriers, iError)
-           if (iError /= 0) then
+           call read_in_logical(UseBarriers, iError) 
+          if (iError /= 0) then
               write(*,*) 'Incorrect format for #DEBUG:'
               write(*,*) 'This will set how much information the code screams'
               write(*,*) 'at you - set to 0 to get minimal, set to 10 to get'

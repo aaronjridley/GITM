@@ -26,17 +26,17 @@ module ModPlanet
   integer, parameter :: nSpeciesTotal = 11
 
   integer, parameter  :: iO_4SP_ = 1
-  integer, parameter  :: iO2P_   = 2
-  integer, parameter  :: iN2P_   = 3
-  integer, parameter  :: iNP_    = 4
-  integer, parameter  :: iNOP_   = 5
+  integer, parameter  :: iNOP_   = 2
+  integer, parameter  :: iO2P_   = 3
+  integer, parameter  :: iN2P_   = 4
+  integer, parameter  :: iNP_    = 5
   integer, parameter  :: iO_2DP_ = 6
   integer, parameter  :: iO_2PP_ = 7
   integer, parameter  :: iHP_    = 8
   integer, parameter  :: iHeP_   = 9
   integer, parameter  :: ie_     = 10
   integer, parameter  :: nIons   = ie_
-  integer, parameter  :: nIonsAdvect = 1
+  integer, parameter  :: nIonsAdvect = 2
   integer, parameter  :: nSpeciesAll = nSpeciesTotal + nIons - 1
 
   character (len=20) :: cSpecies(nSpeciesTotal)
@@ -106,9 +106,6 @@ module ModPlanet
   !C: Longitude of perihelion
   !D: Mean Longitude
   !E: For calulating actual Longitude
-
-  ! Use paper "A guide to computing orbital positions of major solar system 
-  ! bodies: forward and inverse calculations." (Bannister, R. 2001) for A-E
  real, parameter :: SunOrbit_A = 1.0000001124
  real, parameter :: SunOrbit_B = 0.0167
  real, parameter :: SunOrbit_C = 102.94719
