@@ -100,10 +100,11 @@ subroutine calc_collisions(iBlock)
 
   integer, intent(in) :: iBlock
 
-  integer :: iError, iSpecies
+  integer :: iError, iSpecies, iLon, iLat, iAlt
 
   real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2) :: &
-       Ne, mnd, Te, tmp, Tn, Ti, Tr, TrAltered
+       Ne, mnd, Te, tmp, Tn, Ti, Tr, &
+       NeMajor, Frac, ODensity, NitroDensity
 
   call start_timing("calc_rates")
 
@@ -111,14 +112,30 @@ subroutine calc_collisions(iBlock)
   ! Need to get the neutral, ion, and electron temperature
   !/
 
-  Tn = Temperature(:,:,:,iBlock)*&
-       TempUnit(:,:,:)
+  Tn = Temperature(:,:,:,iBlock)*TempUnit(:,:,:)
   Ti = ITemperature(:,:,:,iBlock)
 
   Tr = (Tn+Ti)/2
+  ! Set a floor on Tr:
+  where (Tr < 200) Tr = 200.0
 
   mnd = NDensity(:,:,:,iBlock)+1.0
   Ne  = IDensityS(:,:,:,ie_,iBlock)
+
+  ODensity = &
+       NDensityS(:,:,:,iO_3P_,iBlock) + &
+       NDensityS(:,:,:,iO_1D_,iBlock)
+       
+  NitroDensity = &
+       NDensityS(:,:,:,iN_4S_,iBlock) + &
+       NDensityS(:,:,:,iN_2P_,iBlock) + &
+       NDensityS(:,:,:,iN_2D_,iBlock)
+       
+  ! We include O+, O2+, NO+ below
+  NeMajor  = 0.0
+  do iSpecies = 1, nIonsAdvect
+     NeMajor = NeMajor + IDensityS(:,:,:,iSpecies,iBlock)
+  enddo
 
   !\
   ! -----------------------------------------------------------
@@ -129,38 +146,131 @@ subroutine calc_collisions(iBlock)
   e_gyro = &
        Element_Charge * B0(:,:,:,iMag_,iBlock) / Mass_Electron
 
-!
-! Ion Neutral Collision Frequency (From Kelley, 1989, pp 460):
-!
+  !
+  ! Ion Neutral Collision Frequency (From Kelley, 1989, pp 460):
+  ! This is the old-school method, and should not be used.
+  !
 
   if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
   if (iDebugLevel > 4) write(*,*) "=====> vin",iblock
 
   Collisions(:,:,:,iVIN_) = 2.6e-15 * (mnd + Ne)/sqrt(MeanMajorMass/AMU)
 
-!
-! From Schunk and Nagy table 4.4 & 4.5
-  TrAltered = Tr
-  where(TrAltered < 235.0) TrAltered=235.0
-  IonCollisions(:,:,:,iO_4SP_,iO_3P_) = &
-       3.67e-17 * NDensityS(:,:,:,iO_3P_,iBlock) * &
-       sqrt(TrAltered) * (1.0-0.064*log10(TrAltered))**2
+  IonCollisions = 0.0
+  
+  !
+  ! From Schunk and Nagy table 4.4 & 4.5
+  !
 
-  IonCollisions(:,:,:,iO_4SP_,iO2_) =&
-       6.64e-16*NDensityS(:,:,:,iO2_,iBlock)
-  IonCollisions(:,:,:,iO_4SP_,iN2_) =&
-       6.82e-16*NDensityS(:,:,:,iN2_,iBlock)
-  IonCollisions(:,:,:,iO_4SP_,iN_4S_) =&
-       4.62e-16*NDensityS(:,:,:,iN_4S_,iBlock)
+  ! O+ (with O, O2, N2, N, NO)
+
+  if (iDebugLevel > 5) write(*,*) "======> o+ ",iblock
+
+  where (Tr > 235.0) IonCollisions(:,:,:,iO_4SP_,iO_3P_) = &
+       3.67e-17 * ODensity * sqrt(Tr) * (1.0-0.064*log10(Tr))**2
+  where(tr <= 235) IonCollisions(:,:,:,iO_4SP_,iO_3P_) = 8.6e-16 * ODensity
+  
+  IonCollisions(:,:,:,iO_4SP_,iO2_)   = 6.64e-16*NDensityS(:,:,:,iO2_,iBlock)
+  IonCollisions(:,:,:,iO_4SP_,iN2_)   = 6.82e-16*NDensityS(:,:,:,iN2_,iBlock)
+  IonCollisions(:,:,:,iO_4SP_,iN_4S_) = 4.62e-16*NDensityS(:,:,:,iN_4S_,iBlock)
   ! This is an average of O2 and N2, since NO doesn't exist
-  IonCollisions(:,:,:,iO_4SP_,iNO_) =&
-       6.73e-16*NDensityS(:,:,:,iNO_,iBlock)
+  IonCollisions(:,:,:,iO_4SP_,iNO_)   = 6.73e-16*NDensityS(:,:,:,iNO_,iBlock)
 
-  Collisions(:,:,:,iVIN_) = IonCollisions(:,:,:,iO_4SP_,1)
-  do iSpecies = 2, nSpecies
-     Collisions(:,:,:,iVIN_) = &
-          Collisions(:,:,:,iVIN_) + IonCollisions(:,:,:,iO_4SP_,iSpecies)
-  enddo
+  IonCollisions(:,:,:,iO_2DP_,iO_3P_) = IonCollisions(:,:,:,iO_4SP_,iO_3P_)
+  IonCollisions(:,:,:,iO_2DP_,iO2_)   = IonCollisions(:,:,:,iO_4SP_,iO2_)
+  IonCollisions(:,:,:,iO_2DP_,iN2_)   = IonCollisions(:,:,:,iO_4SP_,iN2_)
+  IonCollisions(:,:,:,iO_2DP_,iN_4S_) = IonCollisions(:,:,:,iO_4SP_,iN_4S_)
+  IonCollisions(:,:,:,iO_2DP_,iNO_)   = IonCollisions(:,:,:,iO_4SP_,iNO_)
+  
+  IonCollisions(:,:,:,iO_2PP_,iO_3P_) = IonCollisions(:,:,:,iO_4SP_,iO_3P_)
+  IonCollisions(:,:,:,iO_2PP_,iO2_)   = IonCollisions(:,:,:,iO_4SP_,iO2_)
+  IonCollisions(:,:,:,iO_2PP_,iN2_)   = IonCollisions(:,:,:,iO_4SP_,iN2_)
+  IonCollisions(:,:,:,iO_2PP_,iN_4S_) = IonCollisions(:,:,:,iO_4SP_,iN_4S_)
+  IonCollisions(:,:,:,iO_2PP_,iNO_)   = IonCollisions(:,:,:,iO_4SP_,iNO_)
+  
+  ! O2+ (with O2, O, N2, N, NO)
+
+  if (iDebugLevel > 5) write(*,*) "======> o2+ ",iblock
+
+  where (tr > 800.) IonCollisions(:,:,:,iO2P_,iO2_) = &
+       2.59e-17 * NDensityS(:,:,:,iO2_,iBlock) * tr**0.5 * (1 - 0.073*log10(tr))**2
+  where (tr <= 800) IonCollisions(:,:,:,iO2P_,iO2_) = 8.2e-16 * NDensityS(:,:,:,iO2_,iBlock)
+
+  IonCollisions(:,:,:,iO2P_,iO_3P_) = 2.31e-16 * ODensity
+  IonCollisions(:,:,:,iO2P_,iN2_)   = 4.13e-16 * NDensityS(:,:,:,iN2_,iBlock)
+  IonCollisions(:,:,:,iO2P_,iN_4S_) = 2.64e-16 * NDensityS(:,:,:,iN_4S_,iBlock)
+  ! This is just N2, since NO doesn't exist (ave CO and N2)
+  IonCollisions(:,:,:,iO2P_,iNO_)   = 4.25e-16*NDensityS(:,:,:,iNO_,iBlock)
+
+  ! NO+ (with NO, O, N2, N, O2)
+
+  if (iDebugLevel > 5) write(*,*) "======> no+ ",iblock
+  
+  ! This resonant ion-neutral is made up, since NO-NO+ doesn't exist
+  where (tr > 800.) IonCollisions(:,:,:,iNOP_,iNO_) = &
+       2.59e-17 * NDensityS(:,:,:,iNO_,iBlock) * tr**0.5 * (1 - 0.073*log10(tr))**2
+  where (tr <= 800) IonCollisions(:,:,:,iNOP_,iNO_) = 8.2e-16 * NDensityS(:,:,:,iNO_,iBlock)
+
+  IonCollisions(:,:,:,iNOP_,iO_3P_) = 2.44e-16 * ODensity
+  IonCollisions(:,:,:,iNOP_,iN2_)   = 4.34e-16 * NDensityS(:,:,:,iN2_,iBlock)
+  IonCollisions(:,:,:,iNOP_,iN_4S_) = 2.79e-16 * NDensityS(:,:,:,iN_4S_,iBlock)
+  IonCollisions(:,:,:,iNOP_,iO2_)   = 4.27e-16 * NDensityS(:,:,:,iO2_,iBlock)
+
+  ! N2+ (with N2, O2, O, N, NO)
+
+  if (iDebugLevel > 5) write(*,*) "======> n2+ ",iblock
+
+  IonCollisions(:,:,:,iN2P_,iN2_) = &
+       5.14e-17 * NDensityS(:,:,:,iN2_,iBlock) * tr**0.5 * (1 - 0.069*log10(tr))**2
+
+  IonCollisions(:,:,:,iN2P_,iO2_)   = 4.49e-16 * NDensityS(:,:,:,iO2_,iBlock)
+  IonCollisions(:,:,:,iN2P_,iO_3P_) = 2.58e-16 * ODensity
+  IonCollisions(:,:,:,iN2P_,iN_4S_) = 2.95e-16 * NDensityS(:,:,:,iN_4S_,iBlock)
+  ! This is just N2, since NO doesn't exist (ave CO and O2)
+  IonCollisions(:,:,:,iN2P_,iNO_)   = 4.66e-16 * NDensityS(:,:,:,iNO_,iBlock)
+
+  ! N+ (with N, O2, N2, O, NO)
+
+  if (iDebugLevel > 5) write(*,*) "======> n+ ",iblock
+
+  ! where (Tr > 275.0)
+  IonCollisions(:,:,:,iNP_,iN_4S_) = &
+       3.83e-17 * NitroDensity * sqrt(Tr) * (1.0-0.063*log10(Tr))**2
+  ! where (tr <= 275) IonCollisions(:,:,:,iO_4SP_,iO_3P_) = 8.6e-16 * ODensity
+
+  IonCollisions(:,:,:,iNP_,iO2_)   = 7.25e-16*NDensityS(:,:,:,iO2_,iBlock)
+  IonCollisions(:,:,:,iNP_,iN2_)   = 7.47e-16*NDensityS(:,:,:,iN2_,iBlock)
+  IonCollisions(:,:,:,iNP_,iO_3P_) = 4.42e-16*NDensityS(:,:,:,iO_3P_,iBlock)
+  ! This is an average of O2 and N2, since NO doesn't exist
+  IonCollisions(:,:,:,iNP_,iNO_)   = 7.36e-16*NDensityS(:,:,:,iNO_,iBlock)
+
+  ! I don't think that this method is right, but here we go:
+  
+!  Collisions(:,:,:,iVIN_) = 0.0
+!
+!  ! O+
+!  do iSpecies = 1, nSpecies
+!     Frac = IDensityS(:,:,:,iO_4SP_,iBlock) / NeMajor
+!     Collisions(:,:,:,iVIN_) = &
+!          Collisions(:,:,:,iVIN_) + &
+!          IonCollisions(:,:,:,iO_4SP_,iSpecies) * Frac
+!  enddo
+!
+!  ! O2+
+!  do iSpecies = 1, nSpecies
+!     Frac = IDensityS(:,:,:,iO2P_,iBlock) / NeMajor
+!     Collisions(:,:,:,iVIN_) = &
+!          Collisions(:,:,:,iVIN_) + &
+!          IonCollisions(:,:,:,iO2P_,iSpecies) * Frac
+!  enddo
+!
+!  ! NO+
+!  do iSpecies = 1, nSpecies
+!     Frac = IDensityS(:,:,:,iNOP_,iBlock) / NeMajor
+!     Collisions(:,:,:,iVIN_) = &
+!          Collisions(:,:,:,iVIN_) + &
+!          IonCollisions(:,:,:,iNOP_,iSpecies) * Frac
+!  enddo
 
 !
 ! Electron Neutral Collision Frequency
@@ -170,9 +280,10 @@ subroutine calc_collisions(iBlock)
   if (iDebugLevel > 4) write(*,*) "=====> ven", iblock
 
   Te = eTemperature(:,:,:,iBlock)
-  where(te == 0.0) te = 1000.0
-  Collisions(:,:,:,iVEN_) = 5.4e-16 * (mnd)*sqrt(Te)
+  where (Te <= 0.0) Te = 1000.0
 
+  Collisions(:,:,:,iVEN_) = 5.4e-16 * mnd * sqrt(Te)
+  
 !
 ! Electron Ion Collision Frequency
 !
