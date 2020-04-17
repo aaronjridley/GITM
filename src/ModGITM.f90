@@ -92,8 +92,7 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
        e_gyro, i_gyro
 
   real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3) :: Collisions
-  real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nIonsAdvect, nSpecies) :: &
-       IonCollisions
+  real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nIons, nSpecies) :: IonCollisions
 
   real, allocatable :: B0(:,:,:,:,:)
   real, allocatable :: MLatitude(:,:,:,:)
@@ -143,6 +142,8 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
 
   real, allocatable :: Velocity(:,:,:,:,:)
   real, allocatable :: IVelocity(:,:,:,:,:)
+  real, allocatable :: DivIVelocity(:,:,:,:)  
+  real, allocatable :: IVelocityPar(:,:,:,:,:), IVelocityPerp(:,:,:,:,:)
 
   logical            :: isFirstGlow = .True.  
   logical            :: isInitialGlow 
@@ -238,6 +239,9 @@ contains
     allocate(Potential(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
     allocate(Velocity(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3, nBlocks))
     allocate(IVelocity(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3, nBlocks))
+    allocate(DivIVelocity(1:nLons, 1:nLats, 1:nAlts, nBlocks))
+    allocate(IVelocityPar(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3, nBlocks))
+    allocate(IVelocityPerp(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3, nBlocks))
     allocate(Emissions(nLons,nLats,nAlts,nEmissions,nBlocks))
     allocate(vEmissionRate(nLons,nLats,nAlts,nEmissionWavelengths,nBlocks))
     allocate(PhotoElectronDensity(nLons,nLats,nAlts,nPhotoBins,nBlocks))

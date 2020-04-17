@@ -10,22 +10,23 @@ subroutine calc_ion_v(iBlock)
   implicit none
 
   integer, intent(in) :: iBlock
-  integer :: iLon, iLat, iAlt
+  integer :: iLon, iLat, iAlt, iIon, iSpecies
   integer :: imax, jmax, kmax, iError, iDir
-  real    :: maxi
+  real    :: maxi, tl
 
   real, dimension(-1:nLons+2,-1:nLats+2,-1:nAlts+2) ::           &
                   B02, ForceDotB, Nie, RhoNu, IRho, &
                   VIParallel, VNParallel, gDotB, gpDotB, UDotB, &
-                  LocalGravity
+                  LocalGravity, ViDotB
 
   real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3) ::           &
                   Force, BLocal, & 
                   ForceCrossB, ForcePerp, &
                   LocalPressureGradient, &
-                  LocalNeutralWinds
+                  LocalNeutralWinds, IVelGradient
 
-  real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2):: Pressure_G
+  real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2):: Pressure_G, nu_in
+  
   !---------------------------------------------------------------------------
 
   call report("Ion Forcing Terms",1)
@@ -90,8 +91,18 @@ subroutine calc_ion_v(iBlock)
      enddo
   endif
 
-  RhoNu = IRho * Collisions(:,:,:,iVIN_)
+  ! Generalize Rho * Nu:
+  RhoNu = 0.0
+  do iIon = 1, nIonsAdvect
+     do iSpecies = 1, nSpecies
+        RhoNu = RhoNu + &
+             IDensityS(:,:,:,iIon,iBlock) * MassI(iIon) * &
+             IonCollisions(:,:,:,iIon,iSpecies)
+     enddo
+  enddo
 
+  nu_in = RhoNu / iRho
+  
   if (UseNeutralDrag) then
      do iDir = 1, 3
         Force(:,:,:,iDir) = Force(:,:,:,iDir) + &
@@ -114,19 +125,17 @@ subroutine calc_ion_v(iBlock)
 
      IVelocity(:,:,:,iUp_,iBlock) = &
           LocalNeutralWinds(:,:,:,iUp_) + &
-          (LocalGravity(:,:,:) - &
-          (LocalPressureGradient(:,:,:,iUp_) / IRho) / &
-          Collisions(:,:,:,iVIN_))
+          (LocalGravity(:,:,:)*iRho - &
+          LocalPressureGradient(:,:,:,iUp_)) / &
+          RhoNu
 
      IVelocity(:,:,:,iEast_,iBlock) = &
           LocalNeutralWinds(:,:,:,iEast_) - &
-          (LocalPressureGradient(:,:,:,iEast_) / IRho) / &
-          Collisions(:,:,:,iVIN_)
+          LocalPressureGradient(:,:,:,iEast_) / RhoNu
 
      IVelocity(:,:,:,iNorth_,iBlock) = &
           LocalNeutralWinds(:,:,:,iNorth_) - &
-          (LocalPressureGradient(:,:,:,iNorth_) / IRho) / &
-          Collisions(:,:,:,iVIN_)
+          LocalPressureGradient(:,:,:,iNorth_) / RhoNu
          
   else
 
@@ -145,14 +154,13 @@ subroutine calc_ion_v(iBlock)
 
      if (UseImplicitFieldAlignedMomentum) then
 
-        VIParallel = dt/(1+Collisions(:,:,:,iVIN_)) * &
-             (-gpDotB / IRho + gDotB + Collisions(:,:,:,iVIN_) * UDotB + &
+        VIParallel = dt/(1+nu_in) * &
+             (-gpDotB / IRho + gDotB + nu_in * UDotB + &
              VIParallel/dt)
 
      else
 
-        VIParallel = UDotB + &
-             ( gDotB - gpDotB / IRho) / Collisions(:,:,:,iVIN_)
+        VIParallel = UDotB + ( gDotB*iRho - gpDotB ) / RhoNu
 
      endif
 
@@ -160,6 +168,55 @@ subroutine calc_ion_v(iBlock)
 
      VIParallel = min( UDotB + MaxVParallel, VIParallel)
      VIParallel = max( UDotB - MaxVParallel, VIParallel)
+
+     ! Let's calculate the divergence of the parallel flow here:
+
+     DivIVelocity(:,:,:,iBlock) = 0.0
+     do iDir = 1,3
+
+        ViDotB = VIParallel*BLocal(:,:,:,iDir)/&
+             B0(:,:,:,iMag_,iBlock)
+        
+        ! Calculate Gradient First:
+        call UAM_Gradient_GC(ViDotB, IVelGradient, iBlock)
+
+        ! Add to divergence:
+        DivIVelocity(1:nLons,1:nLats,1:nAlts,iBlock) = &
+             DivIVelocity(1:nLons,1:nLats,1:nAlts,iBlock) + &
+             IVelGradient(1:nLons,1:nLats,1:nAlts,iDir)
+
+        if (iDir == 2) then
+           ! Add to divergence for latitude:
+           do iLon = 1, nLons
+              do iLat = 1, nLats
+                 do iAlt = 1, nAlts
+                    tl = TanLatitude(iLat,iBlock)
+                    if (tl > 5.0) tl = 5.0
+                    if (tl < -5.0) tl = -5.0
+                    DivIVelocity(iLon,iLat,iAlt,iBlock) = &
+                         DivIVelocity(iLon,iLat,iAlt,iBlock) - &
+                         tl * ViDotB(iLon,iLat,iAlt) * &
+                         InvRadialDistance_GB(iLon,iLat,iAlt,iBlock)
+                 enddo
+              enddo
+           enddo
+        endif
+
+        if (iDir == 3) then
+           ! Add to divergence for radial:
+           do iLon = 1, nLons
+              do iLat = 1, nLats
+                 do iAlt = 1, nAlts
+                    DivIVelocity(iLon,iLat,iAlt,iBlock) = &
+                         DivIVelocity(iLon,iLat,iAlt,iBlock) + &
+                         2 * ViDotB(iLon,iLat,iAlt) * &
+                         InvRadialDistance_GB(iLon,iLat,iAlt,iBlock)
+                 enddo
+              enddo
+           enddo
+        endif
+
+     enddo
 
      ForceCrossB(:,:,:,iEast_) = &
           Force(:,:,:,iNorth_) * BLocal(:,:,:,iUp_) - &
@@ -174,12 +231,20 @@ subroutine calc_ion_v(iBlock)
           Force(:,:,:,iNorth_) * BLocal(:,:,:,iEast_)
 
      do iDir = 1, 3
-        IVelocity(:,:,:,iDir, iBlock) = &
+
+        IVelocityPar(:,:,:,iDir, iBlock) = &
              VIParallel*BLocal(:,:,:,iDir)/&
-             B0(:,:,:,iMag_,iBlock) + &
+             B0(:,:,:,iMag_,iBlock)
+
+        IVelocityPerp(:,:,:,iDir, iBlock) = &
              ( RhoNu * ForcePerp(:,:,:,iDir) &
              + Nie * ForceCrossB(:,:,:,iDir) &
              ) / (RhoNu**2 + Nie**2 * B02)
+
+        IVelocity(:,:,:,iDir, iBlock) = &
+             IVelocityPar(:,:,:,iDir, iBlock) + &
+             IVelocityPerp(:,:,:,iDir, iBlock)
+             
      enddo
 
   endif

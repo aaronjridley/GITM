@@ -554,16 +554,16 @@ subroutine advance_vertical_1stage( &
      enddo
 
      do iSpecies=1,nIonsAdvect
-        if (UseImprovedIonAdvection) then
-           NewLogINS(iAlt,iSpecies) = NewLogINS(iAlt,iSpecies) - Dt * &
-                (DiviVel(iAlt) * LogINS(iAlt,iSpecies) + &
-                IVel(iAlt,iUp_) * GradLogINS(iAlt,iSpecies) ) &
-                + Dt * DiffLogINS(iAlt,iSpecies)
-        else
+!        if (UseImprovedIonAdvection) then
+!           NewLogINS(iAlt,iSpecies) = NewLogINS(iAlt,iSpecies) - Dt * &
+!                (DiviVel(iAlt) * LogINS(iAlt,iSpecies) + &
+!                IVel(iAlt,iUp_) * GradLogINS(iAlt,iSpecies) ) &
+!                + Dt * DiffLogINS(iAlt,iSpecies)
+!        else
            NewLogINS(iAlt,iSpecies) = NewLogINS(iAlt,iSpecies) - Dt * &
                 (IVel(iAlt,iUp_) * GradLogINS(iAlt,iSpecies) ) &
                 + Dt * DiffLogINS(iAlt,iSpecies)
-        endif
+!        endif
      enddo
 
 

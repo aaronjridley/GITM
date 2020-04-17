@@ -29,7 +29,7 @@ subroutine advance_vertical_1d_ausm
   use ModVertical
   use ModPlanet, only: Mass
   use ModGITM, ONLY : Dt, iCommGITM, iProc, iUp_
-  use ModInputs, only: UseBarriers, iDebugLevel, UseImprovedIonAdvection
+  use ModInputs, only: UseBarriers, iDebugLevel
   implicit none
   !-----------------------------------------------------------
   integer :: iError, iAlt, iSpecies, iDir
@@ -173,8 +173,6 @@ subroutine advance_vertical_1d_ausm
       Stage1LogINS(-1:nAlts+2,1:nIons)  + &
     (NewLogINS(-1:nAlts+2,1:nIons) - LogINS(-1:nAlts+2,1:nIons))
 
-      if (UseImprovedIonAdvection) call check_ion_densities(Stage2LogINS)
-
       Stage2LogRho(-1:nAlts+2)                = &
       Stage1LogRho(-1:nAlts+2)                + &
     (NewLogRho(-1:nAlts+2) - LogRho(-1:nAlts+2))
@@ -244,8 +242,6 @@ subroutine advance_vertical_1d_ausm
       Stage1LogINS(-1:nAlts+2,1:nIons)  + &
     (NewLogINS(-1:nAlts+2,1:nIons) - LogINS(-1:nAlts+2,1:nIons))
 
-      if (UseImprovedIonAdvection) call check_ion_densities(Stage3LogINS)
-
       Stage3LogRho(-1:nAlts+2)                = &
       Stage1LogRho(-1:nAlts+2)                + &
     (NewLogRho(-1:nAlts+2) - LogRho(-1:nAlts+2))
@@ -305,6 +301,7 @@ subroutine advance_vertical_1d_ausm
 !
 !
 !!!!!! Calculate K3
+
   call advance_vertical_1stage_ausm(DtIn, &
        LogRho, LogNS, Vel_GD, Temp, NewLogRho, NewLogNS, NewVel_GD, NewTemp, &
        LogINS, NewLogINS, IVel, VertVel, NewVertVel)
@@ -317,8 +314,6 @@ subroutine advance_vertical_1d_ausm
       Stage4LogINS(-1:nAlts+2,1:nIons)  = &
       Stage1LogINS(-1:nAlts+2,1:nIons)  + &
     (NewLogINS(-1:nAlts+2,1:nIons) - LogINS(-1:nAlts+2,1:nIons))
-
-      if (UseImprovedIonAdvection) call check_ion_densities(Stage4LogINS)
 
       Stage4LogRho(-1:nAlts+2)                = &
       Stage1LogRho(-1:nAlts+2)                + &
@@ -401,8 +396,6 @@ subroutine advance_vertical_1d_ausm
      (1.0/3.0)*(-1.0*Stage1LogINS(1:nAlts,:) + Stage2LogINS(1:nAlts,:)  +  &
                  2.0*Stage3LogINS(1:nAlts,:) + Stage4LogINS(1:nAlts,:)  +  &
                        (NewLogINS(1:nAlts,:) - LogINS(1:nAlts,:)) )
-
-  if (UseImprovedIonAdvection) call check_ion_densities(FinalLogINS)
 
   FinalLogRho(1:nAlts) = &
      (1.0/3.0)*(-1.0*Stage1LogRho(1:nAlts) + Stage2LogRho(1:nAlts)  +  &
@@ -537,7 +530,7 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
           NewRhoS(-1:nAlts+2,1:nSpecies),&
       AUSMRhoSFluxes(1:nAlts,1:nSpecies)
 
-  real :: InvScaleHeight, MeanGravity, MeanTemp, MeanMass, NumDen
+  real :: InvScaleHeight, MeanGravity, MeanTemp, MeanMass
 
   real ::   HydroNS(-1:nAlts+2,1:nSpecies),&
           HydroRhoS(-1:nAlts+2,1:nSpecies), &
@@ -580,7 +573,6 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
   real, dimension(1:nAlts)    :: VertVisc
   real, dimension(1:nAlts)    :: ThermalCond
 
-
   !--------------------------------------------------------------------------
   !--------------------------------------------------------------------------
   Vel0 = 100.0 ! initial velocity in m/s
@@ -598,6 +590,7 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
   enddo 
 
   NS = exp(LogNS)
+
   Rho = exp(LogRho)
   LogNum = alog(sum(NS,dim=2))
   nFilter = 10
@@ -623,13 +616,14 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
   do iDim = 1, 3
      call calc_rusanov_alts_ausm(Vel_GD(:,iDim), &
           GradVel_CD(:,iDim),DiffVel_CD(:,iDim))
-     call calc_rusanov_alts_ausm(iVel(:,iDim), &
+     ! call calc_rusanov_alts_ausm(iVel(:,iDim), &
+     call calc_rusanov_alts_rusanov(iVel(:,iDim), &
           GradiVel_CD(:,iDim),DiffiVel_CD(:,iDim))
   enddo
 
   ! Add geometrical correction to gradient and obtain divergence
   DivVel = GradVel_CD(:,iUp_) + 2*Vel_GD(1:nAlts,iUp_)*InvRadialDistance_C(1:nAlts)
-  DiviVel = GradiVel_CD(:,iUp_) + 2*iVel(1:nAlts,iUp_)*InvRadialDistance_C(1:nAlts)
+  !DiviVel = DivIonVelCoef * (GradiVel_CD(:,iUp_) + 2*iVel(1:nAlts,iUp_)*InvRadialDistance_C(1:nAlts))
 
   do iSpecies=1,nSpecies
 
@@ -646,7 +640,8 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
   enddo
 
   do iSpecies=1,nIons-1
-     call calc_rusanov_alts_ausm(LogINS(:,iSpecies), GradTmp, DiffTmp)
+     ! call calc_rusanov_alts_ausm(LogINS(:,iSpecies), GradTmp, DiffTmp)
+     call calc_rusanov_alts_rusanov(LogINS(:,iSpecies), GradTmp, DiffTmp)
      GradLogINS(:,iSpecies) = GradTmp
      DiffLogINS(:,iSpecies) = DiffTmp
   enddo
@@ -816,32 +811,22 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
 
      do iSpecies=1,nSpecies
         NewRhoS(iAlt,iSpecies) = RhoS(iAlt,iSpecies) &
-             - DtIn*(AUSMRhoSFluxes(iAlt,iSpecies))
-
-        NumDen = NewRhoS(iAlt,iSpecies)/Mass(iSpecies)
-        if (NumDen < 0.0) then
-           NumDen = RhoS(iAlt,iSpecies)/Mass(iSpecies)
-           if (NumDen < 0.0) NumDen = 1.0
-	endif
-
-        ! alog( NewRhoS(iAlt,iSpecies)/Mass(iSpecies) )
-        NewLogNS(iAlt,iSpecies) = alog(NumDen) 
-        
-
+               - DtIn*(AUSMRhoSFluxes(iAlt,iSpecies))
         NewLogNS(iAlt,iSpecies) = alog( NewRhoS(iAlt,iSpecies)/Mass(iSpecies) )
      enddo
 
      do iSpecies=1,nIonsAdvect
-        if (UseImprovedIonAdvection) then
-           NewLogINS(iAlt,iSpecies) = NewLogINS(iAlt,iSpecies) - DtIn * &
-                (DiviVel(iAlt) * LogINS(iAlt,iSpecies) + &
-                IVel(iAlt,iUp_) * GradLogINS(iAlt,iSpecies) ) &
-                + DtIn * DiffLogINS(iAlt,iSpecies)
-        else
+!        if (UseImprovedIonAdvection) then
+!           ! This works for non-log ion densities:
+!           NewLogINS(iAlt,iSpecies) = NewLogINS(iAlt,iSpecies) - DtIn * &
+!                (DiviVel(iAlt) * LogINS(iAlt,iSpecies) + &
+!                IVel(iAlt,iUp_) * GradLogINS(iAlt,iSpecies) ) &
+!                + DtIn * DiffLogINS(iAlt,iSpecies)
+!        else
            NewLogINS(iAlt,iSpecies) = NewLogINS(iAlt,iSpecies) - DtIn * &
                 (IVel(iAlt,iUp_) * GradLogINS(iAlt,iSpecies) ) &
                 + DtIn * DiffLogINS(iAlt,iSpecies)
-        endif
+!        endif
      enddo
 
   enddo !iAlt = 1,nAlts
@@ -918,6 +903,7 @@ subroutine advance_vertical_1stage_ausm( DtIn, &
   if (UseNeutralFriction) then
      nVel(1:nAlts,1:nSpecies) = NewVertVel(1:nAlts,1:nSpecies)
      NS_small = NewNS(1:nAlts,1:nSpecies)
+
      call calc_neutral_friction(DtIn,nVel(1:nAlts,1:nSpecies), &
                          EddyCoef_1d(1:nAlts), &
                                NewNT(1:nAlts), &
