@@ -9,6 +9,7 @@ EUADIR  = ${EMPIRICALUADIR}
 IODIR   = ${DATAREADINDICESDIR}
 MAINDIR = src
 GLDIR   = srcGlow
+SAMIDIR = srcSAMI
 
 PLANET=earth
 
@@ -39,6 +40,16 @@ GITM:
 	@cd $(IODIR);    make LIB
 	@cd $(GLDIR);	 make LIB
 	@cd $(MAINDIR);  make GITM
+
+SAMI:
+	@cd ${SHAREDIR}; make LIB
+	@cd $(ABDIR);    make LIB
+	@cd $(EIEDIR);   make LIB
+	@cd ${EUADIR};   make LIB
+	@cd $(IODIR);    make LIB
+	@cd $(GLDIR);	 make LIB
+	@cd $(SAMIDIR);  make LIB
+	@cd $(MAINDIR);  make SAMI
 
 POST:
 	@cd $(MAINDIR);  make POST
@@ -85,6 +96,13 @@ allclean:
 #
 rundir:
 	mkdir -p ${RUNDIR}/UA
+	if [ -d srcSAMI ]; then \
+		mkdir -p ${RUNDIR}/PS; \
+		cd ${RUNDIR}/PS; \
+                mkdir restartOUT output input; \
+                ln -s restartOUT restartIN; \
+                ln -s ${UADIR}/srcSAMI3/srcInputs/* input; \
+	fi
 	@(cd ${RUNDIR}; \
 		if [ ! -e "EIE/README" ]; then \
 			ln -s ${EMPIRICALIEDIR}/data EIE;\
@@ -99,8 +117,15 @@ rundir:
 	cd ${RUNDIR} ;                                   \
 		if [ -e ${BINDIR}/GITM.exe ]; then       \
 			ln -s ${BINDIR}/GITM.exe . ;     \
-		fi;                                      \
-		cp UA/DataIn/UAM.in . ;                  \
+			cp UA/DataIn/UAM.in . ;          \
+		fi
+	cd ${RUNDIR} ;                                   \
+		if [ -e ${BINDIR}/GITMSAMI.exe ]; then   \
+			ln -s ${BINDIR}/GITMSAMI.exe . ; \
+			cp UA/DataIn/UAM.in.Sami3Couple ./UAM.in ; \
+			cp PS/input/sami3-2.20.namelist.GitmCouple ./sami3-2.20.namelist ; \
+		fi
+	cd ${RUNDIR} ;                                   \
 		touch core ; chmod 444 core ;            \
 		ln -s UA/* .
 

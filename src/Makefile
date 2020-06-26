@@ -1,10 +1,15 @@
 ABDIR   = ${UADIR}/srcSphereAB
 IODIR   = ${DATAREADINDICESDIR}
 GLDIR   = ${UADIR}/srcGlow
+SAMIDIR = ${UADIR}/srcSAMI
 
-SEARCH_EXTRA = -I${ABDIR} -I${IODIR} -I${EMPIRICALUADIR} -I${EMPIRICALIEDIR}
+SEARCH_EXTRA =  -I${ABDIR} \
+	 	-I${IODIR} \
+		-I${EMPIRICALUADIR} \
+		-I${EMPIRICALIEDIR}
 
-include ../srcMake/Makefile.conf
+include ../Makefile.conf
+include ../Makefile.def
 
 include Makefile.DEPEND
 include Makefile.RULES
@@ -110,17 +115,33 @@ OBJECTS = \
 	RCMR_routines.o \
 	check_for_nans.o
 
-OBJECTS_EXE = main.o ${OBJECTS} ${MODULES}
+OBJECTS_EXE  = main.o ${OBJECTS} ${MODULES}
+OBJECTS_SAMI = main_w_sami.o ${OBJECTS} ${MODULES}
 
 DEPEND:
 	@${SCRIPTDIR}/depend.pl ${SEARCH} ${OBJECTS_EXE}
 
 EXE = ${BINDIR}/GITM.exe
 
+SAMIEXE = ${BINDIR}/GITMSAMI.exe
+
 GITM:	DEPEND
 	@make ${EXE}
 	@make POST
 	@echo "${EXE} has been created"
+
+SAMI:	DEPEND
+	@make ${SAMIEXE}
+	@make POST
+	@echo "${SAMIEXE} has been created"
+
+${SAMIEXE}:	${OBJECTS_SAMI}
+		${LINK.f90} -o ${SAMIEXE} ${OBJECTS_SAMI} \
+		-L${ABDIR} -lSphere \
+		-L${LIBDIR} -lEMPIRICALIE -lEMPIRICALUA -lINDICES -lSHARE \
+		-L${GLDIR} -lGLOW ${LBLAS} \
+		-L${SAMIDIR}/src -lSAMI3 \
+		${Lflag1}
 
 ${EXE}:	${OBJECTS_EXE}
 	@(if [ ${OS} = "Darwin" ]; then make GITM_for_Darwin; \
