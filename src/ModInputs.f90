@@ -19,7 +19,7 @@ module ModInputs
 
   integer                   :: useDART = 0 !alexey, default is to not use DART
 
-  integer, parameter        :: iCharLen_     = 100
+  integer, parameter        :: iCharLen_     = 400
 
   integer                   :: iOutputUnit_  = UnitTmp_
   integer                   :: iInputUnit_   = UnitTmp_
@@ -61,7 +61,7 @@ module ModInputs
   logical :: UseOvationSMEWave = .false.
   logical :: UseOvationSMEIon  = .false.
 
-  logical :: UseAeModel        = .true.
+  logical :: UseAeModel        = .false.
   
   logical :: DoOverwriteIonosphere = .false.
   logical :: DoOverwriteWithIRI    = .true.
