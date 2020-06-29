@@ -13,6 +13,9 @@ module ModGITM
   real :: dt = 0.0
 
   integer :: iCommGITM, iProc, nProcs
+  integer :: iCommGlobal
+  integer :: iCommSAMI0
+  integer :: SamiMaster, numgitm, numsami
 
   real, allocatable :: dLonDist_GB(:,:,:,:)
   real, allocatable :: InvDLonDist_GB(:,:,:,:)
