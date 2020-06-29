@@ -8,9 +8,13 @@ F		usebarriers - forces the code to stop and wait more often
 #RESTART
 F
 
+#SAMI
+25
+300.0
+
 #GRID
-2		lons
-2		lats
+8		lons
+8		lats
 -90.0		minimum latitude to model
 90.0		maximum latitude to model
 0.0		longitude start to model (set to 0.0 for whole Earth)
@@ -36,7 +40,7 @@ T
 #TIMESTART
 2013		year
 03		month
-20		day
+16		day
 00		hour
 00		minute
 00		second
@@ -44,13 +48,13 @@ T
 #TIMEEND
 2013		year
 03		month
-20		day
-02		hour
+19		day
+00		hour
 00		minute
 00		second
 
 #CFL
-0.75		percentage of maximum allowable time-step to take
+0.8		percentage of maximum allowable time-step to take
 
 #LIMITER
 mc		only limiter available
@@ -65,11 +69,12 @@ F		if you want to run with msis and iri only (i.e. not GITM)
 
 #SAVEPLOTS
 7200.0		dt for writing restart files
-2		how many output files do you want
-3DMAG		first output style
-2592000		dt for output (1 per month)
+1		how many output files do you want
 3DALL		second output style
 300.0		dt for output (1 every 5 min)
+
+3DMAG		first output style
+2592000		dt for output (1 per month)
 
 #ELECTRODYNAMICS
 60.0		how often to update potential
@@ -113,7 +118,7 @@ solar irradiance
 
 or
 
-NGDC_INDICES
+#NGDC_INDICES
 UA/DataIn/f107.txt
 
 or
@@ -147,12 +152,15 @@ IMF / potential
 
 or
 
-SWPC_INDICES
-imf file
-solar wind file
+#SME_INDICES
+sme_2013.dat
+none
 
-MHD_INDICES
-imf/solarwind file
+#NOAAHPI_INDICES
+power.dat
+
+#MHD_INDICES
+imf.dat
 
 #AMIEFILES
 none		northern hemisphere amie file
