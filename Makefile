@@ -74,6 +74,8 @@ clean:
 	@cd srcInterface;make clean
 	@(if [ -d share ]; then cd share; make clean; fi);
 	@(if [ -d util ];  then cd util;  make clean; fi);
+	if [ -d srcSAMI ]; then cd srcSAMI; make clean; fi;
+
 
 distclean: 
 	./Config.pl -uninstall
@@ -99,14 +101,14 @@ rundir:
 	if [ -d srcSAMI ]; then \
 		mkdir -p ${RUNDIR}/PS; \
 		cd ${RUNDIR}/PS; \
-                mkdir restartOUT output input; \
+                mkdir restartOUT output; \
                 ln -s restartOUT restartIN; \
-                ln -s ${UADIR}/srcSAMI3/srcInputs/* input; \
+                ln -s ${UADIR}/srcSAMI/srcInputs ./input; \
 	fi
-	@(cd ${RUNDIR}; \
+	cd ${RUNDIR}; \
 		if [ ! -e "EIE/README" ]; then \
 			ln -s ${EMPIRICALIEDIR}/data EIE;\
-		fi;)
+		fi;
 	cd ${RUNDIR}; rm -f ./PostGITM.exe ; ln -s ${UADIR}/src/PostProcess.exe ./PostGITM.exe
 	cd ${RUNDIR}/UA; \
 		mkdir restartOUT data DataIn; \
