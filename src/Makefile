@@ -43,6 +43,8 @@ MODULES = \
 	ModRCMR.o \
 	ModReadGitm3d.o\
 	ModSami.o\
+	ModCoupSAMI3.o\
+	ModSamiInterp.o\
 	apexsh.o
 
 OBJECTS = \
@@ -116,10 +118,10 @@ OBJECTS = \
 	check_for_nans.o
 
 OBJECTS_EXE  = main.o ${OBJECTS} ${MODULES}
+#OBJECTS_SAMI = ModSamiInterp.o ModCoupSAMI3.o main_w_sami.o ${OBJECTS} ${MODULES}
 OBJECTS_SAMI = main_w_sami.o ${OBJECTS} ${MODULES}
-
 DEPEND:
-	@${SCRIPTDIR}/depend.pl ${SEARCH} ${OBJECTS_EXE}
+	@${SCRIPTDIR}/depend.pl ${SEARCH} ${OBJECTS_SAMI}
 
 EXE = ${BINDIR}/GITM.exe
 
