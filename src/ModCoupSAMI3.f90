@@ -216,29 +216,12 @@ contains
           do iLat = -1,nLats+2
              do iAlt = 1, nAlts
 
-                !print*,'iLon,iLat,iALt',iproc,iLon,iLat,iAlt
-                !gitm_mlon = Longitude(iLon,iBlock)/pi*180.0
-                !gitm_mlat = Latitude(iLat,iBlock)/pi*180.0
-                !gitm_alt = Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0
-
                 gitm_mlon = MLongitude(iLon,iLat,iAlt,iBlock)
                 gitm_mlat = MLatitude(iLon,iLat,iAlt,iBlock)
                 gitm_alt = Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0
 
 
                 if (gitm_mlon<0) gitm_mlon = gitm_mlon+360.0
-
-                ! if (iAlt == 1) &
-                !       print*,'===>> Magnetic Lon/Lat 11 a',iproc, gitm_mlon,gitm_mlat,gitm_alt
-                !if (CorotationAddedC) then 
-                !    gitm_mlon =  gitm_mlon + LocalTime(iLon)*15.0
-                !    gitm_mlon = mod(gitm_mlon,360.0)
-                !endif
-
-                !print*,'===>> Magnetic Lon/Lat 11 b',iproc,gitm_mlon,gitm_mlat,gitm_alt,LocalTime(iLon)
-                !print*,'===>> Geographic Lon/Lat',longitude(iLon,iBlock)/pi*180.0,&
-                !                            latitude(iLat,iBlock)/pi*180.0
-                !print*,'===>> Magnetic Lon/Lat',iproc,iLon,iLat,iAlt,gitm_mlon,gitm_mlat,gitm_alt
 
                 alttmp = gitm_alt+re
 
@@ -257,9 +240,6 @@ contains
 
                    call get_factors_from_8points_sph_3(gitm_mlon,gitm_mlat,alttmp,&
                         xd00,xd01,xd10,xd11,yd0,yd1,zd,lont,latt,altt)
-
-                   !if (iAlt == 1) &
-                   !    print*, '---- interp',lont,latt,altt
 
                    if ((xd00*xd01*xd10*xd11*yd0*yd1*zd)<0) then
                       print*,'===>> Dist',iLon,iLat,iAlt,xd00,xd01,xd10,xd11,yd0,yd1,zd
@@ -443,7 +423,8 @@ contains
     integer :: iiLon,iiLat,iiAlt,nLonsTotal,nLatsTotal,nAltsTotal
     logical :: IsFirstTime = .true.
     logical :: IsValidPoint
-    real :: tmp(nz,nf,nlt)
+    real :: tmp(nz,nf,nlt), tmp2d(nf, nlt)
+    integer :: iZ
 
     tag_inter = 11
     tag_SandR = 111
@@ -479,22 +460,43 @@ contains
 
        call report("GITM Broadcasting SAMI Data",0)
 
+       ! write(*,*) "GITM Proc, before bcast : ", irank, iProcGlobal
+
        do i=1,10
 
-          call MPI_BARRIER(iCommGITM,iError)
-          ! if (iProcGlobal == 30) write(*,*) "Looping exchange start", iProcGlobal, i, nf*nz*nlt
-          if (iProc == 0) tmp = SAMIVars_g(i,:,:,:)
-          call mpi_bcast(tmp, nf*nz*nlt, MPI_REAL,0,iCommGITM,iError)
-          ! if (iProcGlobal == 30) write(*,*) "Looping exchange after bcast", iProcGlobal, i
+          do iZ = 1, nz
 
-          if (iProc > 0) SAMIVars_g(i,:,:,:) = tmp
+             call MPI_BARRIER(iCommGITM,iError)
+             ! if (iProcGlobal == 30) write(*,*) "Looping exchange start", iProcGlobal, i, iZ, nf*nlt
+             if (iProc == 0) tmp2d = SAMIVars_g(i,iZ,:,:)
+             call mpi_bcast(tmp2d, nf*nlt, MPI_REAL,0,iCommGITM,iError)
+             ! if (iProcGlobal == 30) write(*,*) "Looping exchange after bcast", iProcGlobal, i, iZ
 
-          !write(*,*) "iError : ", iError, iProcGlobal, i 
-          call MPI_BARRIER(iCommGITM,iError)
+             if (iProc > 0) SAMIVars_g(i,iZ,:,:) = tmp2d
 
-          ! if (iProcGlobal == 30) write(*,*) "Looping exchange after barrier", iProcGlobal, i
+             ! write(*,*) "iError : ", iError, iProcGlobal, i 
+             call MPI_BARRIER(iCommGITM,iError)
+
+             !if (iProcGlobal == 30) write(*,*) "Looping exchange after barrier", iProcGlobal, i, iZ
+
+          enddo
+
+!          call MPI_BARRIER(iCommGITM,iError)
+!          if (iProcGlobal == 30) write(*,*) "Looping exchange start", iProcGlobal, i, nf*nz*nlt
+!          if (iProc == 0) tmp = SAMIVars_g(i,:,:,:)
+!          call mpi_bcast(tmp, nf*nz*nlt, MPI_REAL,0,iCommGITM,iError)
+!          if (iProcGlobal == 30) write(*,*) "Looping exchange after bcast", iProcGlobal, i
+!
+!          if (iProc > 0) SAMIVars_g(i,:,:,:) = tmp
+!
+!          write(*,*) "iError : ", iError, iProcGlobal, i 
+!          call MPI_BARRIER(iCommGITM,iError)
+!
+!          if (iProcGlobal == 30) write(*,*) "Looping exchange after barrier", iProcGlobal, i
 
        enddo
+
+       !write(*,*) "GITM Proc, after bcast : ", irank, iProcGlobal
 
        blonst_g = SAMIVars_g(1,:,:,:)
        blatst_g = SAMIVars_g(2,:,:,:)
@@ -778,6 +780,8 @@ contains
        ! temp array:
        allocate(GatGITMVar(nLonsTotal,nLatsTotal,nAltsTotal))
 
+       ! write(*,*) "SAMI Proc, before bcast : ", irank
+
        do i=1, nParams
           if (irank == 0) then
              ! write(*,*) "> var = ",i
@@ -794,6 +798,9 @@ contains
              GatGITMVars_g(i,:,:,:) = GatGITMVar
           endif
        enddo
+
+       ! write(*,*) "SAMI Proc, after bcast : ", irank
+
 
        ! Deallocate temp array:
        deallocate(GatGITMVar)
