@@ -42,14 +42,14 @@ GITM:
 	@cd $(MAINDIR);  make GITM
 
 SAMI:
-	@cd ${SHAREDIR}; make LIB
-	@cd $(ABDIR);    make LIB
-	@cd $(EIEDIR);   make LIB
-	@cd ${EUADIR};   make LIB
-	@cd $(IODIR);    make LIB
-	@cd $(GLDIR);	 make LIB
-	@cd $(SAMIDIR);  make LIB
-	@cd $(MAINDIR);  make SAMI
+	@cd ${SHAREDIR}; make LIB MEM=-mcmodel=large
+	@cd $(ABDIR);    make LIB MEM=-mcmodel=large
+	@cd $(EIEDIR);   make LIB MEM=-mcmodel=large
+	@cd ${EUADIR};   make LIB MEM=-mcmodel=large
+	@cd $(IODIR);    make LIB MEM=-mcmodel=large
+	@cd $(GLDIR);	 make LIB MEM=-mcmodel=large
+	@cd $(SAMIDIR);  make LIB MEM=-mcmodel=large
+	@cd $(MAINDIR);  make SAMI MEM=-mcmodel=large
 
 POST:
 	@cd $(MAINDIR);  make POST
