@@ -68,12 +68,12 @@ nompirun:
 
 clean:
 	@touch ${INSTALLFILES}
-	@cd $(ABDIR);    make clean
-	@cd $(MAINDIR);  make clean
-	@cd $(GLDIR);    make clean
-	@cd srcInterface;make clean
-	@(if [ -d share ]; then cd share; make clean; fi);
-	@(if [ -d util ];  then cd util;  make clean; fi);
+	cd $(ABDIR); make clean
+	cd $(MAINDIR); make clean
+	cd $(GLDIR); make clean
+	cd srcInterface; make clean
+	if [ -d share ]; then cd share; make cleanall; fi;
+	if [ -d util ];  then cd util;  make cleanall; fi;
 	if [ -d srcSAMI ]; then cd srcSAMI; make clean; fi;
 
 

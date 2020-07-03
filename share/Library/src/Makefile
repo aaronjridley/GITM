@@ -68,10 +68,5 @@ ${MY_LIB}: ${MODULES}
 	rm -f ${MY_LIB}
 	${AR} ${MY_LIB} ${MODULES}
 
-
-clean:
-	rm -f *~ core *.o *.mod fort.* a.out *.exe *.a *.so *.protex
-
-
 distclean: clean
 	rm -f Makefile.DEPEND ModHdf5Utils.f90 ModSpice.f90

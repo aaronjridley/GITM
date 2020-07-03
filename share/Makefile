@@ -7,15 +7,13 @@ INSTALL_FILES = \
 install:
 	touch ${INSTALL_FILES}
 
-clean:
+cleanall:
 	cd Library/src; make clean
-	cd Library/test;make clean
-	cd Prologs;     make clean
+	cd Library/test; make clean
 	rm -f include/*.mod
 
 distclean: clean
 	cd Library/src; make distclean
-	cd Library/test;make distclean
-	cd Prologs;     make distclean
+	cd Library/test; make distclean
 	rm -f Library/src/mpif*.h *~ */*~ ${INSTALL_FILES}
 
