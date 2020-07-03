@@ -43,8 +43,6 @@ MODULES = \
 	ModRCMR.o \
 	ModReadGitm3d.o\
 	ModSami.o\
-	ModCoupSAMI3.o\
-	ModSamiInterp.o\
 	apexsh.o
 
 OBJECTS = \
@@ -117,11 +115,20 @@ OBJECTS = \
 	RCMR_routines.o \
 	check_for_nans.o
 
+SAMI_EXTRAS = \
+	ModSamiInterp.o \
+	ModCoupSAMI3.o \
+	init_mpi_w_sami.o \
+	main_w_sami.o 
+
 OBJECTS_EXE  = main.o ${OBJECTS} ${MODULES}
-#OBJECTS_SAMI = ModSamiInterp.o ModCoupSAMI3.o main_w_sami.o ${OBJECTS} ${MODULES}
-OBJECTS_SAMI = main_w_sami.o ${OBJECTS} ${MODULES}
+OBJECTS_SAMI = ${SAMI_EXTRAS} ${OBJECTS} ${MODULES}
+
 DEPEND:
-	@${SCRIPTDIR}/depend.pl ${SEARCH} ${OBJECTS_SAMI}
+	@${SCRIPTDIR}/depend.pl ${SEARCH} ${OBJECTS_EXE}
+
+DEPENDSAMI:
+	@${SCRIPTDIR}/depend.pl ${SEARCH} ${OBJECTS_EXE}
 
 EXE = ${BINDIR}/GITM.exe
 
@@ -132,7 +139,7 @@ GITM:	DEPEND
 	@make POST
 	@echo "${EXE} has been created"
 
-SAMI:	DEPEND
+SAMI:	DEPENDSAMI
 	@make ${SAMIEXE}
 	@make POST
 	@echo "${SAMIEXE} has been created"
@@ -181,9 +188,6 @@ LIB:	DEPEND
 ${MY_LIB}: ${LIBPREV} ${MF} ${MODULES} ${OBJECTS}
 	cp -f ${LIBPREV} ${MY_LIB}
 	${AR} ${MY_LIB} ${OBJECTS} ${MODULES}
-
-clean:
-	rm -f *~ core *.o *.mod fort.* a.out *.exe *.a *.so *.protex
 
 
 distclean: clean
