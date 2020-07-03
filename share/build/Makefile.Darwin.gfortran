@@ -17,7 +17,7 @@ AR = ar -rs
 
 SINGLEPREC = -frecord-marker=4
 DOUBLEPREC = -frecord-marker=4 -fdefault-real-8 -fdefault-double-8
-PRECISION  = ${DOUBLEPREC}
+PRECISION  = ${DOUBLEPREC} ${MEM}
 
 MPILIB = 
 #MPILIB = -L${LIBDIR} -lNOMPI
