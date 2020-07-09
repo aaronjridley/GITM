@@ -118,8 +118,6 @@ c           write(*,*) xxx,yyy,zzz,r, xmag,ymag,zmag
               call APEX(DATE,gLatGuess,gLonGuess,Alt,lShell,aLatTest,aLonTest,
      !             bmag,xmag,ymag,zmag,MagPot)
 
-c     write(*,*) aLat, aLatTest, aLon, aLonTest, gLatGuess, gLonGuess, iCount
-
               gLatGuess = gLatGuess + (aLat-aLatTest)/4.0
 
               if (gLatGuess > 90.0) then
@@ -152,9 +150,10 @@ c     write(*,*) aLat, aLatTest, aLon, aLonTest, gLatGuess, gLonGuess, iCount
            iCount = 20
            gLat = sLat
 
+           gLatGuess = GeoLat
+           gLonGuess = GeoLon
+
         endif
-c   ACTUAL
-c        write(*,*) "iCount : ",iCount, gLatGuess, gLonGuess, gLat, gLon
 
         if (iCount >= 20) then
            
