@@ -52,6 +52,8 @@ subroutine set_inputs
   IsDone = .false.
   iLine  = 1
 
+  call IO_set_ap_single(10.0)
+  
   do while (.not. IsDone)
 
      cLine = cInputText(iLine)
@@ -344,6 +346,14 @@ subroutine set_inputs
               write(*,*) 'UseMSISTerdiurnal     (logical)'
            endif
 
+        case ("#MSISOBC")
+           call read_in_logical(UseOBCExperiment, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #MSISOBC:'
+              write(*,*) '#MSISOBC'
+              write(*,*) 'UseOBCExperiment        (logical)'
+           endif
+           
         !xianjing
         case("#USESECONDSINFILENAME")
            call read_in_logical(UseSecondsInFilename,iError)
@@ -625,6 +635,21 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
+        case ("#USECUSP")
+           call read_in_logical(UseCusp, iError)
+           call read_in_real(CuspAveE, iError)
+           call read_in_real(CuspEFlux, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #USECUSP'
+              write(*,*) 'This is for specifying a cusp.'
+	      write(*,*) ''
+              write(*,*) '#USECUSP'
+              write(*,*) 'UseCusp        (logical)'
+              write(*,*) 'CuspAveE       (real)'
+              write(*,*) 'CuspEFlux      (real)'
+              IsDone = .true.
+           endif
+
         case ("#AMIEFILES")
            call read_in_string(cAMIEFileNorth, iError)
            call read_in_string(cAMIEFileSouth, iError)
@@ -678,14 +703,12 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
-
-
         case ("#DEBUG")
            call read_in_int(iDebugLevel, iError)
            call read_in_int(iDebugProc, iError)
            call read_in_real(DtReport, iError)
            call read_in_logical(UseBarriers, iError) 
-          if (iError /= 0) then
+           if (iError /= 0) then
               write(*,*) 'Incorrect format for #DEBUG:'
               write(*,*) 'This will set how much information the code screams'
               write(*,*) 'at you - set to 0 to get minimal, set to 10 to get'
@@ -1552,6 +1575,24 @@ subroutine set_inputs
               UseVariableInputs = .true.
            endif
 
+        case ("#OMNIWEB_AP_INDICES")
+           cTempLines(1) = cLine
+           call read_in_string(cTempLine, iError)
+           write(*,*) cTempLine
+           cTempLines(2) = cTempLine
+           cTempLines(3) = " "
+           cTempLines(4) = "#END"
+
+           call IO_set_inputs(cTempLines)
+           call read_OMNIWEB_Ap_Indices_new(iError,CurrentTime,EndTime)
+
+           if (iError /= 0) then
+              write(*,*) "read indices was NOT successful (OMNIWEB Ap file)"
+              IsDone = .true.
+           else
+              UseVariableInputs = .true.
+           endif
+           
         case ("#SME_INDICES")
            cTempLines(1) = cLine
            call read_in_string(cTempLine, iError)
