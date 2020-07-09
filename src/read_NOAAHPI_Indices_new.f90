@@ -6,7 +6,6 @@ subroutine read_NOAAHPI_Indices_new(iOutputError,StartTime,EndTime)
 
   use ModKind
   use ModIndices
-  use ModTimeConvert
 
   implicit none
 
@@ -173,7 +172,7 @@ contains
              ! first time in GITM.
              if (StartTime > time_now) i = i + 1
           else
-             itime(1:5) = tmp(1:5,i)
+             itime(1:5) = int(tmp(1:5,i))
              itime(6:7) = 0
              call time_int_to_real(itime, time_now)
              if ( time_now >= StartTime-BufferTime .and. &
@@ -198,8 +197,6 @@ contains
   end subroutine read_values
 
   subroutine merge_hpi_data
-
-    use ModTimeConvert, ONLY: time_int_to_real
 
     itime = 0
 

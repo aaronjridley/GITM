@@ -10,7 +10,6 @@ subroutine read_ACE_data(iOutputError)
 
   use ModKind
   use ModIndices
-  use ModTimeConvert, ONLY: time_int_to_real
   implicit none
 
   integer, intent(out) :: iOutputError

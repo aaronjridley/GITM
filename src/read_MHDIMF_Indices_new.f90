@@ -6,7 +6,6 @@ subroutine read_MHDIMF_Indices_new(iOutputError, StartTime, EndTime)
 
   use ModKind
   use ModIndices
-  use ModTimeConvert, ONLY: time_int_to_real
   implicit none
 
   integer, intent(out)     :: iOutputError

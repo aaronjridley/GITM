@@ -32,11 +32,13 @@ end
 
 subroutine time_int_to_real(itime, timereal)
 
+  use ModKind
+
   implicit none
 
-  integer, dimension(1:12) :: dayofmon
-  integer, dimension(1:7) :: itime
-  double precision :: timereal
+  integer, dimension(12) :: dayofmon
+  integer, dimension(7), intent(in) :: itime
+  real (Real8_), intent(out) :: timereal
   integer :: nyear, nleap, nmonth, nday, nhour, nmin, nsec, i
 
   dayofmon(1) = 31

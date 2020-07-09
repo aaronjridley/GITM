@@ -6,7 +6,6 @@ subroutine read_al_onset_list(iOutputError, StartTime, EndTime)
 
   use ModKind
   use ModIndices
-  use ModTimeConvert, ONLY: time_int_to_real
   implicit none
 
   integer, intent(out)     :: iOutputError
@@ -132,7 +131,6 @@ subroutine read_sme(iOutputError, StartTime, EndTime)
 
   use ModKind
   use ModIndices
-  use ModTimeConvert, ONLY: time_int_to_real
   implicit none
 
   integer, intent(out)     :: iOutputError

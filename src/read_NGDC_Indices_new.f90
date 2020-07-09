@@ -7,7 +7,6 @@ subroutine read_NGDC_Indices_new(iOutputError,StartTime,EndTime)
   use ModKind
   use ModIndices
   use CON_geopack, ONLY: geopack_recalc, GsmGse_DD, JulianDay
-  use ModTimeConvert, ONLY: time_real_to_int
   implicit none
 
   integer, intent(out) :: iOutputError
@@ -274,8 +273,6 @@ contains
   end subroutine read_values
 
   subroutine merge_hpi_data
-
-    use ModTimeConvert, ONLY: time_int_to_real
 
     itime = 0
 
