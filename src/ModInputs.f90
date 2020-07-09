@@ -62,6 +62,12 @@ module ModInputs
   logical :: UseOvationSMEIon  = .false.
 
   logical :: UseAeModel        = .false.
+
+  logical :: UseCusp = .false.
+  real :: CuspAveE = 0.1
+  real :: CuspEFlux = 2.0
+  real :: CuspMltHalfWidth = 1.5
+  real :: CuspLatHalfWidth = 1.0
   
   logical :: DoOverwriteIonosphere = .false.
   logical :: DoOverwriteWithIRI    = .true.
@@ -69,7 +75,7 @@ module ModInputs
   character (len=iCharLen_) :: SamiInFile
   
   real :: AuroralHeightFactor = 1.0
-  logical :: NormalizeAuroraToHP = .true.
+  logical :: NormalizeAuroraToHP = .false.
 
   character (len=iCharLen_) :: TypeLimiter = "minmod"
 
@@ -154,6 +160,7 @@ module ModInputs
 
   logical :: UseApex = .true.
   logical :: UseMSIS = .true.
+  real, dimension(25) :: sw_msis = 1.0
   logical :: UseIRI  = .true.
   logical :: UseMSISTides  = .true.
   logical :: UseMSISOnly   = .false.
@@ -164,7 +171,8 @@ module ModInputs
   logical :: UseMSISTerdiurnal = .true.
   logical :: UseStatisticalModelsOnly = .false.
   real    :: DtStatisticalModels = 3600.0
-
+  logical :: UseOBCExperiment = .false.
+  
   logical :: UseGswmComp(4) = .true.
 
   real :: MagneticPoleRotation = 0.0
