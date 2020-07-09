@@ -359,6 +359,7 @@ module w05sc
     sinpm(:) = sin(phim(:))
 !
     z = 0.
+    skip = 0 
     do j=1,csize
       if (skip == 1) then
         skip = 0
@@ -402,6 +403,8 @@ module w05sc
 ! checkinputs returns inside=1 if lat is inside model boundary,
 ! inside=0 otherwise. Phir and colat are also returned by checkinputs.
 !
+    skip = 0
+    
     call checkinputs(lat,mlt,inside,phir,colat)
     if (inside == 0) then
       fac = fill
@@ -457,6 +460,7 @@ module w05sc
     real,save :: prevth0=1.e36
     integer,save :: tablesize
 
+    skip = 0
     scplm = 0.
     th0 = bndyfitr
     if (prevth0 /= th0) then
