@@ -25,6 +25,8 @@ subroutine init_get_potential
 
   if (.not.IsFirstTime .or. IsFramework) return
 
+  call report("init_get_potential",2)
+  
   IsFirstTime = .false.
 
   if (UseNewellAurora) then
@@ -39,6 +41,8 @@ subroutine init_get_potential
   if (UseAeModel) then
      call read_ae_model_files(iError)
   endif
+
+  call report("AMIE vs Weimer",4)
 
   if (index(cAMIEFileNorth,"none") > 0) then
 
@@ -109,6 +113,8 @@ subroutine init_get_potential
      Lines(11) = "#END"
   endif
 
+  call report("EIE_stuff",4)
+  
   call EIE_set_inputs(Lines)
 
   call EIE_Initialize(iError)
@@ -250,7 +256,8 @@ subroutine get_potential(iBlock)
 
   real, dimension(-1:nLons+2,-1:nLats+2) :: TempPotential, Grid, dynamo
   real, dimension(-1:nLons+2,-1:nLats+2) :: SubMLats, SubMLons
-
+  real, dimension(-1:nLons+2,-1:nLats+2) :: lats, mlts, EFlux
+  real :: by, bz, CuspLat, CuspMlt
 
   call start_timing("get_potential")
   call report("get_potential",2)
@@ -269,7 +276,7 @@ subroutine get_potential(iBlock)
   if (floor((tSimulation-dt)/DtPotential) /= &
        floor((tsimulation)/DtPotential) .or. IsFirstPotential(iBlock)) then
 
-     if (iDebugLevel > 1) write(*,*) "==> Setting up IE Grid"
+     call report("Setting up IE Grid",1)
 
      call init_get_potential
      call UA_SetnMLTs(nLons+4)
@@ -280,8 +287,8 @@ subroutine get_potential(iBlock)
      endif
      call UA_SetNorth
 
-     if (iDebugLevel > 1) write(*,*) "==> Getting Potential"
-
+     call report("Getting Potential",1)
+     
      Potential(:,:,:,iBlock) = 0.0
 
      do iAlt=-1,nAlts+2
@@ -356,7 +363,7 @@ subroutine get_potential(iBlock)
   if (floor((tSimulation-dt)/DtAurora) /= &
        floor((tsimulation)/DtAurora) .or. IsFirstAurora(iBlock)) then
 
-     if (iDebugLevel > 1) write(*,*) "==> Getting Aurora"
+     call report("Getting Aurora",1)
 
      iAlt = nAlts+1
 
@@ -411,6 +418,54 @@ subroutine get_potential(iBlock)
 
      endif
 
+     if (UseCusp) then
+
+        lats = abs(MLatitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock))
+
+        if (maxval(lats) > 50) then
+
+           mlts = mod(MLT(-1:nLons+2,-1:nLats+2,iAlt)+24.0,24.0)
+        
+           call get_IMF_Bz(CurrentTime+TimeDelayHighLat, bz, iError)
+           call get_IMF_By(CurrentTime+TimeDelayHighLat, by, iError)
+
+           ! If we are in the southern hemisphere, reverse by:
+           if (lats(nLons/2, nLats/2) < 0.0) by = -by
+
+           if (bz > 0) then
+              ! Newell et al., 1988:
+              CuspLat = 77.2 + 0.11 * bz
+              ! Asai et al., Earth Planets Space, 2005:
+              CuspMlt = 11.755 + 0.169 * by
+           else
+              ! Asai et al., Earth Planets Space, 2005:
+              CuspMlt = 11.949 + 0.0826 * by
+              ! Zhang et al., JGR, 2005:
+              if (Bz > -10) then
+                 CuspLat = 77.2 + 1.1 * bz
+              else
+                 CuspLat = 21.7 * exp(0.1 * bz) + 58.2
+              endif
+           endif
+
+           EFlux = CuspEFlux * &
+                exp(-abs(lats - CuspLat)/CuspLatHalfWidth) *  &
+                exp(-abs(mlts - CuspMlt)/CuspMltHalfWidth)
+
+           do iLat=-1,nLats+2
+              do iLon=-1,nLons+2
+                 if (EFlux(iLon,iLat) > 0.1) then
+                    ElectronEnergyFlux(iLon,iLat) = EFlux(iLon,iLat)
+                    ElectronAverageEnergy(iLon,iLat) = CuspAveE
+                 endif
+              enddo
+           enddo
+
+        endif
+        
+     endif
+
+     
      if (iDebugLevel > 2) &
           write(*,*) "==> Max, electron_ave_ene : ", &
           maxval(ElectronAverageEnergy), &
