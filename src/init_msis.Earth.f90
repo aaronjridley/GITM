@@ -107,8 +107,6 @@ subroutine init_msis
   real, dimension(1:2) :: msis_temp
   real, dimension(1:9) :: msis_dens
 
-  real, dimension(25) :: sw
-
   integer :: iBlock, iAlt, iLat, iLon, iSpecies, iyd
   real :: geo_lat, geo_lon, geo_alt, geo_lst,m,k, ut
   real :: ffactor, h, no  
@@ -149,24 +147,24 @@ subroutine init_msis
   call meters(.true.)
 
   if (UseMsisTides) then
-     sw = 1
+     sw_msis = 1
   ELSE IF (UseMSISOnly) THEN
      ! Diurnal, semidiurnal, and terdiurnal variations are excluded, EYigit:16June09
      CALL report("...Using MSIS without tidal variations...",0)
-     sw = 1
-     sw(7) = 0
-     sw(8) = 0
-     sw(14) = 0
+     sw_msis = 1
+     sw_msis(7) = 0
+     sw_msis(8) = 0
+     sw_msis(14) = 0
   ELSE
-     sw = 0
-     sw(1) = 1
-     sw(9) = 1
+     sw_msis = 0
+     sw_msis(1) = 1
+     sw_msis(9) = 1
   endif
 
-  sw(9) = 0
-  sw(2) = 0
-
-  call tselec(sw)
+  sw_msis(9) = 0
+  sw_msis(2) = 0
+  
+  call tselec(sw_msis)
 
   if (DoRestart) return
 
@@ -352,11 +350,13 @@ subroutine msis_bcs(iJulianDay,UTime,Alt,LatIn,LonIn,Lst, &
 
   use ModTime, only : iTimeArray
   use ModPlanet
-  use ModInputs, only: UseMSISTides
-  use EUA_ModMsis00, ONLY: gtd7
+  use ModInputs, only: UseMSISTides, sw_msis, UseOBCExperiment
+  use EUA_ModMsis00, ONLY: gtd7, tselec
 
   implicit none
 
+  real, dimension(25) :: sw_tmp = 1.0
+    
   integer, intent(in) :: iJulianDay
   real, intent(in) :: uTime, Alt, LatIn, LonIn, LST, f107a, f107
   real, intent(in):: ap
@@ -365,9 +365,9 @@ subroutine msis_bcs(iJulianDay,UTime,Alt,LatIn,LonIn,Lst, &
   real :: lat, lon
   
   real :: msis_temp(2)
-  real :: msis_dens(9)
+  real :: msis_dens(9), oMSIS, oCurrentSeason, oOffsetSeason
   real :: AP_I(7), ffactor, no
-  integer :: iyd
+  integer :: iyd, iJulianDayOffset
 
   real*4 :: hwm_utime, hwm_alt, hwm_lat, hwm_lon, hwm_lst
   real*4 :: hwm_f107a, hwm_f107, hwm_ap(2), qw(2)
@@ -391,7 +391,7 @@ subroutine msis_bcs(iJulianDay,UTime,Alt,LatIn,LonIn,Lst, &
   CALL GTD7(iJulianDay,uTime,Alt,Lat,Lon,LST, &
        F107A,F107,AP_I,48,msis_dens,msis_temp)
 
-!  write(*,*) msis_dens(2), msis_dens(3), msis_dens(4), msis_dens(8), msis_dens(6), msis_temp(2)
+  !  write(*,*) msis_dens(2), msis_dens(3), msis_dens(4), msis_dens(8), msis_dens(6), msis_temp(2)
 
   LogNS(iO_3P_)  = alog(max(msis_dens(2),1.0))
   LogNS(iO2_) = alog(max(msis_dens(4),1.0))
@@ -435,6 +435,43 @@ subroutine msis_bcs(iJulianDay,UTime,Alt,LatIn,LonIn,Lst, &
      V(2) = 0.0
   endif
 
+  ! Do some O experimentation:
+
+  if (UseOBCExperiment) then
+
+     oMSIS = msis_dens(2)
+     
+     sw_tmp = sw_msis
+
+     ! Experimentation:
+     ! This will make MSIS only have latitudinal variation:
+     sw_tmp(7) = 0
+     sw_tmp(8) = 0
+     sw_tmp(11) = 0
+     sw_tmp(14) = 0
+
+     call tselec(sw_tmp)
+
+     CALL GTD7(iJulianDay,uTime,Alt,Lat,Lon,LST, &
+          F107A,F107,AP_I,48,msis_dens,msis_temp)
+
+     oCurrentSeason = msis_dens(2)
+
+     ! Offset by 6 months:
+     iJulianDayOffset = mod(iJulianDay + 182, 365) 
+
+     CALL GTD7(iJulianDayOffset,uTime,Alt,Lat,Lon,LST, &
+          F107A,F107,AP_I,48,msis_dens,msis_temp)
+
+     oOffsetSeason = msis_dens(2)
+
+     ! Put MSIS back to normal
+     call tselec(sw_msis)
+
+     LogNS(iO_3P_)  = alog(max(oMSIS - oCurrentSeason + oOffsetSeason,1.0))
+     
+  endif
+  
 end subroutine msis_bcs
 
 
