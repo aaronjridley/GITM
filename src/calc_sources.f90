@@ -11,13 +11,14 @@ subroutine calc_GITM_sources(iBlock)
 
   integer, intent(in) :: iBlock
 
-  integer :: iAlt, iError, iDir, iLat, iLon, iSpecies
+  integer :: iAlt, iError, iDir, iLat, iLon, iSpecies, iIon
   integer :: iiAlt, iiLat, iiLon
   real :: tmp(nLons, nLats, nAlts)
   real :: tmp2(nLons, nLats, 0:nAlts+1)
   real :: tmp3(nLons, nLats, 0:nAlts+1)
   real :: RhoI(nLons, nLats, nAlts)
   real :: Rho110(nLons, nLats, 0:nAlts+1)
+  real :: Weight(nLons, nLats, nAlts)
   real :: ScaleHeight(-1:nLons+2, -1:nLats+2, -1:nAlts+2)
   real :: Prandtl(nLons,nLats,0:nalts+1)
 
@@ -32,6 +33,10 @@ subroutine calc_GITM_sources(iBlock)
   real :: TemperatureH(1:nLons,1:nLats,-1:nAlts+2)
   real :: TemperatureF(1:nLons,1:nLats,-1:nAlts+2)
 
+  real :: TmpTemp(nLons, nLats, -1:nAlts+2)
+  real :: TmpDiff(nLons, nLats, 0:nAlts+1)
+  real :: TmpMulFac(nLons, nLats, 0:nAlts+1)
+
   ! Vertical Viscosity Variables
   real :: VerticalVelocityStage0(1:nLons,1:nLats,-1:nAlts+2,1:nSpecies)
   real :: VerticalVelocityStage1(1:nLons,1:nLats,-1:nAlts+2,1:nSpecies)
@@ -43,6 +48,9 @@ subroutine calc_GITM_sources(iBlock)
   real :: VelocityStage1(1:nLons,1:nLats,-1:nAlts+2,1:3)
   real :: VelocityH(1:nLons,1:nLats,-1:nAlts+2,1:3)
   real :: VelocityF(1:nLons,1:nLats,-1:nAlts+2,1:3)
+
+  real :: TmpVel(nLons, nLats, -1:nAlts+2)
+  real :: CondResult(nLons, nLats, 0:nAlts+1)
 
   ! Sub-timestep used in the multi-step conduction
   real :: DtCSLocal
@@ -164,13 +172,13 @@ subroutine calc_GITM_sources(iBlock)
      endif
 
      DtCSLocal = Dt/2.0
+     TmpTemp = Temperature(1:nLons, 1:nLats,-1:nAlts+2, iBlock) * &
+          TempUnit(1:nLons, 1:nLats,-1:nAlts+2)
+     TmpDiff = KappaTemp(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
+          Prandtl(1:nLons, 1:nLats, 0:nAlts+1)
+
      call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
-          Temperature(1:nLons, 1:nLats,-1:nAlts+2, iBlock) * &
-             TempUnit(1:nLons, 1:nLats,-1:nAlts+2), &
-            KappaTemp(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
-              Prandtl(1:nLons, 1:nLats, 0:nAlts+1), &
-                 tmp2(1:nLons, 1:nLats, 0:nAlts+1), &
-       MoleConduction(1:nLons, 1:nLats, 0:nAlts+1))
+          TmpTemp, TmpDiff, tmp2, MoleConduction)
 
      TemperatureStage1(1:nLons,1:nLats,0:nAlts+1) = &
            Temperature(1:nLons,1:nLats,0:nAlts+1,iBlock) + &
@@ -178,13 +186,13 @@ subroutine calc_GITM_sources(iBlock)
               TempUnit(1:nLons,1:nLats,0:nAlts+1)
 
      DtCSLocal = Dt/2.0
+     TmpTemp = TemperatureStage1(1:nLons, 1:nLats,-1:nAlts+2) * &
+          TempUnit(1:nLons, 1:nLats,-1:nAlts+2)
+     TmpDiff = KappaTemp(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
+          Prandtl(1:nLons, 1:nLats, 0:nAlts+1)
+
      call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
-          TemperatureStage1(1:nLons,1:nLats,-1:nAlts+2) * &
-                   TempUnit(1:nLons,1:nLats,-1:nAlts+2), &
-                  KappaTemp(1:nLons,1:nLats,0:nAlts+1,iBlock) + &
-                    Prandtl(1:nLons,1:nLats,0:nAlts+1), &
-                       tmp2(1:nLons,1:nLats,0:nAlts+1), &
-             MoleConduction(1:nLons,1:nLats,0:nAlts+1))
+          TmpTemp, TmpDiff, tmp2, MoleConduction)
 
      TemperatureH(1:nLons,1:nLats, 0:nAlts+1) = &
           TemperatureStage1(1:nLons,1:nLats,0:nAlts+1) + &
@@ -193,13 +201,13 @@ subroutine calc_GITM_sources(iBlock)
 
      ! Full Time Step Update
      DtCSLocal = Dt
+     TmpTemp = Temperature(1:nLons, 1:nLats,-1:nAlts+2, iBlock) * &
+          TempUnit(1:nLons, 1:nLats,-1:nAlts+2)
+     TmpDiff = KappaTemp(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
+          Prandtl(1:nLons, 1:nLats, 0:nAlts+1)
+
      call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
-          Temperature(1:nLons, 1:nLats,-1:nAlts+2, iBlock) * &
-             TempUnit(1:nLons, 1:nLats,-1:nAlts+2), &
-            KappaTemp(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
-              Prandtl(1:nLons, 1:nLats, 0:nAlts+1 ), &
-                 tmp2(1:nLons, 1:nLats, 0:nAlts+1 ), &
-       MoleConduction(1:nLons, 1:nLats, 0:nAlts+1))
+          TmpTemp, TmpDiff, tmp2, MoleConduction)
 
      TemperatureF(1:nLons,1:nLats, 0:nAlts+1) = &
           Temperature(1:nLons,1:nLats, 0:nAlts+1,iBlock) + &
@@ -225,6 +233,47 @@ subroutine calc_GITM_sources(iBlock)
   if (iDebugLevel > 4) write(*,*) "=====> Ion Drag", iproc
   if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
   
+  IonDrag = 0.0
+  VerticalIonDrag = 0.0
+
+  !
+  ! This method should work, but seems to be way, way too strong, and I don't know why:
+  !
+
+!  if (UseIonDrag) then
+!
+!     do iSpecies = 1, nSpecies
+!
+!        Weight = Mass(iSpecies) * NDensityS(1:nLons,1:nLats,1:nAlts,iSpecies,iBlock) / &
+!             Rho(1:nLons,1:nLats,1:nAlts,iBlock)
+!
+!        do iIon = 1, nIons-1
+!
+!           ! Generalize to use all collisions, AJR - Nov. 3, 2019
+!
+!           tmp = &
+!                IonCollisions(1:nLons,1:nLats,1:nAlts,iIon,iSpecies) * &
+!                IDensityS(1:nLons,1:nLats,1:nAlts,iIon,iBlock) * MassI(iIon) / &
+!                (NDensityS(1:nLons,1:nLats,1:nAlts,iSpecies,iBlock) * Mass(iSpecies))
+!
+!           do iDir = 1, 3
+!              IonDrag(:,:,:,iDir) = IonDrag(:,:,:,iDir) + &
+!                   tmp * &
+!                   (IVelocity(1:nLons,1:nLats,1:nAlts,iDir,iBlock) - &
+!                   Velocity(1:nLons,1:nLats,1:nAlts,iDir,iBlock)) * &
+!                   Weight
+!           enddo
+!
+!           VerticalIonDrag(:,:,:,iSpecies) = VerticalIonDrag(:,:,:,iSpecies) + &
+!                tmp * &
+!                (IVelocity(1:nLons,1:nLats,1:nAlts,iUp_,iBlock) - &
+!                VerticalVelocity(1:nLons,1:nLats,1:nAlts,iSpecies,iBlock))
+!
+!        enddo
+!     enddo
+!
+!  endif
+
   if (UseIonDrag) then
 
      tmp = Collisions(1:nLons,1:nLats,1:nAlts,iVIN_)*&
@@ -254,12 +303,8 @@ subroutine calc_GITM_sources(iBlock)
 
      enddo
 
-  else
-
-     IonDrag = 0.0
-     VerticalIonDrag = 0.0
-
   endif
+
 
   !\
   ! Viscosity ----------------------------------------------------
@@ -278,7 +323,7 @@ subroutine calc_GITM_sources(iBlock)
      ! Implicit method for Horizontal Winds.
      ! We assume that these winds (North, East)
      ! have a zero gradient at the top, so NeuBCS = .true.
-
+     
      NeuBCS = .true.
      do iDir = iEast_, iNorth_
 
@@ -287,57 +332,57 @@ subroutine calc_GITM_sources(iBlock)
 
         DtCSLocal = Dt/2.0
         VelocityStage0 = Velocity(1:nLons, 1:nLats,-1:nAlts+2, iDir,iBlock)
-        call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
-            VelocityStage0, & 
-            ViscCoef(1:nLons, 1:nLats, 0:nAlts+1      ) + &
-                 Rho110 * &
-  KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock) , &
-                 Rho110, &
-           Viscosity(1:nLons, 1:nLats, 0:nAlts+1, iDir))
+        TmpDiff = ViscCoef(1:nLons, 1:nLats, 0:nAlts+1) + &
+             Rho110 * KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock)
 
-     VelocityStage1(1:nLons,1:nLats, 0:nAlts+1, iDir ) = &
-           Velocity(1:nLons,1:nLats, 0:nAlts+1, iDir ,iBlock) + &
-          Viscosity(1:nLons,1:nLats, 0:nAlts+1, iDir  )
+        call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
+             VelocityStage0, TmpDiff, Rho110, CondResult)
+
+        Viscosity(1:nLons, 1:nLats, 0:nAlts+1, iDir) = CondResult
+
+        VelocityStage1(1:nLons,1:nLats, 0:nAlts+1, iDir ) = &
+             Velocity(1:nLons,1:nLats, 0:nAlts+1, iDir ,iBlock) + &
+             Viscosity(1:nLons,1:nLats, 0:nAlts+1, iDir  )
 
         if (iDebugLevel > 4) write(*,*) "=====> calc_conduct", iproc, iDir, 2
         if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
 
         DtCSLocal = Dt/2.0
+        TmpVel = VelocityStage1(1:nLons, 1:nLats,-1:nAlts+2, iDir)
+        TmpDiff = ViscCoef(1:nLons, 1:nLats, 0:nAlts+1) + &
+             Rho110 * KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock)
+
         call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
-              VelocityStage1(1:nLons, 1:nLats,-1:nAlts+2, iDir), & 
-                    ViscCoef(1:nLons, 1:nLats, 0:nAlts+1      ) + &
-                         Rho110 * &
-          KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock) , &
-                         Rho110, &
-                   Viscosity(1:nLons, 1:nLats, 0:nAlts+1,iDir))
+             TmpVel, TmpDiff, Rho110, CondResult)
 
-          VelocityH(1:nLons,1:nLats, 0:nAlts+1, iDir ) = &
-     VelocityStage1(1:nLons,1:nLats, 0:nAlts+1, iDir ) + &
-          Viscosity(1:nLons,1:nLats, 0:nAlts+1, iDir  )
+        Viscosity(1:nLons, 1:nLats, 0:nAlts+1,iDir) = CondResult
 
-     if (iDebugLevel > 4) write(*,*) "=====> calc_conduct", iproc, iDir, 3
-     if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
+        VelocityH(1:nLons,1:nLats, 0:nAlts+1, iDir ) = &
+             VelocityStage1(1:nLons,1:nLats, 0:nAlts+1, iDir ) + &
+             Viscosity(1:nLons,1:nLats, 0:nAlts+1, iDir  )
 
-     DtCSLocal = Dt
-     VelocityStage0 = Velocity(1:nLons, 1:nLats,-1:nAlts+2, iDir,iBlock)
-     call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
-            VelocityStage0, & 
-            ViscCoef(1:nLons, 1:nLats, 0:nAlts+1      ) + &
-                 Rho110 * &
-  KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock) , &
-                 Rho110, &
-           Viscosity(1:nLons, 1:nLats, 0:nAlts+1,iDir))
+        if (iDebugLevel > 4) write(*,*) "=====> calc_conduct", iproc, iDir, 3
+        if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
 
-     VelocityF(1:nLons,1:nLats, 0:nAlts+1, iDir) = &
-      Velocity(1:nLons,1:nLats, 0:nAlts+1, iDir,iBlock) + &
-     Viscosity(1:nLons,1:nLats, 0:nAlts+1, iDir  )
+        DtCSLocal = Dt
+        VelocityStage0 = Velocity(1:nLons, 1:nLats,-1:nAlts+2, iDir,iBlock)
+        TmpDiff = ViscCoef(1:nLons, 1:nLats, 0:nAlts+1) + &
+             Rho110 * KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock)
+        call calc_conduction(iBlock, DtCSLocal, NeuBCS, &
+             VelocityStage0, TmpDiff, Rho110, CondResult)
 
-      ! This is the final 2nd ORder Implicit Viscosity for 
-      ! the horizontal Bulk Winds
+        Viscosity(1:nLons, 1:nLats, 0:nAlts+1,iDir) = CondResult
+
+        VelocityF(1:nLons,1:nLats, 0:nAlts+1, iDir) = &
+             Velocity(1:nLons,1:nLats, 0:nAlts+1, iDir,iBlock) + &
+             Viscosity(1:nLons,1:nLats, 0:nAlts+1, iDir  )
+
+        ! This is the final 2nd ORder Implicit Viscosity for 
+        ! the horizontal Bulk Winds
         Viscosity(1:nLons,1:nLats, 0:nAlts+1, iDir ) = &
-  ( 2.0*VelocityH(1:nLons,1:nLats, 0:nAlts+1, iDir         ) - &
-        VelocityF(1:nLons,1:nLats, 0:nAlts+1, iDir         )) - &
-         Velocity(1:nLons,1:nLats, 0:nAlts+1,iDir,iBlock) 
+             ( 2.0*VelocityH(1:nLons,1:nLats, 0:nAlts+1, iDir         ) - &
+             VelocityF(1:nLons,1:nLats, 0:nAlts+1, iDir         )) - &
+             Velocity(1:nLons,1:nLats, 0:nAlts+1,iDir,iBlock) 
 
      enddo !iDir = iEast_, iNorth_
 
@@ -347,61 +392,70 @@ subroutine calc_GITM_sources(iBlock)
      ! JMB:  07/13/2017
      ! Add 2nd Order Viscosity for Each Species
      Viscosity(:,:,:,iUp_) = 0.0
-     do iSpecies = 1, nSpecies
 
-          DtCSLocal = Dt/2.0
-          VelocityStage0 = VerticalVelocity(1:nLons, 1:nLats,-1:nAlts+2, iSpecies,iBlock)
-          call calc_conduction(iBlock, DtCSLocal, VertVelNeuBCS(iSpecies), &
-               VelocityStage0, & 
-            (4.0/3.0)*ViscCoefS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies) + &
-       Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) * &
-             KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock) , &
-       Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock), &
-                      Viscosity(1:nLons, 1:nLats, 0:nAlts+1, iUp_))
 
-          VerticalVelocityStage1(1:nLons,1:nLats, 0:nAlts+1, iSpecies ) = &
-                VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1, iSpecies ,iBlock) + &
-                       Viscosity(1:nLons,1:nLats, 0:nAlts+1, iUp_  )
-
-          DtCSLocal = Dt/2.0
-          call calc_conduction(iBlock, DtCSLocal, VertVelNeuBCS(iSpecies), &
-         VerticalVelocityStage1(1:nLons, 1:nLats,-1:nAlts+2, iSpecies), & 
-            (4.0/3.0)*ViscCoefS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies) + &
-       Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) * &
-             KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock) , &
-       Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock), &
-                      Viscosity(1:nLons, 1:nLats, 0:nAlts+1, iUp_))
-
-               VerticalVelocityH(1:nLons,1:nLats, 0:nAlts+1, iSpecies ) = &
-          VerticalVelocityStage1(1:nLons,1:nLats, 0:nAlts+1, iSpecies ) + &
-                       Viscosity(1:nLons,1:nLats, 0:nAlts+1, iUp_  )
-
-          ! Full Time Step Update
-          DtCSLocal = Dt
-          VelocityStage0 = VerticalVelocity(1:nLons, 1:nLats,-1:nAlts+2, iSpecies,iBlock)
-          call calc_conduction(iBlock, DtCSLocal, VertVelNeuBCS(iSpecies), &
-               VelocityStage0, &
-            (4.0/3.0)*ViscCoefS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies) + &
-       Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) * &
-             KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock) , &
-       Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock), &
-                      Viscosity(1:nLons, 1:nLats, 0:nAlts+1, iUp_))
-
-          VerticalVelocityF(1:nLons,1:nLats, 0:nAlts+1, iSpecies) = &
-           VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1, iSpecies,iBlock) + &
-                  Viscosity(1:nLons,1:nLats, 0:nAlts+1, iUp_  )
-
-          ! Simply update the Vertical Winds here (rather than in add_sources)
-               VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1, iSpecies, iBlock  ) = &
-          2.0*VerticalVelocityH(1:nLons,1:nLats, 0:nAlts+1, iSpecies         ) - &
-              VerticalVelocityF(1:nLons,1:nLats, 0:nAlts+1, iSpecies         ) 
-
-      ! This is the final 2nd ORder Implicit Viscosity for 
-      ! the horizontal Bulk Winds
-        VerticalViscosityS(1:nLons,1:nLats, 0:nAlts+1, iSpecies ) = &
-  ( 2.0*VelocityH(1:nLons,1:nLats, 0:nAlts+1, iDir         ) - &
-        VelocityF(1:nLons,1:nLats, 0:nAlts+1, iDir         )) - &
-         VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1,iSpecies,iBlock) 
+     ! I think that the code below is not correct for the viscosity in the vertical winds.
+     ! I need to write a viscosity solver for the vertical winds in the horizontal direction.
+     
+!     do iSpecies = 1, nSpecies
+!
+!        DtCSLocal = Dt/2.0
+!        VelocityStage0 = VerticalVelocity(1:nLons, 1:nLats,-1:nAlts+2, iSpecies,iBlock)
+!        TmpDiff = (4.0/3.0)*ViscCoefS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies) + &
+!             Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) * &
+!             KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock)
+!        TmpMulFac = Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock)
+!
+!        call calc_conduction(iBlock, DtCSLocal, VertVelNeuBCS(iSpecies), &
+!             VelocityStage0, TmpDiff, TmpMulFac, CondResult)
+!
+!        Viscosity(1:nLons, 1:nLats, 0:nAlts+1, iUp_) = CondResult
+!
+!        VerticalVelocityStage1(1:nLons,1:nLats, 0:nAlts+1, iSpecies ) = &
+!             VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1, iSpecies ,iBlock) + &
+!             Viscosity(1:nLons,1:nLats, 0:nAlts+1, iUp_  )
+!
+!        DtCSLocal = Dt/2.0
+!        TmpVel = VerticalVelocityStage1(1:nLons, 1:nLats,-1:nAlts+2, iSpecies)
+!        TmpDiff = (4.0/3.0)*ViscCoefS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies) + &
+!             Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) * &
+!             KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock)
+!        TmpMulFac = Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock)
+!
+!        call calc_conduction(iBlock, DtCSLocal, VertVelNeuBCS(iSpecies), &
+!             TmpVel, TmpDiff, TmpMulFac, CondResult)
+!        Viscosity(1:nLons, 1:nLats, 0:nAlts+1, iUp_) = CondResult
+!
+!        VerticalVelocityH(1:nLons,1:nLats, 0:nAlts+1, iSpecies ) = &
+!             VerticalVelocityStage1(1:nLons,1:nLats, 0:nAlts+1, iSpecies ) + &
+!             Viscosity(1:nLons,1:nLats, 0:nAlts+1, iUp_  )
+!
+!        ! Full Time Step Update
+!        DtCSLocal = Dt
+!        VelocityStage0 = VerticalVelocity(1:nLons, 1:nLats,-1:nAlts+2, iSpecies,iBlock)
+!        TmpDiff = (4.0/3.0)*ViscCoefS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies) + &
+!             Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) * &
+!             KappaEddyDiffusion(1:nLons, 1:nLats, 0:nAlts+1, iBlock)
+!        TmpMulFac = Mass(iSpecies)*NDensityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock)
+!        call calc_conduction(iBlock, DtCSLocal, VertVelNeuBCS(iSpecies), &
+!             VelocityStage0, TmpDiff, TmpMulFac, CondResult)
+!        Viscosity(1:nLons, 1:nLats, 0:nAlts+1, iUp_) = CondResult
+!
+!        VerticalVelocityF(1:nLons,1:nLats, 0:nAlts+1, iSpecies) = &
+!             VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1, iSpecies,iBlock) + &
+!             Viscosity(1:nLons,1:nLats, 0:nAlts+1, iUp_  )
+!
+!        ! Simply update the Vertical Winds here (rather than in add_sources)
+!        VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1, iSpecies, iBlock  ) = &
+!             2.0*VerticalVelocityH(1:nLons,1:nLats, 0:nAlts+1, iSpecies         ) - &
+!             VerticalVelocityF(1:nLons,1:nLats, 0:nAlts+1, iSpecies         ) 
+!
+!        ! This is the final 2nd ORder Implicit Viscosity for 
+!        ! the horizontal Bulk Winds
+!        VerticalViscosityS(1:nLons,1:nLats, 0:nAlts+1, iSpecies ) = &
+!             ( 2.0*VelocityH(1:nLons,1:nLats, 0:nAlts+1, iDir         ) - &
+!             VelocityF(1:nLons,1:nLats, 0:nAlts+1, iDir         )) - &
+!             VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1,iSpecies,iBlock) 
 
      enddo ! iSpecies
 
