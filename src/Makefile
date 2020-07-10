@@ -107,6 +107,7 @@ OBJECTS = \
 	read_MHDIMF_Indices_new.o\
 	read_NGDC_Indices_new.o\
 	read_NOAAHPI_Indices_new.o\
+	read_OMNIWEB_Ap_Indices_new.o\
 	read_ACE_data.o\
 	read_sme.o\
 	user.o \
