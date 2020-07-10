@@ -456,8 +456,8 @@ subroutine calc_GITM_sources(iBlock)
 !             ( 2.0*VelocityH(1:nLons,1:nLats, 0:nAlts+1, iDir         ) - &
 !             VelocityF(1:nLons,1:nLats, 0:nAlts+1, iDir         )) - &
 !             VerticalVelocity(1:nLons,1:nLats, 0:nAlts+1,iSpecies,iBlock) 
-
-     enddo ! iSpecies
+!
+!     enddo ! iSpecies
 
   else
      Viscosity = 0.0
