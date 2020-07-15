@@ -31,9 +31,9 @@ subroutine write_output
         RealTime = get_timing("GITM")
         CompletedTime = (EndTime-CurrentTime)/(CurrentTime-RestartTime)
         ProjectedTime = RealTime * CompletedTime
-        write(*,"(a,i6,a,3i2.2,a,f10.2,a,f10.2)") "iStep ", iStep, &
-             ", Time : ",iTimeArray(4:6), &
-             ", RealTime : ",RealTime/60.0," min, Projected : ",&
+        write(*,"(a,i8,a,i4,2i2.2,a,3i2.2,a,f9.2,a,f9.2)") "iStep: ", iStep, &
+             ", Time: ",iTimeArray(1:3), ' ',iTimeArray(4:6), &
+             ", WallTime: ",RealTime/60.0," min, Proj : ",&
              ProjectedTime/60.0
      endif
   endif
