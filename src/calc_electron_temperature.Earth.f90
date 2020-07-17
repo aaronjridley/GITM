@@ -592,13 +592,13 @@ subroutine calc_electron_ion_sources(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
 !   where(alts .LE. 20000.) epsilon = 0.0001
 
    Qphe(1:nLons,1:nLats,1:nAlts) = epsilon(1:nLons,1:nLats,1:nAlts) * ( &
-        EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_4SP_,iBlock)*no(1:nLons,1:nLats,1:nAlts)  &
-        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO2P_,iBlock)*no2(1:nLons,1:nLats,1:nAlts)  &
-        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iN2P_,iBlock)*nn2(1:nLons,1:nLats,1:nAlts)  &
-        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iNP_,iBlock)*nnr(1:nLons,1:nLats,1:nAlts)  &
-        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iNOP_,iBlock)*nno(1:nLons,1:nLats,1:nAlts)  &
-        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_2DP_,iBlock)*no(1:nLons,1:nLats,1:nAlts)  &
-        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_2PP_,iBlock)*no(1:nLons,1:nLats,1:nAlts)  &
+        EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_4SP_,iBlock) & ! *no(1:nLons,1:nLats,1:nAlts)  &
+        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO2P_,iBlock) & ! *no2(1:nLons,1:nLats,1:nAlts)  &
+        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iN2P_,iBlock) & ! *nn2(1:nLons,1:nLats,1:nAlts)  &
+        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iNP_,iBlock)  & ! *nnr(1:nLons,1:nLats,1:nAlts)  &
+        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iNOP_,iBlock) & ! *nno(1:nLons,1:nLats,1:nAlts)  &
+        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_2DP_,iBlock) & ! *no(1:nLons,1:nLats,1:nAlts)  &
+        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_2PP_,iBlock) & !*no(1:nLons,1:nLats,1:nAlts)  &
         ) 
 
    if (DoCheckForNans) then

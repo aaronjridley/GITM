@@ -8,8 +8,7 @@ module ModEUV
 
   implicit none
 
-  real, dimension(nLons, nLats, nAlts) :: &
-       xSolar, ySolar
+  real, dimension(nLons, nLats, nAlts) :: xSolar, ySolar
 
   real, allocatable :: HeatingEfficiency_CB(:,:,:,:)
   real, allocatable :: eHeatingEfficiency_CB(:,:,:,:)
@@ -17,7 +16,6 @@ module ModEUV
   real, allocatable :: EuvTotal(:,:,:,:)
 
   real, allocatable :: EuvIonRateS(:,:,:,:,:)
-
   real, allocatable :: EuvDissRateS(:,:,:,:,:)
 
   real, allocatable :: Chapman(:,:,:,:,:)
@@ -25,7 +23,7 @@ module ModEUV
   real, dimension(nLons, nLats,nBlocksMax) :: &
        Sza, cosSza, sinSza, AveCosSza
 
-  real :: SunOrbitEccentricity
+  real :: SunPlanetDistance
 
   !-------------------------------------------------------------------
   ! The following section is devoted to setting up all of
@@ -37,6 +35,27 @@ module ModEUV
   integer, parameter :: Num_waveLengths_Low = 37
   integer, parameter :: Num_WaveLengths_High = 59
 
+
+  !
+  !
+  !
+
+  real :: photoion(Num_WaveLengths_High, nIons-1)
+  real :: PhotoElecIon(Num_WaveLengths_High, nIons-1)
+  integer :: PhotoIonFrom(nIons-1)
+  real :: photoabs(Num_WaveLengths_High, nSpeciesTotal)
+  real :: photodis(Num_WaveLengths_High, nSpeciesTotal)
+  real :: PhotoElecDiss(Num_WaveLengths_High, nSpecies)
+
+!  integer, parameter :: nEUVMax = 25
+!  integer :: nEUVion, nEUVdis, nPhotoEion, nPhotoEdis
+!  
+!  real :: EuvIonCross(nEuvMax, Num_WaveLengths_High)
+!  real :: EuvDisCross(nEuvMax, Num_WaveLengths_High)
+!  integer :: iEuvIonFrom(nEuvMax), iEuvIonTo(nEuvMax)
+!  integer :: iEuvDisFrom(nEuvMax), iEuvDisTo(nEuvMax,2)
+!  real, allocatable :: EuvIonRateGen(:,:,:,:,:)
+  
   integer, parameter :: nS2WaveLengths = 80
   integer, parameter :: nFlaresMax = 20
   integer, parameter :: nSeeLinesMax = 10000
@@ -141,6 +160,9 @@ module ModEUV
   real, allocatable :: nEuvIonRateS(:,:,:,:,:)
   real, allocatable :: nighteuvflux(:,:,:,:)
 
+  real :: night_photoion(Num_NightWaveLens, nIons-1)
+  real :: night_photoabs(Num_NightWaveLens, nSpecies)
+  
   real , dimension(Num_NightWaveLens) :: Night_PhotoIon_OPlus2D, &
        Night_PhotoIon_OPlus4S, Night_PhotoIon_OPlus2P, &
        Night_PhotoIon_N2, Night_PhotoIon_NO, Night_PhotoIon_O2, &

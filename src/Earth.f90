@@ -9,30 +9,25 @@
 !                          efficiency variable
 !-----------------------------------------------------------------------------
 
-subroutine fill_photo(photoion, photoabs, photodis)
+subroutine fill_photo
 
   use ModPlanet
   use ModEUV
 
   implicit none
 
-  real, intent(out) :: photoion(Num_WaveLengths_High, nIons-1)
-  real, intent(out) :: photoabs(Num_WaveLengths_High, nSpeciesTotal)
-  real, intent(out) :: photodis(Num_WaveLengths_High, nSpeciesTotal)
-
   integer :: iSpecies, iWave
 
   PhotoAbs = 0.0
   PhotoIon = 0.0
   PhotoDis = 0.0
+  PhotoElecIon = 0.0
+  PhotoElecDiss = 0.0
 
   photoabs(:,iO_3P_)  = PhotoAbs_O
   photoabs(:,iO2_)    = PhotoAbs_O2
+  photoabs(:,iN2_)    = PhotoAbs_N2
 
-  if (nSpecies > 2) then
-     iSpecies = iN2_
-     photoabs(:,iSpecies)    = PhotoAbs_N2
-  endif
   if (nSpecies > 3) then
      iSpecies = iN_4S_
      photoabs(:,min(iSpecies,nSpecies))    = PhotoIon_N
@@ -44,7 +39,6 @@ subroutine fill_photo(photoion, photoabs, photodis)
      photoabs(:,min(iSpecies,nSpecies))    = PhotoAbs_He
   endif
 
-
   ! This may need to be as defined below....
   photoion(:,iN2P_)   = PhotoIon_N2
   photoion(:,iO2P_)   = PhotoIon_O2
@@ -54,19 +48,35 @@ subroutine fill_photo(photoion, photoabs, photodis)
   photoion(:,iO_2PP_) = PhotoIon_OPlus2P
   photoion(:,iHeP_)   = PhotoAbs_He
 
-  do iWave = 1, Num_WaveLengths_High
-     if (waves(iWave) >= 1250.0 .and. wavel(iWave) <= 1750.0) then
-        PhotoDis(iWave, iO2_) = &
-             photoabs(iWave,iO2_) - PhotoIon(iWave, iO2P_)
-     endif
+  PhotoIonFrom(iN2P_)   = iN2_
+  PhotoIonFrom(iO2P_)   = iO2_
+  PhotoIonFrom(iNP_)    = iN_4S_
+  PhotoIonFrom(iO_4SP_) = iO_3P_
+  PhotoIonFrom(iO_2DP_) = iO_3P_ 
+  PhotoIonFrom(iO_2PP_) = iO_3P_ 
+  PhotoIonFrom(iHeP_)   = iHe_
 
-     if (waves(iWave) >= 800.0 .and. wavel(iWave) <= 1250.0) then
-        PhotoDis(iWave, iN2_) = &
-             photoabs(iWave,iN2_) - PhotoIon(iWave, iN2P_)
-     endif
+  ! Photoelectrons:
+  ! N2:
+  ! PE Ratio:  N2 + e- -> N2+
+  PhotoElecIon(:,iN2P_) = PhotoElec_N2_N2Plus
 
-  enddo
+  ! O2:
+  ! PE Ratio:  O2 + e- -> O2+
+  PhotoElecIon(:,iO2P_) = PhotoElec_O2_O2Plus
 
+  ! O:
+  ! O + e* -> O(4S)+ + e
+  PhotoElecIon(:,iO_4SP_) = PhotoElec_O_O4SPlus
+  ! O + e* -> O(2D)+ + e
+  PhotoElecIon(:,iO_2DP_) = PhotoElec_O_O2DPlus
+  ! O + e* -> O(2P)+ + e
+  PhotoElecIon(:,iO_2PP_) = PhotoElec_O_O2PPlus
+
+  ! Dissociation:
+  PhotoElecDiss(:,iN2_) = PhotoElec_N2_N4S
+  PhotoElecDiss(:,iO2_) = PhotoElec_O2_O3P
+  
   ! PE Ratio:  N2 + e- -> N(2D) + N(4S)
   pelecratio_N2(:,1) = PhotoElec_N2_N4S
   ! PE Ratio:  N2 + e- -> N+ + N(4S)
@@ -80,7 +90,36 @@ subroutine fill_photo(photoion, photoabs, photodis)
   pelecratio_O2(:,2) = PhotoElec_O2_O2Plus
   ! PE Ratio:  O2 + e- -> O(4S)+ + O(3P)
   pelecratio_O2(:,3) = PhotoElec_O2_OPlus
+  
+  do iWave = 1, Num_WaveLengths_High
+     if (waves(iWave) >= 1250.0 .and. wavel(iWave) <= 1750.0) then
+        PhotoDis(iWave, iO2_) = &
+             photoabs(iWave,iO2_) - PhotoIon(iWave, iO2P_)
+     endif
 
+     if (waves(iWave) >= 800.0 .and. wavel(iWave) <= 1250.0) then
+        PhotoDis(iWave, iN2_) = &
+             photoabs(iWave,iN2_) - PhotoIon(iWave, iN2P_)
+     endif
+
+  enddo
+
+  ! Night time ionization:
+  
+  night_photoion(:,iN2P_)    = Night_PhotoIon_N2 *1.e-4
+  night_photoion(:,iO2P_)    = Night_PhotoIon_O2 *1.e-4
+  night_photoion(:,iNOP_)    = Night_PhotoIon_NO *1.e-4
+  night_photoion(:,iO_4SP_)  = Night_PhotoIon_OPlus4S *1.e-4
+  night_photoion(:,iO_2DP_)  = Night_PhotoIon_OPlus2D *1.e-4
+  night_photoion(:,iO_2PP_)  = Night_PhotoIon_OPlus2P *1.e-4
+  night_photoion(:,iNP_)     = Night_PhotoIon_N *1.e-4
+
+  night_photoabs(:,iN2_)    = Night_PhotoAbs_N2 *1.e-4
+  night_photoabs(:,iO2_)    = Night_PhotoAbs_O2 *1.e-4
+  night_photoabs(:,iNO_)    = Night_PhotoAbs_NO *1.e-4
+  night_photoabs(:,iO_3P_)  = Night_PhotoAbs_O *1.e-4
+  night_photoabs(:,iN_4S_)  = Night_PhotoAbs_N *1.e-4
+  
 end subroutine fill_photo
 
 subroutine calc_planet_sources(iBlock)
@@ -212,16 +251,22 @@ subroutine calc_planet_sources(iBlock)
        PhotoElectronHeatingEfficiency * &
        35.0*1.602e-19*&
        ( &
-       EuvIonRateS(:,:,:,iO2P_,iBlock)* &
-       NDensityS(1:nLons,1:nLats,1:nAlts,iO2_,iBlock) + &
-       EuvIonRateS(:,:,:,iN2P_,iBlock)* &
-       NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock) + &
-       EuvIonRateS(:,:,:,iO_4SP_,iBlock)* &
-       NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock) + &
-       EuvIonRateS(:,:,:,iO_2DP_,iBlock)* &
-       NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock) + &
-       EuvIonRateS(:,:,:,iO_2PP_,iBlock)* &
-       NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock))
+       EuvIonRateS(:,:,:,iO2P_,iBlock) + &
+       EuvIonRateS(:,:,:,iN2P_,iBlock) + & !* &
+       EuvIonRateS(:,:,:,iO_4SP_,iBlock) + &
+       EuvIonRateS(:,:,:,iO_2DP_,iBlock) + &
+       EuvIonRateS(:,:,:,iO_2PP_,iBlock))
+       !( &
+       !EuvIonRateS(:,:,:,iO2P_,iBlock)* &
+       !NDensityS(1:nLons,1:nLats,1:nAlts,iO2_,iBlock) + &
+       !EuvIonRateS(:,:,:,iN2P_,iBlock) + & !* &
+       !NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock) + &
+       !EuvIonRateS(:,:,:,iO_4SP_,iBlock)* &
+       !NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock) + &
+       !EuvIonRateS(:,:,:,iO_2DP_,iBlock)* &
+       !NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock) + &
+       !EuvIonRateS(:,:,:,iO_2PP_,iBlock)* &
+       !NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock))
   
   PhotoElectronHeating(:,:,:,iBlock) = &
        PhotoElectronHeating(:,:,:,iBlock) / &
