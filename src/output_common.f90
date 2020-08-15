@@ -39,12 +39,14 @@ integer function bad_outputtype()
      if (OutputType(iOutputType) == '3DUSR')     IsFound = .true.
      if (OutputType(iOutputType) == '3DGLO')     IsFound = .true.
      if (OutputType(iOutputType) == '3DMAG')     IsFound = .true.
+     if (OutputType(iOutputType) == '3DHME')    IsFound = .true.
 
      if (OutputType(iOutputType) == '2DGEL')     IsFound = .true.
      if (OutputType(iOutputType) == '2DMEL')     IsFound = .true.
      if (OutputType(iOutputType) == '2DUSR')     IsFound = .true.
      if (OutputType(iOutputType) == '2DTEC')     IsFound = .true.
      if (OutputType(iOutputType) == '2DANC')     IsFound = .true.
+     if (OutputType(iOutputType) == '2DHME')    IsFound = .true.
 
      if (OutputType(iOutputType) == '1DALL')     IsFound = .true.
      if (OutputType(iOutputType) == '0DALL')     IsFound = .true.
@@ -54,6 +56,7 @@ integer function bad_outputtype()
      if (OutputType(iOutputType) == '1DCHM')     IsFound = .true.
      if (OutputType(iOutputType) == '1DCMS')     IsFound = .true.
      if (OutputType(iOutputType) == '1DUSR')     IsFound = .true.
+     if (OutputType(iOutputType) == '0DUSR')     IsFound = .true.
 
      if (.not. IsFound) then
         bad_outputtype = iOutputType
@@ -82,8 +85,9 @@ subroutine output(dir, iBlock, iOutputType)
   use ModTime
   use ModInputs
   use ModSources
-  use ModUserGITM, only: nVarsUser2d, nVarsUser3d, nVarsUser1d
+  use ModUserGITM, only: nVarsUser2d, nVarsUser3d, nVarsUser1d, nVarsUser0d
   use ModRCMR, only: RCMRFlag
+  use ModConstants, only: pi
 
   implicit none
 
@@ -95,7 +99,7 @@ subroutine output(dir, iBlock, iOutputType)
   character (len=24) :: cTime='', cTimeSave=''
   integer :: iiLat, iiLon, iiAlt, nGCs, cL=0
   integer :: iLon,iLat,iAlt, nVars_to_Write, nlines, iBLK,iSpecies, i
-  logical :: done, IsFirstTime = .true., IsThere
+  logical :: done, IsFirstTime = .true., IsThere, DoSaveHIMEPlot
 
   real :: LatFind, LonFind, AltFind
   real :: rLon, rLat, rAlt
@@ -109,6 +113,10 @@ subroutine output(dir, iBlock, iOutputType)
      cType = "1DALL"
   else if(iOutputType == -2) then
      cType = "0DALL"
+  else if(iOutputType == -3) then
+     cType = "1DUSR"
+  else if(iOutputType == -4) then
+     cType = "0DUSR"
   else
      cType = OutputType(iOutputType)
      if (cType(1:2) == "3D" .and. Is1D) then 
@@ -137,7 +145,7 @@ subroutine output(dir, iBlock, iOutputType)
      LonFind = CurrentSatellitePosition(iEast_)
      call BlockLocationIndex(LonFind,LatFind,iBlock,iiLon,iiLat,rLon,rLat)
 
-     if(iOutputType == -2) then
+     if(iOutputType == -2 .or. iOutputType == -4) then
         AltFind = CurrentSatellitePosition(iUp_)
         call BlockAltIndex(AltFind,iBlock,iiLon,iiLat,iiAlt,rAlt)
 
@@ -154,7 +162,30 @@ subroutine output(dir, iBlock, iOutputType)
      if (iiLon < 0 .or. iiLat < 0) return
   endif
 
-  if((iProc == 0.and.iBlock == 1).and.(iOutputType /= -1)) &
+  ! Xing Meng 2020-03-16: HIME type output, save output for user-defined region only
+  ! It only works under the assumption of one block per processor
+  if(cType(3:5) == "HME") then
+     DoSaveHIMEPlot = .false.
+     ! Save the current block if any cell of this block falls into the
+     ! user-defined region, set DoSaveHIMEPlot to true
+     do iLat=-1,nLats+2
+        do iLon=-1,nLons+2
+           if (Longitude(iLon,iBlock) >= HIMEPlotLonStart*pi/180.       &
+                .and. Longitude(iLon,iBlock) <= HIMEPlotLonEnd*pi/180.  &
+                .and. Latitude(iLat,iBlock) >= HIMEPlotLatStart*pi/180. &
+                .and. Latitude(iLat,iBlock) <= HIMEPlotLatEnd*pi/180.) then
+              DoSaveHIMEPlot = .true.
+              EXIT
+           endif
+        enddo
+     enddo
+     ! Do not write output at all if the current block is outside of the 
+     ! user-defined region. iProc=0 writes the header file
+     if (iProc /= 0 .and. DoSaveHIMEPlot == .false.) return
+  endif
+
+
+  if((iProc == 0.and.iBlock == 1).and.(iOutputType > -1)) &
        write(*,'(a,i7,i5,5i3)') &
        "Writing Output files ("//cType//") at iStep : ",&
        iStep, iTimeArray(1:6)
@@ -194,7 +225,7 @@ subroutine output(dir, iBlock, iOutputType)
 
   if ( IsFirstTime         .or. &
        .not. DoAppendFiles .or. &
-       (iOutputType /= -1 .and. .not. Is1D .and. iOutputType /= -2)) then
+       (iOutputType > -1 .and. .not. Is1D)) then
      if (UseCCMCFileName) then
         cTime = "GITM_"//cYearL//"-"//cMonth//"-"//cDay//"T" &
              //cHour//"-"//cMinute//"-"//cSecond
@@ -226,7 +257,10 @@ subroutine output(dir, iBlock, iOutputType)
              status="unknown",position='append')
      endif
   else
-     if (cType /= '2DMEL' .or. iBLK == 1) then
+     ! For HME type output, open file only if DoSaveHIMEPlot=T. This is for iProc=0,
+     ! because other iProcs with DoSaveHIMEPlot=F exit the subroutine earlier.
+     if ((cType(3:5) /= 'HME' .and. (cType /= '2DMEL' .or. iBLK == 1)) .or. &
+          (cType(3:5) == 'HME' .and. DoSaveHIMEPlot)) then
         inquire(file=dir//"/"//cType//"_"//cTime(1:cL)//"."//cBlock,&
              EXIST=IsThere)
         if (.not. DoAppendFiles .or. tSimulation < 0.1 .or. .not. IsThere) then
@@ -279,7 +313,7 @@ subroutine output(dir, iBlock, iOutputType)
 
   case ('3DION')
 
-     nvars_to_write = 8+nIons+6+4+4+1+4
+     nvars_to_write = 8+nIons+6+4+4+2+4
      ! AGB: added nu_in (1) + pressure gradient (3)
      call output_3dion(iBlock)
 
@@ -315,6 +349,13 @@ subroutine output(dir, iBlock, iOutputType)
      nvars_to_write = 5+4
      call output_3dmag(iBlock)
 
+  case ('3DHME')
+
+     nvars_to_write = 28+nSpeciesTotal+nSpecies+nIons
+     ! The following if statement is to not write output if DoSaveHIMEPlot=F 
+     ! for iProc=0. Header files are always written by iProc=0.
+     if (DoSaveHIMEPlot) call output_3dhme(iBlock)
+
   case ('2DGEL')
 
      nvars_to_write = 13
@@ -341,11 +382,33 @@ subroutine output(dir, iBlock, iOutputType)
      nvars_to_write = 10
      call output_2danc(iBlock)
 
+  case ('2DHME')
+
+     nvars_to_write = 5
+     if (DoSaveHIMEPlot) call output_2dhme(iBlock)
+
   case('1DALL')
 
      nGCs = 0
      nvars_to_write = 13+nSpeciesTotal+nSpecies+nIons !+nSpecies+5
      call output_1dall(iiLon, iiLat, iBlock, rLon, rLat, iOutputUnit_)
+
+  case ('1DGLO')
+
+     nGCs = 0
+     nvars_to_write = 6
+     call output_1dglo
+
+  case ('1DTHM')
+     
+     nGCs = 0
+     nvars_to_write = 14 + (nspeciestotal*2)
+     call output_1dthm
+
+  case ('1DNEW')
+     nGCs = 0
+     nvars_to_write = 15 + nSpeciesTotal + nSpecies + nIons + nSpecies
+     call output_1dnew(iiLon, iiLat, iBlock, rLon, rLat, iOutputUnit_)
 
   case ('0DALL')
      ! AGB: added output type used by Asad to allow satellite output at the
@@ -356,22 +419,12 @@ subroutine output(dir, iBlock, iOutputType)
      call output_0dall(iiLon, iiLat, iiAlt, iBlock, rLon, rLat, rAlt, &
           iOutputUnit_)
 
-  case ('1DGLO')
+  !!! Xing
+  case('0DUSR')
 
-     nGCs = 0
-     nvars_to_write = 6
-     call output_1dglo
-
- case ('1DTHM')
-     
-     nGCs = 0
-     nvars_to_write = 14 + (nspeciestotal*2)
-     call output_1dthm
-
-  case ('1DNEW')
-     nGCs = 0
-     nvars_to_write = 15 + nSpeciesTotal + nSpecies + nIons + nSpecies
-     call output_1dnew(iiLon, iiLat, iBlock, rLon, rLat, iOutputUnit_)
+     if (iBlock == 1) call set_nVarsUser0d
+     nvars_to_write = nVarsUser0d
+     call output_0duser(iiLon, iiLat, iiAlt, iBlock, rLon, rLat, rAlt, iOutputUnit_)
 
   end select
 
@@ -459,7 +512,9 @@ contains
           write(iOutputUnit_,*) "NO GHOSTCELLS"
        elseif (cType(3:5) =="GEL".or. &
             cType(3:5)=="TEC".or. &
-            cType(1:5)=="2DANC") then
+            cType(1:5)=="2DANC" .or. &
+            cType(3:5)=="HME") then
+          ! Xing: no ghost cells for HME for easy operations in PostProcess
           write(iOutputUnit_,"(I7,A)") nLats, " nLatitude"
           write(iOutputUnit_,"(I7,A)") nLons, " nLongitudes"
           write(iOutputUnit_,*) " "
@@ -754,10 +809,11 @@ contains
           write(iOutputUnit_,"(I7,A1,a)") iOff+9, " ", "B.F. Vertical"
           write(iOutputUnit_,"(I7,A1,a)") iOff+10, " ", "B.F. Magnitude"
           write(iOutputUnit_,"(I7,A1,a)") iOff+11, " ", "Potential"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+12, " ", "E.F. East"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+13, " ", "E.F. North"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+14, " ", "E.F. Vertical"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+15, " ", "E.F. Magnitude"
+          write(iOutputUnit_,"(I7,A1,a)") iOff+12, " ", "PotentialY"
+          write(iOutputUnit_,"(I7,A1,a)") iOff+13, " ", "E.F. East"
+          write(iOutputUnit_,"(I7,A1,a)") iOff+14, " ", "E.F. North"
+          write(iOutputUnit_,"(I7,A1,a)") iOff+15, " ", "E.F. Vertical"
+          write(iOutputUnit_,"(I7,A1,a)") iOff+16, " ", "E.F. Magnitude"
 
           ! AGB: 10/18/17: Add Collision Frequency and Pressure Gradient
           ! to output
@@ -770,7 +826,65 @@ contains
 
     endif
 
-    write(iOutputUnit_,*) ""
+    if (cType == "3DHME") then
+
+       write(iOutputUnit_,"(I7,A1,a)")  4, " ", "Rho"
+
+       iOff = 4
+       do iSpecies = 1, nSpeciesTotal
+          write(iOutputUnit_,"(I7,A1,a)")  iOff+iSpecies, " ", &
+               "["//cSpecies(iSpecies)//"]"
+       enddo
+
+       iOff = 4+nSpeciesTotal
+       write(iOutputUnit_,"(I7,A1,a)")  iOff+1, " ", "Temperature"
+       write(iOutputUnit_,"(I7,A1,a)")  iOff+2, " ", "V!Dn!N (east)"
+       write(iOutputUnit_,"(I7,A1,a)")  iOff+3, " ", "V!Dn!N (north)"
+       write(iOutputUnit_,"(I7,A1,a)")  iOff+4, " ", "V!Dn!N (up)"
+
+       iOff = 8+nSpeciesTotal
+       do iSpecies = 1, nSpecies
+          write(iOutputUnit_,"(I7,A1,a)")  iOff+iSpecies, " ",&
+               "V!Dn!N (up,"//cSpecies(iSpecies)//")"
+       enddo
+       
+       iOff = 8+nSpeciesTotal+nSpecies
+       do iIon = 1, nIons
+          write(iOutputUnit_,"(I7,A1,a)") iOff+iIon, " ", "["//cIons(iIon)//"]"
+       enddo
+
+       iOff = iOff+nIons
+       write(iOutputUnit_,"(I7,A1,a)") iOff+1, " ", "eTemperature"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+2, " ", "iTemperature"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+3, " ", "V!Di!N (east)"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+4, " ", "V!Di!N (north)"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+5, " ", "V!Di!N (up)"
+
+       iOff = iOff + 5
+       write(iOutputUnit_,"(I7,A1,a)") iOff+1, " ", "PhotoElectron Heating"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+2, " ", "Joule Heating"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+3, " ", "Auroral Heating"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+4, " ", "Specific Heat"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+5, " ", "Magnetic Latitude"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+6, " ", "Magnetic Longitude"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+7, " ", "B.F. East"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+8, " ", "B.F. North"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+9, " ", "B.F. Vertical"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+10, " ", "B.F. Magnitude"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+11, " ", "Potential"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+12, " ", "PotentialY"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+13, " ", "E.F. East"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+14, " ", "E.F. North"
+       write(iOutputUnit_,"(I7,A1,a)") iOff+15, " ", "E.F. Vertical"
+
+    endif
+
+    if (cType == "2DHME") then
+
+       write(iOutputUnit_,"(I7,A1,a)")  4, " ", "Local Time"       
+       write(iOutputUnit_,"(I7,A1,a)")  5, " ", "Vertical TEC"       
+
+    endif
 
   end subroutine output_header
 
@@ -840,7 +954,8 @@ contains
 
   subroutine write_head_blocks
 
-    if (cType(1:2) == "1D") return
+!!! Xing: for 0D do not write blocks either
+    if (cType(1:2) == "1D" .or. cType(1:2) == "0D") return
 
     write(iOutputUnit_,*) "BLOCKS"
     write(iOutputUnit_,"(I7,A)") 1, " nBlocksAlt"
@@ -1185,6 +1300,7 @@ subroutine output_3dion(iBlock)
                 !Geomagnetic B0(nLons,nLats,nAlts,4[iEast_,iNorth_,iUp_,iMag_],nBlocks)
                 B0(iLon,iLat,iAlt,:,iBlock), &  
                 potential(iLon,iLat,iAlt,iBlock), &
+                PotentialY(iLon,iLat,iAlt,iBlock), &
                 EField(iLon,iLat,iAlt,:), &  ! EField(Lon,lat,alt,3)
                 sqrt(sum(EField(iLon,iLat,iAlt,:)**2)), & ! magnitude of E.F.
                 Collisions(iLon,iLat,iAlt,iVIN_), & ! AGB: nu_in
@@ -1241,9 +1357,55 @@ end subroutine output_3dthm
 
 !----------------------------------------------------------------
 !
+! Xing Meng 2020-03-16: output 3DHME (HIME) for a user-specified region
+!
 !----------------------------------------------------------------
+subroutine output_3dhme(iBlock)
 
+  use ModGITM
+  use ModInputs
+  use ModSources
 
+  implicit none
+
+  integer, intent(in) :: iBlock
+  integer :: iAlt, iLat, iLon, i
+
+  do iAlt=-1,nAlts+2
+     do iLat=-1,nLats+2
+        do iLon=-1,nLons+2
+           write(iOutputUnit_)       &
+                Longitude(iLon,iBlock), &
+                Latitude(iLat,iBlock), &
+                Altitude_GB(iLon,iLat,iAlt,iBlock),&
+                Rho(iLon,iLat,iAlt,iBlock),&
+                (NDensityS(iLon,iLat,iAlt,i,iBlock),i=1,nSpeciesTotal), &
+                Temperature(iLon,iLat,iAlt,iBlock)*TempUnit(iLon,iLat,iAlt),&
+                (Velocity(iLon,iLat,iAlt,i,iBlock),i=1,3), &
+                (VerticalVelocity(iLon,iLat,iAlt,i,iBlock),i=1,nSpecies), &
+                (IDensityS(iLon,iLat,iAlt,i,iBlock),i=1,nIons), &
+                eTemperature(iLon,iLat,iAlt,iBlock), &
+                ITemperature(iLon,iLat,iAlt,iBlock), &
+                (Ivelocity(iLon,iLat,iAlt,i,iBlock),i=1,3), &
+                PhotoElectronHeating(iLon,iLat,iAlt,iBlock)*dt*TempUnit(iLon,iLat,iAlt), &
+                JouleHeating(iLon,iLat,iAlt)*dt*TempUnit(iLon,iLat,iAlt), &
+                AuroralHeating(iLon,iLat,iAlt)*dt*TempUnit(iLon,iLat,iAlt), &
+                cp(iLon,iLat,iAlt,iBlock), &
+                mLatitude(iLon,iLat,iAlt,iBlock), &
+                mLongitude(iLon,iLat,iAlt,iBlock), &
+                B0(iLon,iLat,iAlt,:,iBlock), &
+                Potential(iLon,iLat,iAlt,iBlock), &
+                PotentialY(iLon,iLat,iAlt,iBlock), &
+                EField(iLon,iLat,iAlt,:)
+        enddo
+     enddo
+  enddo
+
+end subroutine output_3dhme
+
+!----------------------------------------------------------------
+!
+!----------------------------------------------------------------
 subroutine output_1dthm
 
   use ModGITM
@@ -1621,6 +1783,36 @@ subroutine output_2dmel(iBlock)
 
 end subroutine output_2dmel
 
+!----------------------------------------------------------------
+!
+! Xing Meng 2020-03-16: output 2DHME for a user-specified region
+!
+!----------------------------------------------------------------
+subroutine output_2dhme(iBlock)
+
+  use ModGITM
+  use ModInputs
+
+  implicit none
+
+  integer, intent(in) :: iBlock
+  integer :: iLat, iLon, iAlt
+
+  call calc_vtec(iBlock)
+
+  iAlt = 1
+  do iLat=1,nLats
+     do iLon=1,nLons
+        write(iOutputUnit_)       &
+             Longitude(iLon,iBlock), &
+             Latitude(iLat,iBlock),&
+             Altitude_GB(iLon,iLat,iAlt,iBlock), &
+             LocalTime(iLon), &
+             VTEC(iLon,iLat,iBlock)
+     enddo
+  enddo
+
+end subroutine output_2dhme
 
 !----------------------------------------------------------------
 !

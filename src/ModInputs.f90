@@ -19,7 +19,7 @@ module ModInputs
 
   integer                   :: useDART = 0 !alexey, default is to not use DART
 
-  integer, parameter        :: iCharLen_     = 400
+  integer, parameter        :: iCharLen_     = 100
 
   integer                   :: iOutputUnit_  = UnitTmp_
   integer                   :: iInputUnit_   = UnitTmp_
@@ -49,6 +49,19 @@ module ModInputs
   logical :: UseIMF = .true.
   logical :: UseHpi = .true.
 
+  !!! Xing Meng Nov 2018 to use ISR E field in a local region + Weimer elsewhere
+  logical :: UseRegionalAMIE = .false.
+  logical :: UseTwoAMIEPotentials = .false.
+!  for future extenstions to use optical particle precip in a local region:
+!  logical :: UseRegionalAMIEPotential = .false.
+!  logical :: UseRegionalAMIEAurora = .false.
+  real(Real8_) :: AMIETimeStart, AMIETimeEnd
+  real    :: AMIELonStart = 208.0
+  real    :: AMIELonEnd = 216.0
+  real    :: AMIELatStart = 65.0
+  real    :: AMIELatEnd = 70.0
+  real    :: AMIEBoundaryWidth = 4.0  ! lat and lon width to transit to Weimer solution
+
   logical :: UseNewellAurora   = .false.
   logical :: UseNewellAveraged = .true.
   logical :: UseNewellMono     = .false.
@@ -60,22 +73,9 @@ module ModInputs
   logical :: UseOvationSMEMono = .false.
   logical :: UseOvationSMEWave = .false.
   logical :: UseOvationSMEIon  = .false.
-
-  logical :: UseAeModel        = .false.
-
-  logical :: UseCusp = .false.
-  real :: CuspAveE = 0.1
-  real :: CuspEFlux = 2.0
-  real :: CuspMltHalfWidth = 1.5
-  real :: CuspLatHalfWidth = 1.0
-  
-  logical :: DoOverwriteIonosphere = .false.
-  logical :: DoOverwriteWithIRI    = .true.
-  logical :: DoOverwriteWithSami   = .false.
-  character (len=iCharLen_) :: SamiInFile
   
   real :: AuroralHeightFactor = 1.0
-  logical :: NormalizeAuroraToHP = .false.
+  logical :: NormalizeAuroraToHP = .true.
 
   character (len=iCharLen_) :: TypeLimiter = "minmod"
 
@@ -91,7 +91,6 @@ module ModInputs
   integer :: iAltTest = -1
   integer :: iDebugLevel = 0
   logical :: UseBarriers = .false.
-  logical :: DoCheckForNans = .false.
   integer :: nSteps = 10
 
   logical :: UsePerturbation = .false., DuringPerturb = .false.
@@ -109,6 +108,12 @@ module ModInputs
   real(Real8_) :: PlotTimeChangeStart, PlotTimeChangeEnd
 
   logical :: DoAppendFiles = .false.
+
+  ! Xing Meng March 2020 -- Save HIME type output in a user-specified region
+  real    :: HIMEPlotLonStart = 208.0
+  real    :: HIMEPlotLonEnd = 216.0
+  real    :: HIMEPlotLatStart = 65.0
+  real    :: HIMEPlotLatEnd = 70.0
 
   real :: DtRestart   = 60.0*60.0
   real :: DtReport    =  1.0*60.0
@@ -160,19 +165,14 @@ module ModInputs
 
   logical :: UseApex = .true.
   logical :: UseMSIS = .true.
-  real, dimension(25) :: sw_msis = 1.0
   logical :: UseIRI  = .true.
   logical :: UseMSISTides  = .true.
   logical :: UseMSISOnly   = .false.
   logical :: UseGSWMTides  = .false.
   logical :: UseWACCMTides = .false.
-  logical :: UseMSISDiurnal = .true.
-  logical :: UseMSISSemidiurnal = .true.
-  logical :: UseMSISTerdiurnal = .true.
   logical :: UseStatisticalModelsOnly = .false.
   real    :: DtStatisticalModels = 3600.0
-  logical :: UseOBCExperiment = .false.
-  
+
   logical :: UseGswmComp(4) = .true.
 
   real :: MagneticPoleRotation = 0.0
@@ -233,11 +233,6 @@ module ModInputs
   logical :: UseImprovedIonAdvection = .false.
   logical :: UseNighttimeIonBCs = .false.
   real :: MinTEC = 2.0
-  logical :: UseImplicitFieldAlignedMomentum = .false.
-  real    :: DivIonVelCoef = 1.0
-
-  logical :: UseGitmBCs = .false.
-  character(len=iCharLen_) :: GitmBCsDir
   
   logical :: UseSolarHeating   = .true.
   logical :: UseJouleHeating   = .true.

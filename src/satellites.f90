@@ -197,6 +197,11 @@ subroutine move_satellites
   if (RCMRFlag) iOut = -2
 
   do iSat = 1, nSats
+
+     !!! Xing: this is temporary, only works for 1DUSR or 0DUSR
+     if(SatOutputtype(iSat) == '1DUSR') iOut = -3
+     if(SatOutputtype(iSat) == '0DUSR') iOut = -4
+
 if (SatDtPlot(iSat) < 0) then
 !Then we only write the sat file if it is the time listed in the input file
 iLine = iSatCurrentIndex(iSat)

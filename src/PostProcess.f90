@@ -15,7 +15,8 @@ program PostProcess
   integer, parameter :: nMaxVars = 200
   integer :: Position = 0, PositionSave = 0
 
-  logical :: IsThere, DoWrite, UseGhostCells
+  logical :: IsThere, DoWrite, UseGhostCells, IsHIMEType
+
 
   integer :: iYear,iMonth,iDay,iHour,iMinute,iSecond,iMilli
   integer :: nBlocksLon, nBlocksLat, nBlocksAlt
@@ -31,6 +32,9 @@ program PostProcess
   character (len=40) :: Variables(nMaxVars)
 
   integer :: i, iVar, iBlock
+  
+  integer,  allocatable :: IsHIMEBlock(:,:,:)
+  integer :: iHIMEBlockStart(3), nHIMEBlocksLon, nHIMEBlocksLat, nHIMEBlocksAlt
 
   logical :: IsEnd = .false., IsDone = .false., IsFirstTime = .true.
 
@@ -51,6 +55,13 @@ program PostProcess
   if (.not.IsThere) then
      write(*,*) "Could not find header file : ",FileName(1:iStart)//".header"
      stop
+  endif
+
+  ! Xing Meng 2020-03-17: HIME type output requires special treatment
+  if (FileName(3:5) == "HME") then
+     IsHIMEType = .true.
+  else
+     IsHIMEType = .false.
   endif
 
   open(iInputUnitH_, file=FileName(1:iStart)//".header",status="old")
@@ -155,7 +166,9 @@ program PostProcess
              nLonsTotal, nLatsTotal, nAltsTotal, " (Predicted Values)"
 
         allocate(AllData(nLonsTotal,nLatsTotal,nAltsTotal,nVars))
-
+        ! IsHIMEBlock is a flag array to indicate which blocks are saved for HIME type
+        if (IsHIMEType) allocate(IsHIMEBlock(nBlocksLon,nBlocksLat,nBlocksAlt))
+        
         if (.not. IsEnd .or. IsFirstTime) then
            write(*,*) "Not Appending...."
            open(iOutputUnit_,file=FileName(1:iStart)//".bin",&
@@ -165,19 +178,11 @@ program PostProcess
            open(iOutputUnit_,file=FileName(1:iStart)//".bin",&
                 status="old",form="unformatted",position="append")
         endif
-
-        write(iOutputUnit_) Version
-        write(iOutputUnit_) nLonsTotal, nLatsTotal, nAltsTotal
-        write(iOutputUnit_) nVars
-        do iVar=1,nVars
-           write(iOutputUnit_) Variables(iVar)
-        enddo
-
-        write(iOutputUnit_) iYear, iMonth, iDay, iHour, iMinute, iSecond, iMilli
-
+        
         nAltsTotal = 0
         nLatsTotal = 0
         nLonsTotal = 0
+        IsHIMEBlock = 0
 
         iBlock = 1
         do iBlockAlt = 1, nBlocksAlt
@@ -187,9 +192,20 @@ program PostProcess
                  write(cBlock,'(a2,i4.4)') ".b",iBlock
 
                  inquire(file=FileName(1:iStart)//cBlock,EXIST=IsThere)
-                 if (.not.IsThere) then
+                 if (.not.IsThere .and. .not. IsHIMEType) then
                     write(*,*) "Must be a satellite file...."
                     cBlock = ".sat"
+                 endif
+
+                 if (IsHIMEType) then
+                    if(.not. IsThere) then                       
+                       ! for HIME type output, not every processor writes output
+                       iBlock = iBlock + 1
+                       CYCLE
+                    else
+                       ! flag this block
+                       IsHIMEBlock(iBlockLon, iBlockLat, iBlockAlt) = 1
+                    endif
                  endif
 
                  !write(*,*) "Reading File : ",FileName(1:iStart)//cBlock
@@ -267,15 +283,56 @@ program PostProcess
            enddo
         enddo
 
-        do iVar = 1, nVars
-           write(iOutputUnit_) AllData(:,:,:,iVar)
+        ! Correct nLonsTotal, nLatsTotal, and nAltsTotal for HME
+        if (IsHIMEType) then
+           ! iHIMEBlockStart is a 3-element array defining the first block indices 
+           ! along lon, lat, and alt for the HIME output region.
+           iHIMEBlockStart = maxloc(IsHIMEBlock)
+
+           ! count "1"s in IsHIMEBlock, which gives the number of blocks covered by
+           ! the HIME output region in each direction.
+           nHIMEBlocksLon = count(IsHIMEBlock(:,iHIMEBlockStart(2),iHIMEBlockStart(3)) == 1)
+           nHIMEBlocksLat = count(IsHIMEBlock(iHIMEBlockStart(1),:,iHIMEBlockStart(3)) == 1)
+           nHIMEBlocksAlt = count(IsHIMEBlock(iHIMEBlockStart(1),iHIMEBlockStart(2),:) == 1)
+        
+           ! Correct the total numbers of cells along three directions
+           nLonsTotal = nHIMEBlocksLon*nLons
+           nLatsTotal = nHIMEBlocksLat*nLats
+           nAltsTotal = nHIMEBlocksAlt*nAlts
+        endif
+
+        ! Write *bin file
+        write(iOutputUnit_) Version
+        write(iOutputUnit_) nLonsTotal, nLatsTotal, nAltsTotal
+        write(iOutputUnit_) nVars
+        do iVar=1,nVars
+           write(iOutputUnit_) Variables(iVar)
         enddo
+
+        write(iOutputUnit_) iYear, iMonth, iDay, iHour, iMinute, iSecond, iMilli
+
+        if (.not. IsHIMEType) then
+           do iVar = 1, nVars
+              write(iOutputUnit_) AllData(:,:,:,iVar)
+           enddo
+        else 
+           do iVar = 1, nVars
+              ! Write the data from the HIME output region. The rest should be zeros.
+              write(iOutputUnit_) AllData((iHIMEBlockStart(1)-1)*nLons+1: &
+                (iHIMEBlockStart(1)-1)*nLons+nLonsTotal, &
+                (iHIMEBlockStart(2)-1)*nLats+1: &
+                (iHIMEBlockStart(2)-1)*nLats+nLatsTotal, &
+                (iHIMEBlockStart(3)-1)*nAlts+1: &
+                (iHIMEBlockStart(3)-1)*nAlts+nAltsTotal,iVar)
+           enddo
+        endif
 
         write(*,*) "Output :"
         write(*,*) "  nLons, nLats, nAlts : ", nLonsTotal, nLatsTotal, nAltsTotal
      
         close(iOutputUnit_)
         deallocate(AllData)
+        if (IsHIMEType) deallocate(IsHIMEBlock)
 
      endif
 
