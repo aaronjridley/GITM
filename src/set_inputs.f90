@@ -52,6 +52,8 @@ subroutine set_inputs
   IsDone = .false.
   iLine  = 1
 
+  call IO_set_ap_single(10.0)
+
   do while (.not. IsDone)
 
      cLine = cInputText(iLine)
@@ -328,6 +330,30 @@ subroutine set_inputs
               if (UseWACCMTides) UseMSISOnly = .true.
            endif
 
+        case ("#MSISTIDES")
+           call read_in_logical(UseMSISDiurnal, iError)
+           call read_in_logical(UseMSISSemidiurnal, iError)
+           call read_in_logical(UseMSISTerdiurnal, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #MSISTIDES:'
+              write(*,*) 'This says how to use msis tides.  '
+              write(*,*) 'The first one is using diurnal tide'
+              write(*,*) 'The first one is using semi-diurnal tide'
+              write(*,*) 'The first one is using terdiurnal tide'
+              write(*,*) '#MSISTIDES'
+              write(*,*) 'UseMSISDiurnal        (logical)'
+              write(*,*) 'UseMSISSemidiurnal    (logical)'
+              write(*,*) 'UseMSISTerdiurnal     (logical)'
+           endif
+
+        case ("#MSISOBC")
+           call read_in_logical(UseOBCExperiment, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #MSISOBC:'
+              write(*,*) '#MSISOBC'
+              write(*,*) 'UseOBCExperiment        (logical)'
+           endif
+
         !xianjing
         case("#USESECONDSINFILENAME")
            call read_in_logical(UseSecondsInFilename,iError)
@@ -348,6 +374,31 @@ subroutine set_inputs
               write(*,*) '#DUST'
               write(*,*) 'cDustFile'
               write(*,*) 'cConrathFile'
+           endif
+
+        case ("#OVERWRITEIONOSPHERE")
+           call read_in_logical(DoOverwriteIonosphere,iError)
+           call read_in_logical(DoOverwriteWithIRI,iError)
+           call read_in_logical(DoOverwriteWithSami,iError)
+           if (DoOverwriteWithSami) &
+                call read_in_string(SamiInFile,iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #OVERWRITEIONOSPHERE'
+              write(*,*) '#OVERWRITEIONOSPHERE'
+              write(*,*) 'DoOverwriteIonosphere'
+              write(*,*) 'DoOverwriteWithIRI'
+              write(*,*) 'DoOverwriteWithSami'
+              write(*,*) 'SamiInFile'
+           endif
+
+        case ("#GITMBCS")
+           call read_in_logical(UseGitmBCs,iError)
+           call read_in_string(GitmBCsDir,iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #GITMBCS'
+              write(*,*) '#GITMBCS'
+              write(*,*) 'UseGitmBCs'
+              write(*,*) 'GitmBCsDir'
            endif
 
         case ("#DUST")
@@ -573,6 +624,32 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
+        case ("#AEMODEL")
+           call read_in_logical(UseAeModel, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #AEMODEL'
+              write(*,*) 'This is for using Dongjies aurora.'
+              write(*,*) ''
+              write(*,*) '#AEMODEL'
+              write(*,*) 'UseAeModel        (logical)'
+              IsDone = .true.
+           endif
+
+        case ("#USECUSP")
+           call read_in_logical(UseCusp, iError)
+           call read_in_real(CuspAveE, iError)
+           call read_in_real(CuspEFlux, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #USECUSP'
+              write(*,*) 'This is for specifying a cusp.'
+          write(*,*) ''
+              write(*,*) '#USECUSP'
+              write(*,*) 'UseCusp        (logical)'
+              write(*,*) 'CuspAveE       (real)'
+              write(*,*) 'CuspEFlux      (real)'
+              IsDone = .true.
+           endif
+
         case ("#AMIEFILES")
            call read_in_string(cAMIEFileNorth, iError)
            call read_in_string(cAMIEFileSouth, iError)
@@ -644,6 +721,16 @@ subroutine set_inputs
               if (BetaLimiter > 2.0) BetaLimiter = 2.0
               if (iDebugLevel > 2) &
                    write(*,*) "===>Beta Limiter set to ",BetaLimiter
+           endif
+
+        case ("#NANCHECK")
+           call read_in_logical(DoCheckForNans, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #NANCHECK:'
+              write(*,*) 'This will turn on all of the NaN checks in the code!'
+              write(*,*) '#NANCHECK'
+              write(*,*) 'DoCheckForNans (logical)'
+              IsDone = .true.
            endif
 
         case ("#DEBUG")
@@ -828,7 +915,16 @@ subroutine set_inputs
               write(*,*) "DaysPerYearInput           (real)"
               write(*,*) "DaysPerYearInput           (real)"
            endif
-           
+        
+        case ("#USEIMPLICITIONMOMENTUM")
+           call read_in_logical(UseImplicitFieldAlignedMomentum, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #USEIMPLICITIONMOMENTUM:'
+              write(*,*) ''
+              write(*,*) '#USEIMPLICITIONMOMENTUM'
+              write(*,*) "UseImplicitFieldAlignedMomentum      (logical)"
+           endif
+
         case ("#USEIMPROVEDIONADVECTION")
            call read_in_logical(UseImprovedIonAdvection, iError)
            call read_in_logical(UseNighttimeIonBCs, iError)
@@ -1521,6 +1617,24 @@ subroutine set_inputs
 
            if (iError /= 0) then 
               write(*,*) "read indices was NOT successful (NOAA file)"
+              IsDone = .true.
+           else
+              UseVariableInputs = .true.
+           endif
+        
+        case ("#OMNIWEB_AP_INDICES")
+           cTempLines(1) = cLine
+           call read_in_string(cTempLine, iError)
+           write(*,*) cTempLine
+           cTempLines(2) = cTempLine
+           cTempLines(3) = " "
+           cTempLines(4) = "#END"
+
+           call IO_set_inputs(cTempLines)
+           call read_OMNIWEB_Ap_Indices_new(iError,CurrentTime,EndTime)
+
+           if (iError /= 0) then
+              write(*,*) "read indices was NOT successful (OMNIWEB Ap file)"
               IsDone = .true.
            else
               UseVariableInputs = .true.

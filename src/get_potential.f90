@@ -10,12 +10,13 @@ subroutine init_get_potential
   use ModUserGITM
   use ModNewell
   use ModOvationSME
+  use ModAeAuroralModel
   use ModEIE_Interface, only: EIEr3_HaveLats, EIEr3_HaveMLTs
 
   implicit none
 
-  character (len=100), dimension(100) :: Lines
-  character (len=100) :: TimeLine
+  character (len=iCharLen_), dimension(100) :: Lines
+  character (len=iCharLen_) :: TimeLine
   real    :: bz
 
 !  real    :: dynamo(-1:nLons+2,-1:nLats+2)
@@ -27,6 +28,7 @@ subroutine init_get_potential
   iError = 0
 
   if (.not.IsFirstTime .or. IsFramework) return
+  call report("init_get_potential",2)
 
   IsFirstTime = .false.
 
@@ -39,6 +41,14 @@ subroutine init_get_potential
      call read_ovationsm_files
   endif
 
+  if (UseAeModel) then
+     call read_ae_model_files(iError)
+  endif
+
+  call report("AMIE vs Weimer",4)
+
+  if (index(cAMIEFileNorth,"none") > 0) then
+
   !!! Xing Meng Nov 2018 added UseRegionalAMIE to set up a local region
   !!! with the potential from AMIE files and Weimer potential elsewhere
   if (index(cAMIEFileNorth,"none") > 0 .or. UseRegionalAMIE) then
@@ -47,7 +57,7 @@ subroutine init_get_potential
      Lines(2) = "EIE/"
 
      UseHPI = .true.
-     if (UseNewellAurora .or. UseOvationSME) UseHPI = .false.
+     if (UseNewellAurora .or. UseOvationSME .or. UseAeModel) UseHPI = .false.
 
      call get_IMF_Bz(CurrentTime+TimeDelayHighLat, bz, iError)
 
@@ -109,6 +119,8 @@ subroutine init_get_potential
   else
      Lines(11) = "#END"
   endif
+
+  call report("EIE_stuff",4)
 
   call EIE_set_inputs(Lines)
 
@@ -277,6 +289,7 @@ subroutine get_potential(iBlock)
   use ModUserGITM
   use ModNewell
   use ModOvationSME, only: run_ovationsme
+  use ModAeAuroralModel, only: run_ae_model
   use ModEIE_Interface, only: UAl_UseGridBasedEIE
   use ModMpi
 
@@ -293,6 +306,8 @@ subroutine get_potential(iBlock)
 
   real, dimension(-1:nLons+2,-1:nLats+2,1:2) :: TempPotential, AMIEPotential
   real, dimension(-1:nLons+2,-1:nLats+2) :: Grid, dynamo, SubMLats, SubMLons
+  real, dimension(-1:nLons+2,-1:nLats+2) :: lats, mlts, EFlux
+  real :: by, bz, CuspLat, CuspMlt
 
   call start_timing("get_potential")
   call report("get_potential",2)
@@ -311,7 +326,7 @@ subroutine get_potential(iBlock)
   if (floor((tSimulation-dt)/DtPotential) /= &
        floor((tsimulation)/DtPotential) .or. IsFirstPotential(iBlock)) then
 
-     if (iDebugLevel > 1) write(*,*) "==> Setting up IE Grid"
+     call report("Setting up IE Grid",1)
 
      call init_get_potential
      call UA_SetnMLTs(nLons+4)
@@ -322,7 +337,7 @@ subroutine get_potential(iBlock)
      endif
      call UA_SetNorth
 
-     if (iDebugLevel > 1) write(*,*) "==> Getting Potential"
+     call report("Getting Potential",1)
 
      Potential(:,:,:,iBlock) = 0.0
 
@@ -537,7 +552,7 @@ subroutine get_potential(iBlock)
   if (floor((tSimulation-dt)/DtAurora) /= &
        floor((tsimulation)/DtAurora) .or. IsFirstAurora(iBlock)) then
 
-     if (iDebugLevel > 1) write(*,*) "==> Getting Aurora"
+     call report("Getting Aurora",1)
 
      iAlt = nAlts+1
 
@@ -545,6 +560,8 @@ subroutine get_potential(iBlock)
         call run_newell(iBlock)
      elseif (UseOvationSME) then 
         call run_ovationsme(StartTime, CurrentTime, iBlock)
+     elseif (UseAeModel) then
+        call run_ae_model(CurrentTime, iBlock)
      else
 
         call UA_SetGrid(                    &
@@ -589,6 +606,53 @@ subroutine get_potential(iBlock)
         endif
 
      endif
+
+    if (UseCusp) then
+
+       lats = abs(MLatitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock))
+
+       if (maxval(lats) > 50) then
+
+          mlts = mod(MLT(-1:nLons+2,-1:nLats+2,iAlt)+24.0,24.0)
+
+          call get_IMF_Bz(CurrentTime+TimeDelayHighLat, bz, iError)
+          call get_IMF_By(CurrentTime+TimeDelayHighLat, by, iError)
+
+          ! If we are in the southern hemisphere, reverse by:
+          if (lats(nLons/2, nLats/2) < 0.0) by = -by
+
+          if (bz > 0) then
+             ! Newell et al., 1988:
+             CuspLat = 77.2 + 0.11 * bz
+             ! Asai et al., Earth Planets Space, 2005:
+             CuspMlt = 11.755 + 0.169 * by
+          else
+             ! Asai et al., Earth Planets Space, 2005:
+             CuspMlt = 11.949 + 0.0826 * by
+             ! Zhang et al., JGR, 2005:
+             if (Bz > -10) then
+                CuspLat = 77.2 + 1.1 * bz
+             else
+                CuspLat = 21.7 * exp(0.1 * bz) + 58.2
+             endif
+          endif
+
+          EFlux = CuspEFlux * &
+               exp(-abs(lats - CuspLat)/CuspLatHalfWidth) *  &
+               exp(-abs(mlts - CuspMlt)/CuspMltHalfWidth)
+
+          do iLat=-1,nLats+2
+             do iLon=-1,nLons+2
+                if (EFlux(iLon,iLat) > 0.1) then
+                   ElectronEnergyFlux(iLon,iLat) = EFlux(iLon,iLat)
+                   ElectronAverageEnergy(iLon,iLat) = CuspAveE
+                endif
+             enddo
+          enddo
+
+       endif
+
+    endif
 
      if (iDebugLevel > 2) &
           write(*,*) "==> Max, electron_ave_ene : ", &

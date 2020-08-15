@@ -19,7 +19,7 @@ module ModInputs
 
   integer                   :: useDART = 0 !alexey, default is to not use DART
 
-  integer, parameter        :: iCharLen_     = 100
+  integer, parameter        :: iCharLen_     = 400
 
   integer                   :: iOutputUnit_  = UnitTmp_
   integer                   :: iInputUnit_   = UnitTmp_
@@ -74,8 +74,21 @@ module ModInputs
   logical :: UseOvationSMEWave = .false.
   logical :: UseOvationSMEIon  = .false.
   
+  logical :: UseAeModel        = .false.
+
+  logical :: UseCusp = .false.
+  real :: CuspAveE = 0.1
+  real :: CuspEFlux = 2.0
+  real :: CuspMltHalfWidth = 1.5
+  real :: CuspLatHalfWidth = 1.0
+
+  logical :: DoOverwriteIonosphere = .false.
+  logical :: DoOverwriteWithIRI    = .true.
+  logical :: DoOverwriteWithSami   = .false.
+  character (len=iCharLen_) :: SamiInFile
+
   real :: AuroralHeightFactor = 1.0
-  logical :: NormalizeAuroraToHP = .true.
+  logical :: NormalizeAuroraToHP = .false.
 
   character (len=iCharLen_) :: TypeLimiter = "minmod"
 
@@ -91,6 +104,7 @@ module ModInputs
   integer :: iAltTest = -1
   integer :: iDebugLevel = 0
   logical :: UseBarriers = .false.
+  logical :: DoCheckForNans = .false.
   integer :: nSteps = 10
 
   logical :: UsePerturbation = .false., DuringPerturb = .false.
@@ -165,13 +179,18 @@ module ModInputs
 
   logical :: UseApex = .true.
   logical :: UseMSIS = .true.
+  real, dimension(25) :: sw_msis = 1.0
   logical :: UseIRI  = .true.
   logical :: UseMSISTides  = .true.
   logical :: UseMSISOnly   = .false.
   logical :: UseGSWMTides  = .false.
   logical :: UseWACCMTides = .false.
+  logical :: UseMSISDiurnal = .true.
+  logical :: UseMSISSemidiurnal = .true.
+  logical :: UseMSISTerdiurnal = .true.
   logical :: UseStatisticalModelsOnly = .false.
   real    :: DtStatisticalModels = 3600.0
+  logical :: UseOBCExperiment = .false.
 
   logical :: UseGswmComp(4) = .true.
 
@@ -233,7 +252,12 @@ module ModInputs
   logical :: UseImprovedIonAdvection = .false.
   logical :: UseNighttimeIonBCs = .false.
   real :: MinTEC = 2.0
-  
+  logical :: UseImplicitFieldAlignedMomentum = .false.
+  real    :: DivIonVelCoef = 1.0
+
+  logical :: UseGitmBCs = .false.
+  character(len=iCharLen_) :: GitmBCsDir
+
   logical :: UseSolarHeating   = .true.
   logical :: UseJouleHeating   = .true.
   logical :: UseAuroralHeating = .true.
