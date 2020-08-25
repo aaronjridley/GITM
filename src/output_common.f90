@@ -313,7 +313,7 @@ subroutine output(dir, iBlock, iOutputType)
 
   case ('3DION')
 
-     nvars_to_write = 8+nIons+6+4+4+2+4
+     nvars_to_write = 8+nIons+6+4+4+2+3
      ! AGB: added nu_in (1) + pressure gradient (3)
      call output_3dion(iBlock)
 
@@ -809,11 +809,10 @@ contains
           write(iOutputUnit_,"(I7,A1,a)") iOff+9, " ", "B.F. Vertical"
           write(iOutputUnit_,"(I7,A1,a)") iOff+10, " ", "B.F. Magnitude"
           write(iOutputUnit_,"(I7,A1,a)") iOff+11, " ", "Potential"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+12, " ", "PotentialY"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+13, " ", "E.F. East"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+14, " ", "E.F. North"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+15, " ", "E.F. Vertical"
-          write(iOutputUnit_,"(I7,A1,a)") iOff+16, " ", "E.F. Magnitude"
+          write(iOutputUnit_,"(I7,A1,a)") iOff+12, " ", "E.F. East"
+          write(iOutputUnit_,"(I7,A1,a)") iOff+13, " ", "E.F. North"
+          write(iOutputUnit_,"(I7,A1,a)") iOff+14, " ", "E.F. Vertical"
+          write(iOutputUnit_,"(I7,A1,a)") iOff+15, " ", "E.F. Magnitude"
 
           ! AGB: 10/18/17: Add Collision Frequency and Pressure Gradient
           ! to output
@@ -1300,7 +1299,6 @@ subroutine output_3dion(iBlock)
                 !Geomagnetic B0(nLons,nLats,nAlts,4[iEast_,iNorth_,iUp_,iMag_],nBlocks)
                 B0(iLon,iLat,iAlt,:,iBlock), &  
                 potential(iLon,iLat,iAlt,iBlock), &
-                PotentialY(iLon,iLat,iAlt,iBlock), &
                 EField(iLon,iLat,iAlt,:), &  ! EField(Lon,lat,alt,3)
                 sqrt(sum(EField(iLon,iLat,iAlt,:)**2)), & ! magnitude of E.F.
                 Collisions(iLon,iLat,iAlt,iVIN_), & ! AGB: nu_in
