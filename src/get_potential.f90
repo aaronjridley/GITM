@@ -47,8 +47,6 @@ subroutine init_get_potential
 
   call report("AMIE vs Weimer",4)
 
-  if (index(cAMIEFileNorth,"none") > 0) then
-
   !!! Xing Meng Nov 2018 added UseRegionalAMIE to set up a local region
   !!! with the potential from AMIE files and Weimer potential elsewhere
   if (index(cAMIEFileNorth,"none") > 0 .or. UseRegionalAMIE) then
