@@ -95,7 +95,7 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
        e_gyro, i_gyro
 
   real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3) :: Collisions
-  real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nIonsAdvect, nSpecies) :: &
+  real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nIons, nSpecies) :: &
        IonCollisions
 
   real, allocatable :: B0(:,:,:,:,:)

@@ -178,15 +178,6 @@ program PostProcess
            open(iOutputUnit_,file=FileName(1:iStart)//".bin",&
                 status="old",form="unformatted",position="append")
         endif
-        
-        write(iOutputUnit_) Version
-        write(iOutputUnit_) nLonsTotal, nLatsTotal, nAltsTotal
-        write(iOutputUnit_) nVars
-        do iVar=1,nVars
-           write(iOutputUnit_) Variables(iVar)
-        enddo
-
-        write(iOutputUnit_) iYear, iMonth, iDay, iHour, iMinute, iSecond, iMilli
 
         nAltsTotal = 0
         nLatsTotal = 0

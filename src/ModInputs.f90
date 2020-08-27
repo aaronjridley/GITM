@@ -52,9 +52,6 @@ module ModInputs
   !!! Xing Meng Nov 2018 to use ISR E field in a local region + Weimer elsewhere
   logical :: UseRegionalAMIE = .false.
   logical :: UseTwoAMIEPotentials = .false.
-!  for future extenstions to use optical particle precip in a local region:
-!  logical :: UseRegionalAMIEPotential = .false.
-!  logical :: UseRegionalAMIEAurora = .false.
   real(Real8_) :: AMIETimeStart, AMIETimeEnd
   real    :: AMIELonStart = 208.0
   real    :: AMIELonEnd = 216.0

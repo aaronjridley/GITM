@@ -1367,11 +1367,12 @@ subroutine output_3dhme(iBlock)
   implicit none
 
   integer, intent(in) :: iBlock
-  integer :: iAlt, iLat, iLon, i
+  integer :: iAlt, iLat, iLon, iiAlt, i
 
   do iAlt=-1,nAlts+2
-     do iLat=-1,nLats+2
-        do iLon=-1,nLons+2
+     iiAlt = max(min(iAlt,nAlts),1)
+     do iLat=1,nLats
+        do iLon=1,nLons
            write(iOutputUnit_)       &
                 Longitude(iLon,iBlock), &
                 Latitude(iLat,iBlock), &
@@ -1385,10 +1386,10 @@ subroutine output_3dhme(iBlock)
                 eTemperature(iLon,iLat,iAlt,iBlock), &
                 ITemperature(iLon,iLat,iAlt,iBlock), &
                 (Ivelocity(iLon,iLat,iAlt,i,iBlock),i=1,3), &
-                PhotoElectronHeating(iLon,iLat,iAlt,iBlock)*dt*TempUnit(iLon,iLat,iAlt), &
-                JouleHeating(iLon,iLat,iAlt)*dt*TempUnit(iLon,iLat,iAlt), &
-                AuroralHeating(iLon,iLat,iAlt)*dt*TempUnit(iLon,iLat,iAlt), &
-                cp(iLon,iLat,iAlt,iBlock), &
+                PhotoElectronHeating(iLon,iLat,iiAlt,iBlock)*dt*TempUnit(iLon,iLat,iiAlt), &
+                JouleHeating(iLon,iLat,iiAlt)*dt*TempUnit(iLon,iLat,iiAlt), &
+                AuroralHeating(iLon,iLat,iiAlt)*dt*TempUnit(iLon,iLat,iiAlt), &
+                cp(iLon,iLat,iiAlt,iBlock), &
                 mLatitude(iLon,iLat,iAlt,iBlock), &
                 mLongitude(iLon,iLat,iAlt,iBlock), &
                 B0(iLon,iLat,iAlt,:,iBlock), &
