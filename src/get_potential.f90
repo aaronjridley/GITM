@@ -11,6 +11,7 @@ subroutine init_get_potential
   use ModNewell
   use ModOvationSME
   use ModAeAuroralModel
+  use ModEIE_Interface, only: EIEr3_HaveLats, EIEr3_HaveMLTs
 
   implicit none
 
@@ -21,12 +22,14 @@ subroutine init_get_potential
 !  real    :: dynamo(-1:nLons+2,-1:nLats+2)
   logical :: IsFirstTime = .true.
   integer :: iError
+
+  integer :: nAmieLats, nAmieMlts, nAmieBlocks
+
   iError = 0
 
   if (.not.IsFirstTime .or. IsFramework) return
-
   call report("init_get_potential",2)
-  
+
   IsFirstTime = .false.
 
   if (UseNewellAurora) then
@@ -44,7 +47,9 @@ subroutine init_get_potential
 
   call report("AMIE vs Weimer",4)
 
-  if (index(cAMIEFileNorth,"none") > 0) then
+  !!! Xing Meng Nov 2018 added UseRegionalAMIE to set up a local region
+  !!! with the potential from AMIE files and Weimer potential elsewhere
+  if (index(cAMIEFileNorth,"none") > 0 .or. UseRegionalAMIE) then
 
      Lines(1) = "#BACKGROUND"
      Lines(2) = "EIE/"
@@ -92,8 +97,8 @@ subroutine init_get_potential
         Lines(4) = ""
         Lines(5) = ""
         Lines(6) = ""
-
-        UseIMF = .false.
+        
+        UseIMF = .false. 
 
      endif
 
@@ -114,17 +119,56 @@ subroutine init_get_potential
   endif
 
   call report("EIE_stuff",4)
-  
+
   call EIE_set_inputs(Lines)
 
   call EIE_Initialize(iError)
-
   if (iError /= 0) then
      write(*,*) &
           "Code Error in IE_Initialize called from get_potential.f90"
      write(*,*) "Error : ",iError
      call stop_gitm("Stopping in get_potential")
   endif
+
+  if (UseRegionalAMIE) then
+     !!! read AMIE files
+     call AMIE_SetFileName(cAMIEFileNorth)
+     call readAMIEOutput(2, .false., iError)
+     if (iError /= 0) then
+        write(*,*) &
+             "Code Error in readAMIEOutput called from get_potential.f90"
+        write(*,*) "Error : ",iError
+        call stop_gitm("Stopping in get_potential")
+     endif
+
+     if (index(cAMIEFileSouth,'mirror') > 0) then
+        call AMIE_SetFileName(cAMIEFileNorth)
+        call readAMIEOutput(1, .true., iError)
+     else
+        call AMIE_SetFileName(cAMIEFileSouth)
+        call readAMIEOutput(1, .false., iError)
+     endif
+
+     call AMIE_GetnLats(nAmieLats)
+     call AMIE_GetnMLTs(nAmieMlts)
+     nAmieBlocks = 2
+
+     call EIE_InitGrid(nAmieLats, nAmieMlts, nAmieBlocks, iError)
+     if (iError /= 0) then
+        write(*,*) &
+             "Code Error in EIE_InitGrid called from get_potential.f90"
+        write(*,*) "Error : ",iError
+        call stop_gitm("Stopping in get_potential")
+     endif
+
+     call AMIE_GetLats(nAmieMlts,nAmieLats,nAmieBlocks, &
+          EIEr3_HaveLats,iError)     
+
+     call AMIE_GetMLTs(nAmieMlts,nAmieLats,nAmieBlocks, &
+          EIEr3_HaveMLTs,iError)
+
+  endif
+
 
 end subroutine init_get_potential
 
@@ -221,7 +265,8 @@ subroutine set_indices
 !  if (index(cAMIEFileNorth,"none") <= 0 .and. &
 !     index(cAMIEFileNorth,"SPS") <= 0 .and. iBlock == 1) then 
   if (index(cAMIEFileNorth,"none") <= 0 .and. &
-     index(cAMIEFileNorth,"SPS") <= 0) then 
+     index(cAMIEFileNorth,"SPS") <= 0 .and. (.not. UseRegionalAMIE)) then
+     ! when UseRegionalAMIE, only get AMIE values during the specified time interval.
      if (iDebugLevel > 1) &
           write(*,*) "==> Reading AMIE values for time :",CurrentTime
      call get_AMIE_values(CurrentTime+TimeDelayHighLat)
@@ -243,19 +288,22 @@ subroutine get_potential(iBlock)
   use ModNewell
   use ModOvationSME, only: run_ovationsme
   use ModAeAuroralModel, only: run_ae_model
+  use ModEIE_Interface, only: UAl_UseGridBasedEIE
+  use ModMpi
 
   implicit none
 
   integer, intent(in) :: iBlock
 
-  integer :: iError, iLat, iLon, iAlt
+  integer :: iError, iLat, iLon, iAlt, iPot, nPot, iDir, nDir
   logical :: IsFirstTime = .true.
   logical :: IsFirstPotential(nBlocksMax) = .true.
   logical :: IsFirstAurora(nBlocksMax) = .true.
-  real    :: mP, dis
+  real    :: mP, dis, TempWeight
+  real    ::  LocalSumDiffPot, MeanDiffPot
 
-  real, dimension(-1:nLons+2,-1:nLats+2) :: TempPotential, Grid, dynamo
-  real, dimension(-1:nLons+2,-1:nLats+2) :: SubMLats, SubMLons
+  real, dimension(-1:nLons+2,-1:nLats+2,1:2) :: TempPotential, AMIEPotential
+  real, dimension(-1:nLons+2,-1:nLats+2) :: Grid, dynamo, SubMLats, SubMLons
   real, dimension(-1:nLons+2,-1:nLats+2) :: lats, mlts, EFlux
   real :: by, bz, CuspLat, CuspMlt
 
@@ -288,7 +336,7 @@ subroutine get_potential(iBlock)
      call UA_SetNorth
 
      call report("Getting Potential",1)
-     
+
      Potential(:,:,:,iBlock) = 0.0
 
      do iAlt=-1,nAlts+2
@@ -308,7 +356,7 @@ subroutine get_potential(iBlock)
 
         TempPotential = 0.0
 
-        call UA_GetPotential(TempPotential, iError)
+        call UA_GetPotential(TempPotential(:,:,1), iError)
 
         if (iError /= 0) then
            write(*,*) "Error in get_potential (UA_GetPotential):"
@@ -317,33 +365,172 @@ subroutine get_potential(iBlock)
 !           call stop_gitm("Stopping in get_potential")
         endif
 
+        if (UseRegionalAMIE .and. &
+             CurrentTime >= AMIETimeStart .and. CurrentTime <= AMIETimeEnd) then
+
+           if (iDebugLevel > 1) &
+                write(*,*) "==> Reading AMIE values for time :",CurrentTime
+           call get_AMIE_values(CurrentTime+TimeDelayHighLat)
+           
+           if (iDebugLevel > 1) write(*,*) "==> Getting AMIE Potential"
+
+           AMIEPotential = 0.0
+           UAl_UseGridBasedEIE = .true.
+
+           call UA_SetGrid(                    &
+             MLT(-1:nLons+2,-1:nLats+2,iAlt), &
+             MLatitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock), iError)           
+
+           call UA_GetPotential(AMIEPotential(:,:,1), iError)
+           if (iError /= 0) then
+              write(*,*) "Error in get_potential (UA_GetPotential) for AMIE:"
+              write(*,*) iError
+              call stop_gitm("Stopping in get_potential")
+           endif
+
+           if (UseTwoAMIEPotentials) then
+              if (iDebugLevel > 1) &
+                   write(*,*) "==> Reading AMIE PotentialY for time :",CurrentTime
+              call get_AMIE_PotentialY(CurrentTime+TimeDelayHighLat)
+!              the following setgrid seems unnecessary
+!              call UA_SetGrid(                    &
+!                   MLT(-1:nLons+2,-1:nLats+2,iAlt), &
+!                   MLatitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock), iError)
+              call UA_GetPotential(AMIEPotential(:,:,2), iError)
+              if (iError /= 0) then
+                 write(*,*) "Error in get_potential (UA_GetPotential) for AMIE PotentialY:"
+                 write(*,*) iError
+                 call stop_gitm("Stopping in get_potential")
+              endif
+              TempPotential(:,:,2) = TempPotential(:,:,1)
+              ! two directions for two-potentials
+              nDir = 2
+           else
+              nDir = 1
+           endif
+
+           ! Two iterations for two-potentials, one iteration for one-potential
+           do iDir = 1, nDir
+
+              ! AMIE potential inside a geographic rectangular; Weimer potential outside.
+              ! Spatially weighted AMIE and Weimer potentials at
+              ! the rectangular boundaries, within AMIEBoundaryWidth.
+              LocalSumDiffPot = 0.0
+              iPot = 0
+              do iLat = -1,nLats+2
+                 do iLon = -1,nLons+2
+                    
+                    ! find the mean of the difference between AMIE potential and 
+                    ! Weimer potential within the region
+                    if (MLatitude(iLon,iLat,iAlt,iBlock) >= AMIELatStart &
+                         .and. MLatitude(iLon,iLat,iAlt,iBlock) <= AMIELatEnd &
+                         .and. MLongitude(iLon,iLat,iAlt,iBlock) >= AMIELonStart  &
+                         .and. MLongitude(iLon,iLat,iAlt,iBlock) <= AMIELonEnd) then
+                       LocalSumDiffPot = LocalSumDiffPot + &
+                            AMIEPotential(iLon,iLat,iDir) - TempPotential(iLon,iLat,iDir)
+                       iPot = iPot + 1
+                    endif
+                 enddo
+              enddo
+              call MPI_ALLREDUCE(LocalSumDiffPot, MeanDiffPot, 1, &
+                   MPI_REAL, MPI_SUM, iCommGITM, iError)
+              call MPI_ALLREDUCE(iPot, nPot, 1, &
+                   MPI_INTEGER, MPI_SUM, iCommGITM, iError)
+              MeanDiffPot = MeanDiffPot/nPot
+              if (iDebugLevel > 1 .and. iProc == 0 .and. iAlt == 10) &
+                   write(*,*)  'iDir, nPot, MeanDiffPot = ', iDir, nPot, MeanDiffPot
+
+              do iLat = -1,nLats+2
+                 do iLon = -1,nLons+2
+
+                    ! adjust AMIE potential according to the mean of potential difference
+                    AMIEPotential(iLon,iLat,iDir) = AMIEPotential(iLon,iLat,iDir) - MeanDiffPot
+
+                    ! fill in the rectangular with AMIE potential
+                    if (MLatitude(iLon,iLat,iAlt,iBlock) >= AMIELatStart &
+                         .and. MLatitude(iLon,iLat,iAlt,iBlock) <= AMIELatEnd &
+                         .and. MLongitude(iLon,iLat,iAlt,iBlock) >= AMIELonStart  &
+                         .and. MLongitude(iLon,iLat,iAlt,iBlock) <= AMIELonEnd) &
+                         TempPotential(iLon,iLat,iDir) = AMIEPotential(iLon,iLat,iDir)
+                     
+                    ! left and right boundaries, excluding corners
+                    if (MLatitude(iLon,iLat,iAlt,iBlock) > AMIELatStart &
+                         .and. MLatitude(iLon,iLat,iAlt,iBlock) < AMIELatEnd &
+                         .and. MLongitude(iLon,iLat,iAlt,iBlock) > AMIELonStart-AMIEBoundaryWidth &
+                         .and. MLongitude(iLon,iLat,iAlt,iBlock) < AMIELonStart) then
+                       TempWeight = (AMIELonStart-MLongitude(iLon,iLat,iAlt,iBlock))/AMIEBoundaryWidth
+                       TempPotential(iLon,iLat,iDir) = TempWeight*TempPotential(iLon,iLat,iDir) + &
+                            (1-TempWeight)*AMIEPotential(iLon,iLat,iDir)
+                    endif
+
+                    if (MLatitude(iLon,iLat,iAlt,iBlock) > AMIELatStart &
+                         .and. MLatitude(iLon,iLat,iAlt,iBlock) < AMIELatEnd &
+                         .and. MLongitude(iLon,iLat,iAlt,iBlock) > AMIELonEnd &
+                         .and. MLongitude(iLon,iLat,iAlt,iBlock) < AMIELonEnd+AMIEBoundaryWidth) then
+                       TempWeight = (MLongitude(iLon,iLat,iAlt,iBlock)-AMIELonEnd)/AMIEBoundaryWidth
+                       TempPotential(iLon,iLat,iDir) = TempWeight*TempPotential(iLon,iLat,iDir) + &
+                            (1-TempWeight)*AMIEPotential(iLon,iLat,iDir)
+                    endif
+
+                    ! low and high lat boundaries
+                    if (MLongitude(iLon,iLat,iAlt,iBlock) > AMIELonStart-AMIEBoundaryWidth &
+                         .and. MLongitude(iLon,iLat,iAlt,iBlock) < AMIELonEnd+AMIEBoundaryWidth &
+                         .and. MLatitude(iLon,iLat,iAlt,iBlock) > AMIELatStart-AMIEBoundaryWidth &
+                         .and. MLatitude(iLon,iLat,iAlt,iBlock) < AMIELatStart) then
+                       TempWeight = (AMIELatStart-MLatitude(iLon,iLat,iAlt,iBlock))/AMIEBoundaryWidth
+                       TempPotential(iLon,iLat,iDir) = TempWeight*TempPotential(iLon,iLat,iDir) + &
+                            (1-TempWeight)*AMIEPotential(iLon,iLat,iDir)
+                    endif
+                    if (MLongitude(iLon,iLat,iAlt,iBlock) > AMIELonStart-AMIEBoundaryWidth &
+                         .and. MLongitude(iLon,iLat,iAlt,iBlock) < AMIELonEnd+AMIEBoundaryWidth &
+                         .and. MLatitude(iLon,iLat,iAlt,iBlock) > AMIELatEnd &
+                         .and. MLatitude(iLon,iLat,iAlt,iBlock) < AMIELatEnd+AMIEBoundaryWidth) then
+                       TempWeight = (MLatitude(iLon,iLat,iAlt,iBlock)-AMIELatEnd)/AMIEBoundaryWidth
+                       TempPotential(iLon,iLat,iDir) = TempWeight*TempPotential(iLon,iLat,iDir) + &
+                            (1-TempWeight)*AMIEPotential(iLon,iLat,iDir)
+                    endif
+                 enddo
+              enddo
+             
+           enddo
+           ! set back to false for getting Weimer potential at the next iteration
+           UAl_UseGridBasedEIE = .false.
+        endif
+
         if (UseDynamo .and. .not. Is1D) then
            dynamo = 0.0
            call get_dynamo_potential( &
                 MLongitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock), &
                  MLatitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock), dynamo)
 
-           do iLon = -1,nLons+2
-              do iLat = -1,nLats+2 
+           do iDir = 1, nDir
+              do iLon = -1,nLons+2
+                 do iLat = -1,nLats+2 
 !!                 if (abs(MLatitude(iLon, iLat, iAlt, iBlock)) < DynamoHighLatBoundary) then
 !!                    TempPotential(iLon,iLat) = TempPotential(iLon,iLat) + dynamo(iLon,iLat)
-                 if (abs(MLatitude(iLon, iLat, iAlt, iBlock)) < DynamoHighLatBoundary) then
-                    dis= (DynamoHighLatBoundary - &
-                          abs(MLatitude(iLon, iLat, iAlt, iBlock)))/20.0
-                    if (dis > 1.0) then
-                       TempPotential(iLon,iLat) = dynamo(iLon,iLat)
-                    else
-                       TempPotential(iLon,iLat) = &
-                            (1.0-dis) * TempPotential(iLon,iLat) + &
-                            dis * dynamo(iLon,iLat)
+                    if (abs(MLatitude(iLon, iLat, iAlt, iBlock)) < DynamoHighLatBoundary) then
+                       dis= (DynamoHighLatBoundary - &
+                            abs(MLatitude(iLon, iLat, iAlt, iBlock)))/20.0
+                       if (dis > 1.0) then
+                          TempPotential(iLon,iLat,iDir) = dynamo(iLon,iLat)
+                       else
+                          TempPotential(iLon,iLat,iDir) = &
+                               (1.0-dis) * TempPotential(iLon,iLat,iDir) + &
+                               dis * dynamo(iLon,iLat)
+                       endif
                     endif
-                 endif
+                 enddo
               enddo
            enddo
 
         endif
 
-        Potential(:,:,iAlt,iBlock) = TempPotential
+        Potential(:,:,iAlt,iBlock) = TempPotential(:,:,1)
+        if (UseTwoAMIEPotentials) then
+           PotentialY(:,:,iAlt,iBlock) = TempPotential(:,:,2)
+        else
+           PotentialY(:,:,iAlt,iBlock) = Potential(:,:,iAlt,iBlock)
+        endif
 
         !----------------------------------------------
         ! Another example of user output
@@ -351,7 +538,7 @@ subroutine get_potential(iBlock)
         if (iAlt == 1) then 
 
            UserData2d(1:nLons,1:nLats,1,1,iBlock) = &
-                TempPotential(1:nLons,1:nLats)/1000.0
+                TempPotential(1:nLons,1:nLats,1)/1000.0
         endif
 
      enddo
@@ -418,54 +605,53 @@ subroutine get_potential(iBlock)
 
      endif
 
-     if (UseCusp) then
+    if (UseCusp) then
 
-        lats = abs(MLatitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock))
+       lats = abs(MLatitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock))
 
-        if (maxval(lats) > 50) then
+       if (maxval(lats) > 50) then
 
-           mlts = mod(MLT(-1:nLons+2,-1:nLats+2,iAlt)+24.0,24.0)
-        
-           call get_IMF_Bz(CurrentTime+TimeDelayHighLat, bz, iError)
-           call get_IMF_By(CurrentTime+TimeDelayHighLat, by, iError)
+          mlts = mod(MLT(-1:nLons+2,-1:nLats+2,iAlt)+24.0,24.0)
 
-           ! If we are in the southern hemisphere, reverse by:
-           if (lats(nLons/2, nLats/2) < 0.0) by = -by
+          call get_IMF_Bz(CurrentTime+TimeDelayHighLat, bz, iError)
+          call get_IMF_By(CurrentTime+TimeDelayHighLat, by, iError)
 
-           if (bz > 0) then
-              ! Newell et al., 1988:
-              CuspLat = 77.2 + 0.11 * bz
-              ! Asai et al., Earth Planets Space, 2005:
-              CuspMlt = 11.755 + 0.169 * by
-           else
-              ! Asai et al., Earth Planets Space, 2005:
-              CuspMlt = 11.949 + 0.0826 * by
-              ! Zhang et al., JGR, 2005:
-              if (Bz > -10) then
-                 CuspLat = 77.2 + 1.1 * bz
-              else
-                 CuspLat = 21.7 * exp(0.1 * bz) + 58.2
-              endif
-           endif
+          ! If we are in the southern hemisphere, reverse by:
+          if (lats(nLons/2, nLats/2) < 0.0) by = -by
 
-           EFlux = CuspEFlux * &
-                exp(-abs(lats - CuspLat)/CuspLatHalfWidth) *  &
-                exp(-abs(mlts - CuspMlt)/CuspMltHalfWidth)
+          if (bz > 0) then
+             ! Newell et al., 1988:
+             CuspLat = 77.2 + 0.11 * bz
+             ! Asai et al., Earth Planets Space, 2005:
+             CuspMlt = 11.755 + 0.169 * by
+          else
+             ! Asai et al., Earth Planets Space, 2005:
+             CuspMlt = 11.949 + 0.0826 * by
+             ! Zhang et al., JGR, 2005:
+             if (Bz > -10) then
+                CuspLat = 77.2 + 1.1 * bz
+             else
+                CuspLat = 21.7 * exp(0.1 * bz) + 58.2
+             endif
+          endif
 
-           do iLat=-1,nLats+2
-              do iLon=-1,nLons+2
-                 if (EFlux(iLon,iLat) > 0.1) then
-                    ElectronEnergyFlux(iLon,iLat) = EFlux(iLon,iLat)
-                    ElectronAverageEnergy(iLon,iLat) = CuspAveE
-                 endif
-              enddo
-           enddo
+          EFlux = CuspEFlux * &
+               exp(-abs(lats - CuspLat)/CuspLatHalfWidth) *  &
+               exp(-abs(mlts - CuspMlt)/CuspMltHalfWidth)
 
-        endif
-        
-     endif
+          do iLat=-1,nLats+2
+             do iLon=-1,nLons+2
+                if (EFlux(iLon,iLat) > 0.1) then
+                   ElectronEnergyFlux(iLon,iLat) = EFlux(iLon,iLat)
+                   ElectronAverageEnergy(iLon,iLat) = CuspAveE
+                endif
+             enddo
+          enddo
 
-     
+       endif
+
+    endif
+
      if (iDebugLevel > 2) &
           write(*,*) "==> Max, electron_ave_ene : ", &
           maxval(ElectronAverageEnergy), &

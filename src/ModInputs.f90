@@ -49,6 +49,16 @@ module ModInputs
   logical :: UseIMF = .true.
   logical :: UseHpi = .true.
 
+  !!! Xing Meng Nov 2018 to use ISR E field in a local region + Weimer elsewhere
+  logical :: UseRegionalAMIE = .false.
+  logical :: UseTwoAMIEPotentials = .false.
+  real(Real8_) :: AMIETimeStart, AMIETimeEnd
+  real    :: AMIELonStart = 208.0
+  real    :: AMIELonEnd = 216.0
+  real    :: AMIELatStart = 65.0
+  real    :: AMIELatEnd = 70.0
+  real    :: AMIEBoundaryWidth = 4.0  ! lat and lon width to transit to Weimer solution
+
   logical :: UseNewellAurora   = .false.
   logical :: UseNewellAveraged = .true.
   logical :: UseNewellMono     = .false.
@@ -60,7 +70,7 @@ module ModInputs
   logical :: UseOvationSMEMono = .false.
   logical :: UseOvationSMEWave = .false.
   logical :: UseOvationSMEIon  = .false.
-
+  
   logical :: UseAeModel        = .false.
 
   logical :: UseCusp = .false.
@@ -68,12 +78,12 @@ module ModInputs
   real :: CuspEFlux = 2.0
   real :: CuspMltHalfWidth = 1.5
   real :: CuspLatHalfWidth = 1.0
-  
+
   logical :: DoOverwriteIonosphere = .false.
   logical :: DoOverwriteWithIRI    = .true.
   logical :: DoOverwriteWithSami   = .false.
   character (len=iCharLen_) :: SamiInFile
-  
+
   real :: AuroralHeightFactor = 1.0
   logical :: NormalizeAuroraToHP = .false.
 
@@ -109,6 +119,12 @@ module ModInputs
   real(Real8_) :: PlotTimeChangeStart, PlotTimeChangeEnd
 
   logical :: DoAppendFiles = .false.
+
+  ! Xing Meng March 2020 -- Save HIME type output in a user-specified region
+  real    :: HIMEPlotLonStart = 208.0
+  real    :: HIMEPlotLonEnd = 216.0
+  real    :: HIMEPlotLatStart = 65.0
+  real    :: HIMEPlotLatEnd = 70.0
 
   real :: DtRestart   = 60.0*60.0
   real :: DtReport    =  1.0*60.0
@@ -172,7 +188,7 @@ module ModInputs
   logical :: UseStatisticalModelsOnly = .false.
   real    :: DtStatisticalModels = 3600.0
   logical :: UseOBCExperiment = .false.
-  
+
   logical :: UseGswmComp(4) = .true.
 
   real :: MagneticPoleRotation = 0.0
@@ -238,7 +254,7 @@ module ModInputs
 
   logical :: UseGitmBCs = .false.
   character(len=iCharLen_) :: GitmBCsDir
-  
+
   logical :: UseSolarHeating   = .true.
   logical :: UseJouleHeating   = .true.
   logical :: UseAuroralHeating = .true.
