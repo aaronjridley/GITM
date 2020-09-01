@@ -343,6 +343,10 @@ module ModInputs
   !     real  :: CONRNU = 0.5     ! ~10 km half-height
   ! Global mean dust opacity
   real :: TAUTOT_temp  = 0.3 !do not set to 0.0 or less
+
+  real :: dtDust
+  character (len=iCharLen_) :: DustFileType
+
   !!!!!!!!!!!!!!!!!!!!!!
 
   !   RPTAU   :  Reference Pressure optical depth;  6.1 mbar for now
