@@ -53,7 +53,7 @@ subroutine set_inputs
   iLine  = 1
 
   call IO_set_ap_single(10.0)
-  
+
   do while (.not. IsDone)
 
      cLine = cInputText(iLine)
@@ -353,7 +353,7 @@ subroutine set_inputs
               write(*,*) '#MSISOBC'
               write(*,*) 'UseOBCExperiment        (logical)'
            endif
-           
+
         !xianjing
         case("#USESECONDSINFILENAME")
            call read_in_logical(UseSecondsInFilename,iError)
@@ -377,8 +377,8 @@ subroutine set_inputs
            endif
 
         case ("#OVERWRITEIONOSPHERE")
-           call read_in_logical(DoOverwriteIonosphere,iError) 
-           call read_in_logical(DoOverwriteWithIRI,iError) 
+           call read_in_logical(DoOverwriteIonosphere,iError)
+           call read_in_logical(DoOverwriteWithIRI,iError)
            call read_in_logical(DoOverwriteWithSami,iError)
            if (DoOverwriteWithSami) &
                 call read_in_string(SamiInFile,iError)
@@ -392,7 +392,7 @@ subroutine set_inputs
            endif
 
         case ("#GITMBCS")
-           call read_in_logical(UseGitmBCs,iError) 
+           call read_in_logical(UseGitmBCs,iError)
            call read_in_string(GitmBCsDir,iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #GITMBCS'
@@ -642,7 +642,7 @@ subroutine set_inputs
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #USECUSP'
               write(*,*) 'This is for specifying a cusp.'
-	      write(*,*) ''
+          write(*,*) ''
               write(*,*) '#USECUSP'
               write(*,*) 'UseCusp        (logical)'
               write(*,*) 'CuspAveE       (real)'
@@ -659,6 +659,36 @@ subroutine set_inputs
               write(*,*) '#AMIEFILES'
               write(*,*) 'cAMIEFileNorth  (string)'
               write(*,*) 'cAMIEFileSouth  (string)'
+              IsDone = .true.
+           endif
+
+        case ("#USEREGIONALAMIE")
+           call read_in_logical(UseRegionalAMIE, iError)
+           call read_in_logical(UseTwoAMIEPotentials, iError)
+           call read_in_time(AMIETimeStart, iError)
+           call read_in_time(AMIETimeEnd, iError)
+           call read_in_real(AMIELonStart, iError)
+           call read_in_real(AMIELonEnd, iError)
+           call read_in_real(AMIELatStart, iError)
+           call read_in_real(AMIELatEnd, iError)
+           call read_in_real(AMIEBoundaryWidth, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #USEREGIONALAMIE:'
+              write(*,*) 'This is to set up a local region with specified potential'
+              write(*,*) 'from AMIE files. Use Weimer potential elsewhere.'
+              write(*,*) 'AMIEBoundaryWidth is padded outside of the region with '
+              write(*,*) 'the geographic lon and lat boundaries set below.'
+              write(*,*) ''
+              write(*,*) '#USEREGIONALAMIE'
+              write(*,*) 'UseRegionalAMIE      (logical)'
+              write(*,*) 'UseTwoAMIEPotentials (logical)'
+              write(*,*) 'AMIETimeStart        (yyyy mm dd hh mm ss)'
+              write(*,*) 'AMIETimeEnd          (yyyy mm dd hh mm ss)'
+              write(*,*) 'AMIELonStart         (real)'
+              write(*,*) 'AMIELonEnd           (real)'
+              write(*,*) 'AMIELatStart         (real)'
+              write(*,*) 'AMIELatEnd           (real)'
+              write(*,*) 'AMIEBoundaryWidth    (real)' 
               IsDone = .true.
            endif
 
@@ -694,7 +724,7 @@ subroutine set_inputs
            endif
 
         case ("#NANCHECK")
-           call read_in_logical(DoCheckForNans, iError) 
+           call read_in_logical(DoCheckForNans, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #NANCHECK:'
               write(*,*) 'This will turn on all of the NaN checks in the code!'
@@ -707,7 +737,7 @@ subroutine set_inputs
            call read_in_int(iDebugLevel, iError)
            call read_in_int(iDebugProc, iError)
            call read_in_real(DtReport, iError)
-           call read_in_logical(UseBarriers, iError) 
+           call read_in_logical(UseBarriers, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #DEBUG:'
               write(*,*) 'This will set how much information the code screams'
@@ -885,7 +915,7 @@ subroutine set_inputs
               write(*,*) "DaysPerYearInput           (real)"
               write(*,*) "DaysPerYearInput           (real)"
            endif
-           
+        
         case ("#USEIMPLICITIONMOMENTUM")
            call read_in_logical(UseImplicitFieldAlignedMomentum, iError)
            if (iError /= 0) then
@@ -894,7 +924,6 @@ subroutine set_inputs
               write(*,*) '#USEIMPLICITIONMOMENTUM'
               write(*,*) "UseImplicitFieldAlignedMomentum      (logical)"
            endif
-
 
         case ("#USEIMPROVEDIONADVECTION")
            call read_in_logical(UseImprovedIonAdvection, iError)
@@ -1278,6 +1307,22 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
+        case ("#SAVEHIMEPLOT")
+           call read_in_real(HIMEPlotLonStart, iError)
+           call read_in_real(HIMEPlotLonEnd, iError)
+           call read_in_real(HIMEPlotLatStart, iError)
+           call read_in_real(HIMEPlotLatEnd, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #SAVEHIMEPLOT'
+              write(*,*) ''
+              write(*,*) '#SAVEHIMEPLOT'
+              write(*,*) 'HIMEPlotLonStart (real)'
+              write(*,*) 'HIMEPlotLonEnd (real)'
+              write(*,*) 'HIMEPlotLatStart (real)'
+              write(*,*) 'HIMEPlotLatEnd (real)'
+              IsDone = .true.
+           endif
+
         case ("#SATELLITES")
            call read_in_int(nSats, iError)
            if (nSats > nMaxSats) then
@@ -1289,6 +1334,7 @@ subroutine set_inputs
            else
               do iSat=1,nSats
                  call read_in_string(cSatFileName(iSat), iError)
+                 call read_in_string(SatOutputType(iSat), iError)       !!! Xing 
                  call read_in_real(SatDtPlot(iSat), iError)
                  iSatCurrentIndex(iSat) = 0
               enddo
@@ -1299,6 +1345,7 @@ subroutine set_inputs
               write(*,*) '#SATELLITES'
               write(*,*) 'nSats     (integer - max = ',nMaxSats,')'
               write(*,*) 'SatFile1  (string)'
+              write(*,*) 'SatOutputtype1  (string, 0DUSR or 1DUSR)'
               write(*,*) 'DtPlot1   (real, seconds)'
               write(*,*) 'etc...'
               IsDone = .true.
@@ -1574,7 +1621,7 @@ subroutine set_inputs
            else
               UseVariableInputs = .true.
            endif
-
+        
         case ("#OMNIWEB_AP_INDICES")
            cTempLines(1) = cLine
            call read_in_string(cTempLine, iError)
@@ -1592,7 +1639,7 @@ subroutine set_inputs
            else
               UseVariableInputs = .true.
            endif
-           
+
         case ("#SME_INDICES")
            cTempLines(1) = cLine
            call read_in_string(cTempLine, iError)

@@ -15,7 +15,7 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
   integer :: iTime, nTimesBig, nTimesTotal
   integer :: nfields
   integer :: ntemp, iyr, imo, ida, ihr, imi
-  integer :: i,j, iField, iPot_, iAveE_, iEFlux_
+  integer :: i,j, iField, iPot_, iAveE_, iEFlux_, iPotY_
   real*4  :: swv,bx,by,bz,aei,ae,au,al,dsti,dst,hpi,sjh,pot
   real*8  :: rtime
   integer, dimension(7) :: itime_i
@@ -27,7 +27,7 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
 
   logical :: IsBinary, energyfluxconvert, ReverseLats = .false.
 
-  real :: dPotential
+  real :: dPotential, dPotentialY
   integer :: nCellsPad, n
 
   nTimesBig=0
@@ -193,9 +193,27 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
      if (AMIE_iDebugLevel > 1) write(*,*) Fields(iField)
 
      if ((index(Fields(iField),"Potential") > 0).and. &
-         (index(Fields(iField),"odel") < 1)) then
+         (index(Fields(iField),"odel") < 1) .and. &
+         (index(Fields(iField),"PotentialY") < 1)) then
         iPot_ = iField
         if (AMIE_iDebugLevel > 1) write(*,*) "<--- Potential Found", iPot_
+     endif
+
+     !!! Xing Meng Jan 2019 to read AMIE output with two potentials
+     ! for two-potentials, the above if-statement deals with PotentialX, 
+     ! now check PotentialY
+     if ((index(Fields(iField),"PotentialY") > 0).and. &
+         (index(Fields(iField),"odel") < 1)) then
+        iPotY_ = iField
+        if (AMIE_iDebugLevel > 1) write(*,*) "<--- PotentialY Found", iPotY_
+        if (.not.allocated(AMIE_PotentialY)) then
+           allocate(AMIE_PotentialY(AMIE_nMlts,AMIE_nLats+nCellsPad, &
+                AMIE_nTimes,2), stat=iError)
+           if (iError /= 0) then
+              write(*,*) "Error in allocating array AMIE_PotentialY in "
+              stop
+           endif           
+        endif
      endif
 
      if ((index(Fields(iField),"Mean Energy") > 0) .and. &
@@ -338,6 +356,57 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
 
         enddo
      enddo
+
+     if (allocated(AMIE_PotentialY)) then
+        if (.not.IsMirror) then
+           AMIE_PotentialY(:,1:AMIE_nLats,iTime,iBLK) = &
+                AllData(:,1:AMIE_nLats,iPotY_)
+        else
+           ! This is typically done for the Southern Hemisphere, when we don't
+           ! have Southern Hemisphere Runs.
+           do i=1,AMIE_nMlts
+              AMIE_PotentialY(i,1:AMIE_nLats,iTime,iBLK) = &
+                   -AllData(AMIE_nMlts+1 - i,1:AMIE_nLats,iPotY_)
+           enddo
+        endif
+        
+        do i=1,AMIE_nMlts
+           dPotentialY = AMIE_PotentialY(i,AMIE_nLats,iTime,iBLK)/nCellsPad
+           do j=AMIE_nLats+1, AMIE_nLats+nCellsPad
+              AMIE_PotentialY(i,j,iTime,iBLK) = &
+                   AMIE_PotentialY(i,j-1,iTime,iBLK) - dPotentialY
+           enddo
+        enddo
+
+        do j=AMIE_nLats+1, AMIE_nLats+nCellsPad
+           do n = 1, j-AMIE_nLats
+
+              i = 1
+              AMIE_PotentialY(i,j,iTime,iBLK) = &
+                   (AMIE_PotentialY(AMIE_nMlts-1,j,iTime,iBLK) + &
+                   2*AMIE_PotentialY(i,j,iTime,iBLK) + &
+                   AMIE_PotentialY(i+1,j,iTime,iBLK))/4.0
+
+              do i=2,AMIE_nMlts-1
+                 AMIE_PotentialY(i,j,iTime,iBLK) = &
+                      (AMIE_PotentialY(i-1,j,iTime,iBLK) + &
+                      2*AMIE_PotentialY(i,j,iTime,iBLK) + &
+                      AMIE_PotentialY(i+1,j,iTime,iBLK))/4.0
+                 if (AMIE_EFlux(i,j,iTime,iBLK) > 1000.0) &
+                      nTimesBig = nTimesBig+1
+                 nTimesTotal = nTimesTotal + 1
+              enddo
+
+              i = AMIE_nMlts
+              AMIE_PotentialY(i,j,iTime,iBLK) = &
+                   (AMIE_PotentialY(i-1,j,iTime,iBLK) + &
+                   2*AMIE_PotentialY(i,j,iTime,iBLK) + &
+                   AMIE_PotentialY(2,j,iTime,iBLK))/4.0
+
+           enddo
+        enddo
+
+     endif
 
   enddo
 

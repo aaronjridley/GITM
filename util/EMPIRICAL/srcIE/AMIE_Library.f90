@@ -110,9 +110,40 @@ subroutine AMIE_GetPotential(TimeIn, Method, &
      stop
   else
      PotentialOut = ValueOut
+!     write(*,*) 'AMIE_GetPotential PotentialOut = ', PotentialOut
   endif
 
 end subroutine AMIE_GetPotential
+
+!----------------------------------------------------------------------
+
+subroutine AMIE_GetPotentialY(TimeIn, Method, &
+     IEi_nMLTs, IEi_nLats, IEi_nBLKs, PotentialOut, iError)
+
+  use ModAMIE_Interface
+  use ModErrors
+
+  implicit none
+
+  real*8, intent(in) :: TimeIn
+  integer, intent(in) :: Method, IEi_nMLTs, IEi_nLats, IEi_nBLKs
+  real, dimension(IEi_nMLTs,IEi_nLats,IEi_nBLKs), intent(out) :: PotentialOut
+  real, dimension(IEi_nMLTs,IEi_nLats,IEi_nBLKs)              :: ValueOut
+  integer, intent(out) :: iError
+
+  call AMIE_GetValue(TimeIn, Method, potentialy_, &
+       IEi_nMLTs, IEi_nLats, IEi_nBLKs, ValueOut, iError)
+
+  if (iError /= 0) then
+     write(*,*) "Error in routine AMIE_GetPotential:"
+     write(*,*) cErrorCodes(iError)
+     stop
+  else
+     PotentialOut = ValueOut
+!     write(*,*) 'AMIE_GetPotentialY PotentialOut = ', PotentialOut
+  endif
+
+end subroutine AMIE_GetPotentialY
 
 !----------------------------------------------------------------------
 
@@ -247,6 +278,11 @@ subroutine AMIE_GetValue(TimeIn, Method, iValue, &
                    AMIE_Potential(1:AMIE_nMLTs, 1:AMIE_nLats,iTime,iBLK)
            endif
 
+           if (iValue == potentialy_) then
+              ValueOut(1:AMIE_nMLTs, 1:AMIE_nLats,iBLK) =  &
+                   AMIE_PotentialY(1:AMIE_nMLTs, 1:AMIE_nLats,iTime,iBLK)
+           endif
+
            if (iValue == eflux_) then
               ValueOut(1:AMIE_nMLTs, 1:AMIE_nLats,iBLK) =  &
                    AMIE_EFlux(1:AMIE_nMLTs, 1:AMIE_nLats,iTime,iBLK)
@@ -264,6 +300,11 @@ subroutine AMIE_GetValue(TimeIn, Method, iValue, &
               if (iValue == potential_) then
                  ValueOut(1:AMIE_nMLTs, iLat,iBLK) =  &
                       AMIE_Potential(1:AMIE_nMLTs, AMIE_nLats - iLat + 1,iTime,iBLK)
+              endif
+
+              if (iValue == potentialy_) then
+                 ValueOut(1:AMIE_nMLTs, iLat,iBLK) =  &
+                      AMIE_PotentialY(1:AMIE_nMLTs, AMIE_nLats - iLat + 1,iTime,iBLK)
               endif
 
               if (iValue == eflux_) then
@@ -291,6 +332,10 @@ subroutine AMIE_GetValue(TimeIn, Method, iValue, &
               ValueOut(1:AMIE_nMLTs, 1:AMIE_nLats,iBLK) =  &
                    AMIE_Potential(1:AMIE_nMLTs, 1:AMIE_nLats,iTime,iBLK)
            endif
+           if (iValue == potentialy_) then
+              ValueOut(1:AMIE_nMLTs, 1:AMIE_nLats,iBLK) =  &
+                   AMIE_PotentialY(1:AMIE_nMLTs, 1:AMIE_nLats,iTime,iBLK)
+           endif
            if (iValue == eflux_) then
               ValueOut(1:AMIE_nMLTs, 1:AMIE_nLats,iBLK) =  &
                    AMIE_EFlux(1:AMIE_nMLTs, 1:AMIE_nLats,iTime,iBLK)
@@ -305,6 +350,10 @@ subroutine AMIE_GetValue(TimeIn, Method, iValue, &
               if (iValue == potential_) then
                  ValueOut(1:AMIE_nMLTs, iLat,iBLK) =  &
                       AMIE_Potential(1:AMIE_nMLTs, AMIE_nLats - iLat + 1,iTime,iBLK)
+              endif
+              if (iValue == potentialy_) then
+                 ValueOut(1:AMIE_nMLTs, iLat,iBLK) =  &
+                      AMIE_PotentialY(1:AMIE_nMLTs, AMIE_nLats - iLat + 1,iTime,iBLK)
               endif
               if (iValue == eflux_) then
                  ValueOut(1:AMIE_nMLTs, iLat,iBLK) =  &
@@ -333,6 +382,11 @@ subroutine AMIE_GetValue(TimeIn, Method, iValue, &
                    (1.0 - dt)*AMIE_Potential(1:AMIE_nMLTs, 1:AMIE_nLats,iTime,iBLK)+&
                            dt*AMIE_Potential(1:AMIE_nMLTs, 1:AMIE_nLats,iTime-1,iBLK)
            endif
+           if (iValue == potentialy_) then
+              ValueOut(1:AMIE_nMLTs, 1:AMIE_nLats,iBLK) =  &
+                   (1.0 - dt)*AMIE_PotentialY(1:AMIE_nMLTs, 1:AMIE_nLats,iTime,iBLK)+&
+                           dt*AMIE_PotentialY(1:AMIE_nMLTs, 1:AMIE_nLats,iTime-1,iBLK)
+           endif
            if (iValue == eflux_) then
               ValueOut(1:AMIE_nMLTs, 1:AMIE_nLats,iBLK) =  &
                    (1.0 - dt)*AMIE_EFlux(1:AMIE_nMLTs, 1:AMIE_nLats,iTime,iBLK)+&
@@ -351,6 +405,12 @@ subroutine AMIE_GetValue(TimeIn, Method, iValue, &
                       (1.0 - dt)*AMIE_Potential(1:AMIE_nMLTs,AMIE_nLats-iLat+1,&
                                          iTime,iBLK) + &
                      dt*AMIE_Potential(1:AMIE_nMLTs, AMIE_nLats-iLat+1,iTime-1,iBLK)
+              endif
+              if (iValue == potentialy_) then
+                 ValueOut(1:AMIE_nMLTs, iLat,iBLK) =  &
+                      (1.0 - dt)*AMIE_PotentialY(1:AMIE_nMLTs,AMIE_nLats-iLat+1,&
+                                         iTime,iBLK) + &
+                     dt*AMIE_PotentialY(1:AMIE_nMLTs, AMIE_nLats-iLat+1,iTime-1,iBLK)
               endif
               if (iValue == eflux_) then
                  ValueOut(1:AMIE_nMLTs, iLat,iBLK) =  &
@@ -390,3 +450,16 @@ subroutine get_AMIE_values(rtime)
        EIEi_HavenMlts, EIEi_HavenLats, EIEi_HavenBLKs, EIEr3_HaveEFlux, iError)
 
 end subroutine get_AMIE_values
+
+subroutine get_AMIE_PotentialY(rtime)
+
+  use ModEIE_Interface
+
+  real*8, intent(in) :: rtime
+  integer :: iError
+
+  call AMIE_GetPotentialY(rtime, EIE_Interpolate_, &
+       EIEi_HavenMlts, EIEi_HavenLats, EIEi_HavenBLKs, &
+       EIEr3_HavePotential, iError)
+
+end subroutine get_AMIE_PotentialY

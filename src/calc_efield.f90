@@ -36,7 +36,7 @@ subroutine calc_efield(iBlock)
                *max(abs(CosLatitude(i,iBlock)),0.17)) ! 0.17 is 80 degrees.
 
            EField(j,i,k,iNorth_)= &
-                -(Potential(j,i+1,k,iBlock)-Potential(j,i-1,k,iBlock)) &
+                -(PotentialY(j,i+1,k,iBlock)-PotentialY(j,i-1,k,iBlock)) &
                 *0.5*InvdLatDist_GB(j,i,k,iBlock)
 
            ! vertical direction, take a larger stencil:  

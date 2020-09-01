@@ -95,7 +95,8 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
        e_gyro, i_gyro
 
   real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3) :: Collisions
-  real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nIons, nSpecies) :: IonCollisions
+  real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nIons, nSpecies) :: &
+       IonCollisions
 
   real, allocatable :: B0(:,:,:,:,:)
   real, allocatable :: MLatitude(:,:,:,:)
@@ -133,7 +134,7 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
   real, dimension(1:nLons, 1:nLats, 1:nAlts, nSpecies) :: &
        VerticalIonDrag
 
-  real, allocatable :: Potential(:,:,:,:)
+  real, allocatable :: Potential(:,:,:,:), PotentialY(:,:,:,:)
 
   real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3) :: &
        ExB, EField
@@ -145,7 +146,7 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
 
   real, allocatable :: Velocity(:,:,:,:,:)
   real, allocatable :: IVelocity(:,:,:,:,:)
-  real, allocatable :: DivIVelocity(:,:,:,:)  
+  real, allocatable :: DivIVelocity(:,:,:,:)
   real, allocatable :: IVelocityPar(:,:,:,:,:), IVelocityPerp(:,:,:,:,:)
 
   logical            :: isFirstGlow = .True.  
@@ -240,6 +241,7 @@ contains
     allocate(cMax_GDB(0:nLons+1,0:nLats+1,0:nAlts+1,3,nBlocks))
     allocate(IonPressureGradient(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3, nBlocks))
     allocate(Potential(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
+    allocate(PotentialY(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
     allocate(Velocity(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3, nBlocks))
     allocate(IVelocity(-1:nLons+2, -1:nLats+2, -1:nAlts+2, 3, nBlocks))
     allocate(DivIVelocity(1:nLons, 1:nLats, 1:nAlts, nBlocks))
@@ -311,6 +313,7 @@ contains
     deallocate(cMax_GDB)
     deallocate(IonPressureGradient)
     deallocate(Potential)
+    deallocate(PotentialY)
     deallocate(Velocity)
     deallocate(IVelocity)
     deallocate(Emissions)
