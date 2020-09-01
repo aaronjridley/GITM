@@ -15,11 +15,8 @@ subroutine add_sources
   integer :: iDir, iIon
   logical :: IsFirstTime=.true.
 
-  real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1) :: &
-       eHeatingp, iHeatingp, eHeatingm, iHeatingm, iHeating, lame, lami
-
   real :: change(1:nLons,1:nLats,1:nAlts)
-  
+
   call report("add_sources",2)
 
   if (floor((tSimulation-dt)/DtPotential) /= &
@@ -40,8 +37,6 @@ subroutine add_sources
      ! does not change.
 
      call calc_GITM_sources(iBlock)
-     call calc_electron_ion_sources(iBlock, &
-          eHeatingp,iHeatingp,eHeatingm,iHeatingm,iHeating,lame,lami)
 
      !! To turn off EuvHeating, turn UseSolarHeating=.false. in UAM.in
      !! To turn off JouleHeating, turn UseJouleHeating=.false. in UAM.in
@@ -68,12 +63,6 @@ subroutine add_sources
      Temperature(1:nLons, 1:nLats, 0:nAlts+1, iBlock) = &
           Temperature(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
           + Conduction(1:nLons,1:nLats,0:nAlts+1)
-
-     !-------------------------------------------
-     ! This is an example of a user output:
- 
-     UserData3D(:,:,:,1,iBlock) = 0.0
-     UserData3D(1:nLons, 1:nLats, 1:nAlts, 1, iBlock) = JouleHeating
 
      do while (minval(temperature(1:nLons, 1:nLats, 1:nAlts, iBlock)) < 0.0)
         write(*,*) "Negative Temperature Found!!!  Correcting!!!"
@@ -105,6 +94,16 @@ subroutine add_sources
         enddo
      enddo
 
+     !-------------------------------------------
+     ! This is an example of a user output:
+     !-------------------------------------------
+ 
+     UserData3D(:,:,:,1,iBlock) = 0.0
+     UserData3D(1:nLons, 1:nLats, 1:nAlts, 1, iBlock) = JouleHeating
+
+     !-------------------------------------------
+     !-------------------------------------------
+
      !! To turn off IonDrag, turn UseIonDrag=.false. in UAM.in
      do iDir = 1, 3
        Velocity(1:nLons, 1:nLats, 1:nAlts, iDir, iBlock) = &
@@ -132,10 +131,12 @@ subroutine add_sources
      enddo
 
      if (DoCheckForNans) call check_for_nans_ions('before e-temp')
-    
-     call calc_electron_temperature(&
-          iBlock,eHeatingp,iHeatingp,eHeatingm,iHeatingm,iHeating,lame,lami)
 
+     call calc_electron_temperature(iBlock)
+     
+     !call calc_electron_ion_sources(iBlock)
+     !call calc_electron_temperature(iBlock)
+          
      ! New Source Term for the ion density:
 
      if (UseImprovedIonAdvection) then
