@@ -12,7 +12,7 @@ cleanall:
 	cd Library/test; make clean
 	rm -f include/*.mod
 
-distclean: clean
+distclean: cleanall
 	cd Library/src; make distclean
 	cd Library/test; make distclean
 	rm -f Library/src/mpif*.h *~ */*~ ${INSTALL_FILES}
