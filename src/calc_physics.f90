@@ -76,13 +76,13 @@ subroutine calc_physics(iBlock)
     i = i+1
   end do
 
-  !Get heliocentric coordinates, TrueAnomaly and sunorbiteccentricity
+  !Get heliocentric coordinates, TrueAnomaly and sunplanetdistance
   heliocentricX = semimajoraxis*(cos(EccAnomaly*pi/180.)-eccentricity)
   heliocentricY = semimajoraxis*(1-eccentricity**2)**(0.5)*sin(eccAnomaly*pi/180.)
   heliocentricZ = 0
 
   TrueAnomaly = atan2(heliocentricY,heliocentricX)*180/pi
-  sunorbiteccentricity = sqrt(heliocentricX**2+heliocentricY**2)
+  SunPlanetDistance = sqrt(heliocentricX**2+heliocentricY**2)
 
   !convert to J2000 coordinates with x-axis aligned with vernal equinox so
   !we can get solar longitude in the coorect system.  We don't need z.
