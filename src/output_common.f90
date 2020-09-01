@@ -181,7 +181,7 @@ subroutine output(dir, iBlock, iOutputType)
      enddo
      ! Do not write output at all if the current block is outside of the 
      ! user-defined region. iProc=0 writes the header file
-     if (iProc /= 0 .and. DoSaveHIMEPlot == .false.) return
+     if (iProc /= 0 .and. .not.DoSaveHIMEPlot) return
   endif
 
 
