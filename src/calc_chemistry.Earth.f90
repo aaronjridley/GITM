@@ -9,10 +9,9 @@ subroutine calc_chemistry(iBlock)
   use ModRates
   use ModEUV
   use ModSources
-  use ModInputs, only: iDebugLevel, UseIonChemistry, UseNeutralChemistry,f107,f107a, DoCheckForNans
+  use ModInputs, only: iDebugLevel, UseIonChemistry, UseNeutralChemistry, f107, DoCheckForNans
   use ModConstants
-  use ModTime, only: istep,utime,ijulianday
-  use EUA_ModMsis90, only: meter6, gtd6
+
   implicit none
 
   integer, intent(in) :: iBlock
@@ -28,8 +27,6 @@ subroutine calc_chemistry(iBlock)
   integer :: iLon, iLat, iAlt, iIon, nIters, iNeutral
   
   real :: lon, lat, alt
-  real, dimension(1:2) :: msis_temp
-  real, dimension(1:8) :: msis_dens
   real :: LonDeg, LatDeg, AltKm, LST
   real,dimension(7)    :: AP  
 
