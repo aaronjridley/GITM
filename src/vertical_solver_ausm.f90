@@ -15,8 +15,6 @@ subroutine check_ion_densities(iDen)
   do iIon = 1, nIonsAdvect
      do iAlt = 1, nAlts+2
         if (iDen(iAlt, iIon) < 0.0) then
-!           write(*,*) 'Found negative ion density: ', &
-!                iAlt, iIon, iDen(iAlt,iIon)
            iDen(iAlt,iIon) = max(iDen(iAlt-1,iIon)*0.99,10.0)
         endif
      enddo
