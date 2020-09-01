@@ -12,7 +12,7 @@ subroutine calc_efield(iBlock)
 
   integer :: i, j, k, imax, jmax, kmax, ku, kd
   real :: maxi, edotb
-  real :: altu, alt, altd, du, dd, r, r2, pu, p, pd, dpda
+  real :: altu, alt, altd, dAltUp, dAltDown, r, r2, pUp, p, pDown, dpda
   real :: bdir(3)
 
   call report("Electric Field",2)
@@ -49,17 +49,17 @@ subroutine calc_efield(iBlock)
            altu = Altitude_GB(j,i,ku,iBlock)
            alt  = Altitude_GB(j,i,k ,iBlock)
            altd = Altitude_GB(j,i,kd,iBlock)
-           du   = altu - alt
-           dd   = alt - altd
+           dAltUp     = altu - alt
+           dAltDown   = alt - altd
 
-           r = du/dd
+           r = dAltUp/dAltDown
            r2 = r**2
 
-           pu = potential(j,i,ku,iBlock)
+           pUp = potential(j,i,ku,iBlock)
            p  = potential(j,i,k ,iBlock)
-           pd = potential(j,i,kd,iBlock)
+           pDown = potential(j,i,kd,iBlock)
 
-           dpda = (pu - r2*pd - (1-r2)*p) / (du + r2*dd)
+           dpda = (pUp - r2*pDown - (1-r2)*p) / (dAltUp + r2*dAltDown)
 
            EField(j,i,k,iUp_) = -dpda
 
