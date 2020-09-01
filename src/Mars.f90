@@ -100,7 +100,7 @@ subroutine calc_planet_sources(iBlock)
   use ModSources
   use ModGITM
   use ModPlanet
-  use ModEUV, only:SunOrbitEccentricity,AveCosSza
+  use ModEUV, only:SunPlanetDistance,AveCosSza
   use ModTime
 
   implicit none
@@ -217,10 +217,8 @@ subroutine calc_planet_sources(iBlock)
 
   ! Calculating the solar flux at Mars 
 
-  ! SunOrbitEccentricity = sqrt(2.64236)
   do NW=1,L_NSPECTV
-     SOL(nw) = SOLARF(NW)/(SunOrbitEccentricity**2)
-     !SOL(nw) = SOLARF(NW)/(2.64236)
+     SOL(nw) = SOLARF(NW)/(SunPlanetDistance**2)
   end do
 
   !##############################################################
