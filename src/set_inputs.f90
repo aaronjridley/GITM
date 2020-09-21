@@ -114,7 +114,7 @@ subroutine set_inputs
               endif
 
            endif
-
+        
         case ("#TIMEEND","#ENDTIME")
 
            if (IsFramework) then
@@ -186,6 +186,7 @@ subroutine set_inputs
               write(*,*) '#CPUTIMEMAX'
               write(*,*) 'CPUTimeMax    (real)'
            endif
+        
 
         case ("#STATISTICALMODELSONLY")
            call read_in_logical(UseStatisticalModelsOnly, iError)
@@ -206,7 +207,7 @@ subroutine set_inputs
               write(*,*) 'UseStatisticalModelsOnly    (logical)'
               write(*,*) 'DtStatisticalModels         (real)'
            endif
-
+        
         case ("#TSIMULATION")
 
            if (IsFramework) then
@@ -233,7 +234,7 @@ subroutine set_inputs
                  call time_real_to_int(CurrentTime, iTimeArray)
               endif
            endif
-
+        
         case ("#F107")
            if(RCMROutType == "F107") then
               call read_in_real(f107_msis, iError)
@@ -458,7 +459,7 @@ subroutine set_inputs
               write(*,*) 'UseGravityWave        (logical)'
               IsDone = .true.
            endif
-
+       
         case ("#HPI")
            call read_in_real(HemisphericPower, iError)
            if (iError /= 0) then
@@ -801,6 +802,7 @@ subroutine set_inputs
            call read_in_logical(UseOCooling, iError)
            call read_in_logical(UseConduction, iError)
            call read_in_logical(UseTurbulentCond, iError)
+           call read_in_logical(UseIRHeating, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #THERMO:'
               write(*,*) ''

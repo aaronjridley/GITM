@@ -319,7 +319,7 @@ subroutine output(dir, iBlock, iOutputType)
 
   case ('3DTHM')
 
-     nvars_to_write = 14
+     nvars_to_write = 16
      call output_3dthm(iBlock)
 
   case ('1DCHM')
@@ -640,16 +640,18 @@ contains
     if (cType(3:5) == "THM") then
 
        write(iOutputUnit_,"(I7,A1,a)")  4, " ", "EUV Heating"
-       write(iOutputUnit_,"(I7,A1,a)")  5, " ", "Conduction"
-       write(iOutputUnit_,"(I7,A1,a)")  6, " ", "Molecular Conduction"
-       write(iOutputUnit_,"(I7,A1,a)")  7, " ", "Eddy Conduction"
-       write(iOutputUnit_,"(I7,A1,a)")  8, " ", "Eddy Adiabatic Conduction"
-       write(iOutputUnit_,"(I7,A1,a)")  9, " ", "Chemical Heating"
-       write(iOutputUnit_,"(I7,A1,a)")  10, " ", "Auroral Heating"
-       write(iOutputUnit_,"(I7,A1,a)")  11, " ", "Joule Heating"
-       write(iOutputUnit_,"(I7,A1,a)")  12, " ", "NO Cooling"
-       write(iOutputUnit_,"(I7,A1,a)")  13, " ", "O Cooling"
-       write(iOutputUnit_,"(I7,A1,a)")  14, " ", "Total Abs EUV"
+       write(iOutputUnit_,"(I7,A1,a)")  7, " ", "Conduction"
+       write(iOutputUnit_,"(I7,A1,a)")  5, " ", "RadCooling"
+       write(iOutputUnit_,"(I7,A1,a)")  6, " ", "IR Heating"
+       write(iOutputUnit_,"(I7,A1,a)")  8, " ", "Molecular Conduction"
+       write(iOutputUnit_,"(I7,A1,a)")  9, " ", "Eddy Conduction"
+       write(iOutputUnit_,"(I7,A1,a)")  10, " ", "Eddy Adiabatic Conduction"
+       write(iOutputUnit_,"(I7,A1,a)")  11, " ", "Chemical Heating"
+       write(iOutputUnit_,"(I7,A1,a)")  12, " ", "Auroral Heating"
+       write(iOutputUnit_,"(I7,A1,a)")  13, " ", "Joule Heating"
+       write(iOutputUnit_,"(I7,A1,a)")  14, " ", "NO Cooling"
+       write(iOutputUnit_,"(I7,A1,a)")  15, " ", "O Cooling"
+       write(iOutputUnit_,"(I7,A1,a)")  16, " ", "Total Abs EUV"
        if (cType(1:2) == "1D") then
           do iSpecies = 1, nSpeciesTotal
              write(iOutputUnit_,"(I7,A1,a,a)") 11 + iSpecies, " ", &
@@ -1335,17 +1337,21 @@ subroutine output_3dthm(iBlock)
                 Longitude(iLon,iBlock),               &
                 Latitude(iLat,iBlock),                &
                 Altitude_GB(iLon,iLat,iAlt,iBlock),   &
-                EuvHeating(iiLon,iiLat,iiAlt,iBlock)*dt*TempUnit(iiLon,iiLat,iiAlt),    &
-                Conduction(iiLon,iiLat,iiAlt)*TempUnit(iiLon,iiLat,iiAlt),              &
-                MoleConduction(iiLon,iiLat,iiAlt),                             &
-                EddyCond(iiLon,iiLat,iiAlt),                                   &
-                EddyCondAdia(iiLon,iiLat,iiAlt),                               &
-                ChemicalHeatingRate(iiLon,iiLat,iiAlt)*TempUnit(iiLon,iiLat,iiAlt),     &
-                AuroralHeating(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt),       &
-                JouleHeating(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt),         &
-                -NOCooling(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt),           &
-                -OCooling(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt),            &
-                EuvTotal(iiLon,iiLat,iiAlt,iBlock) * dt
+                EuvHeating(iiLon,iiLat,iiAlt,iBlock)*dt*TempUnit(iiLon,iiLat,iiAlt)*86400.0, &
+                Conduction(iiLon,iiLat,iiAlt)*TempUnit(iiLon,iiLat,iiAlt)/ &
+                (Dt + 1.0e-03)*86400.,              &
+                -RadCooling(iiLon,iiLat,iiAlt,iBlock)*TempUnit(iiLon,iiLat,iiAlt)&
+                *86400., &
+                QnirTOT(iiLon, iiLat, iiAlt, iBlock)*TempUnit(iiLon,iiLat,iiAlt)*86400., &
+                MoleConduction(iiLon,iiLat,iiAlt)*86400.0,                             &
+                EddyCond(iiLon,iiLat,iiAlt)*86400.0,                                   &
+                EddyCondAdia(iiLon,iiLat,iiAlt)*86400.0,                               &
+                ChemicalHeatingRate(iiLon,iiLat,iiAlt)*TempUnit(iiLon,iiLat,iiAlt)*86400.0, &
+                AuroralHeating(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt)*86400.0,   &
+                JouleHeating(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt)*86400.,      &
+                -NOCooling(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt)*86400.0,       &
+                -OCooling(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt)*86400.0,        &
+                EuvTotal(iiLon,iiLat,iiAlt,iBlock) * dt *86400.0
            
         enddo
      enddo

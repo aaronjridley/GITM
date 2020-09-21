@@ -115,7 +115,9 @@ module ModSources
   real :: ChemicalHeatingRateIon(nLons, nLats, nAlts)
   real :: ChemicalHeatingRateEle(nLons, nLats, nAlts)
 
-  
+  !BP                                                                                         
+  real, dimension(40,11) :: qIR_NLTE_table
+  real, dimension(19,16) :: diurnalHeating, semiDiurnalHeating  
 
   real :: HorizontalTempSource(nLons, nLats, nAlts)
 

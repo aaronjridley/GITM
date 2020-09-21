@@ -36,8 +36,9 @@ program GITM
 
   call init_planet
   call set_defaults
-
+   
   call read_inputs(cInputFile)
+
   call set_inputs
 
   call initialize_gitm(CurrentTime)

@@ -56,6 +56,7 @@ subroutine add_sources
           + AuroralHeating &
           + JouleHeating &
           + ElectronHeating &
+          + QnirTOT(1:nLons, 1:nLats, 1:nAlts, iBlock) &
           ) &
           + ChemicalHeatingRate &
           + UserHeatingRate(1:nLons, 1:nLats, 1:nAlts, iBlock)
