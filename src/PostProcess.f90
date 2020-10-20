@@ -167,8 +167,11 @@ program PostProcess
 
         allocate(AllData(nLonsTotal,nLatsTotal,nAltsTotal,nVars))
         ! IsHIMEBlock is a flag array to indicate which blocks are saved for HIME type
-        if (IsHIMEType) allocate(IsHIMEBlock(nBlocksLon,nBlocksLat,nBlocksAlt))
-        
+        if (IsHIMEType) then
+           allocate(IsHIMEBlock(nBlocksLon,nBlocksLat,nBlocksAlt))
+           IsHIMEBlock = 0
+        endif
+
         if (.not. IsEnd .or. IsFirstTime) then
            write(*,*) "Not Appending...."
            open(iOutputUnit_,file=FileName(1:iStart)//".bin",&
@@ -182,7 +185,6 @@ program PostProcess
         nAltsTotal = 0
         nLatsTotal = 0
         nLonsTotal = 0
-        IsHIMEBlock = 0
 
         iBlock = 1
         do iBlockAlt = 1, nBlocksAlt
