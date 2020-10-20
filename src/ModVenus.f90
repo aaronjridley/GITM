@@ -120,10 +120,11 @@ module ModPlanet
   real, dimension(nAlts) :: VertTau = 1.0e9
 
   logical :: IsEarth = .false.
-  logical :: IsMars = .true.
+  logical :: IsMars = .false.
   logical :: IsTitan = .false.
+  logical :: IsVenus = .true.
   logical :: NonMagnetic = .true.
-  real, parameter :: PlanetNum = 0.03
+  real, parameter :: PlanetNum = 0.02
   character (len=10) :: cPlanet = "Venus"
 
   integer, parameter :: i3371_ = 1

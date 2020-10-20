@@ -8,6 +8,7 @@ subroutine calc_GITM_sources(iBlock)
   use ModGITM
   use ModEUV, only: sza
   use ModTime, only: iTimeArray, UTime
+  use ModPlanet, only: IsVenus
 
   implicit none
 
@@ -74,7 +75,7 @@ subroutine calc_GITM_sources(iBlock)
   real :: r_sza
   real :: x03, x12
   real :: LST
-  real :: RP_hours = RP_Venus/3600.0
+  real :: RP_hours = Rotation_Period/3600.0
   integer :: iLatTable, iAltTable
 
   !BP: sza data for IR table                                                                 
@@ -492,7 +493,7 @@ subroutine calc_GITM_sources(iBlock)
      !Inputs:   SZA & Altitude                                                             
      !Outputs:  Q_IR (iLon, iLat, iAlt, iProc)                             
      QnirTOT(:,:,:,:) = 0.0
-     if (UseIRHeating) then
+     if (UseIRHeating .and. isVenus) then
        call start_timing("IR Heating")
        do iAlt = 1, nAlts
          do iLon = 1, nLons
