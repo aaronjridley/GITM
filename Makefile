@@ -256,8 +256,8 @@ test_hime_rundir:
 	make rundir RUNDIR=${TESTDIR} STANDALONE=YES UADIR=`pwd`
 	mkdir ${TESTDIR}/inputs
 	cp srcData/UAM.in.hime ${TESTDIR}/UAM.in
-	cp srcDATA/HIME/b20170302_0626UTto0629UT_sample.npfisr ${TESTDIR}/inputs/
-	cp srcDATA/HIME/imf20170302.dat ${TESTDIR}/inputs/
+	cp srcData/HIME/b20170302_0626UTto0629UT_sample.npfisr ${TESTDIR}/inputs/
+	cp srcData/HIME/imf20170302.dat ${TESTDIR}/inputs/
 
 test_hime_run:
 	cd ${TESTDIR}; ${MPIRUN} ./GITM.exe > runlog
