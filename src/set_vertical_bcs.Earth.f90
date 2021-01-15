@@ -612,6 +612,9 @@ iAlt = -1
      do iSpecies=1,nIons-1
 
         if (UseImprovedIonAdvection) then
+
+           call check_for_negative_densities
+
            n0 = alog(LogINS(iAlt  ,iSpecies))
            n1 = alog(LogINS(iAlt-1,iSpecies))
            n2 = alog(LogINS(iAlt-2,iSpecies))
@@ -686,6 +689,52 @@ iAlt = -1
      enddo
      LogRho(iAlt) = alog(SumRho)
   enddo
+
+contains
+
+  subroutine check_for_negative_densities
+
+    integer :: iAltSub
+    logical :: IsFound
+
+    if (minval(LogINS(iAlt-5:iAlt, iSpecies)) < 0.0) then
+
+       if (DoCheckForNaNs) write(*,*) "Correcting negative ion density in set_vertical_bcs : ", iAlt, iSpecies
+
+       if (LogINS(iAlt-6, iSpecies) < 0.0) then
+          write(*,*) 'Negative Ion density too close to the upper boundary: ', iSpecies
+          call stop_gitm('Stopping in set_vertical_bcs')
+       endif
+
+       do iAltSub = iAlt-5, iAlt-1
+
+          if (LogINS(iAltSub,iSpecies) < 0.0) then
+
+             if (LogINS(iAltSub-1,iSpecies) > 0.0 .and. &
+                  LogINS(iAltSub+1,iSpecies) > 0.0) then
+                ! Average two points around it:
+                LogINS(iAltSub,iSpecies) = &
+                     (LogINS(iAltSub-1,iSpecies) + LogINS(iAltSub+1,iSpecies))/2.0
+             else
+                ! Or take previous point and decrease it by 5 percent:
+                LogINS(iAltSub,iSpecies) = LogINS(iAltSub-1,iSpecies) * 0.95
+             endif
+
+          endif
+
+       enddo
+
+       ! Top point:
+       if (LogINS(iAlt,iSpecies) < 0.0) then
+          ! Take previous point and decrease it by 5 percent:
+          LogINS(iAlt,iSpecies) = LogINS(iAlt-1,iSpecies) * 0.95
+       endif
+
+    endif
+
+
+  end subroutine check_for_negative_densities
+
 
 end subroutine set_vertical_bcs
 
