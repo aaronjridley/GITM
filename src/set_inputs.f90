@@ -635,6 +635,17 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
+        case ("#FANGENERGY")
+           call read_in_logical(UseFangEnergyDeposition, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #FANGENERGY'
+              write(*,*) 'This is for using Dongjies aurora.'
+              write(*,*) ''
+              write(*,*) '#FANGENERGY'
+              write(*,*) 'UseFangEnergyDeposition        (logical)'
+              IsDone = .true.
+           endif
+
         case ("#USECUSP")
            call read_in_logical(UseCusp, iError)
            call read_in_real(CuspAveE, iError)

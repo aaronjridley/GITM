@@ -87,6 +87,8 @@ module ModInputs
   real :: AuroralHeightFactor = 1.0
   logical :: NormalizeAuroraToHP = .false.
 
+  logical :: UseFangEnergyDeposition = .false.
+  
   character (len=iCharLen_) :: TypeLimiter = "minmod"
 
   integer, dimension(7) :: iStartTime
