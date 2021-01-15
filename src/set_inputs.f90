@@ -1657,8 +1657,10 @@ subroutine set_inputs
            cTempLines(1) = cLine
            call read_in_string(cTempLine, iError)
            cTempLines(2) = cTempLine
+           ! put "none" to ignore onset file
            call read_in_string(cTempLine, iError)
            cTempLines(3) = cTempLine
+
            cTempLines(4) = " "
            cTempLines(5) = "#END"
 
@@ -1670,6 +1672,7 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
+           ! If the onset file is called "none", then it will automatically ignore this:
            call read_al_onset_list(iError,CurrentTime+TimeDelayHighLat,EndTime+TimeDelayHighLat)
 
            if (iError /= 0) then
