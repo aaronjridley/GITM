@@ -88,10 +88,8 @@ allclean:
 	rm -f *~ srcData/UAM.in
 	# If util and share were moved because of GITM being
 	# used in SWMF component mode, put them back.
-	if[-d component_util]; then     \
-		mv component_util  util;  \
-		mv component_share share; \
-	fi
+	if [ -d component_util]; then mv component_util util; fi
+	if [ -d component_share]; then mv component_share share; fi
 
 #
 #       Create run directories
@@ -238,6 +236,31 @@ test_mars_check:
 		${TESTDIR}/UA/data/log00000002.dat \
 		srcData/log00000002.dat.Mars >& test_mars.diff)
 	ls -l test_mars.diff
+
+# DSO: Test to run HIME
+test_hime:
+	@echo "test_hime_compile..." > test_hime.diff
+	make test_hime_compile
+	@echo "test_hime_rundir..." >> test_hime.diff
+	make test_hime_rundir
+	@echo "test_hime_run..." >> test_hime.diff
+	make test_hime_run
+
+test_hime_compile:
+	./Config.pl -Earth
+	./Config.pl -g=9,9,50,1
+	make GITM
+	
+test_hime_rundir:
+	rm -rf ${TESTDIR}
+	make rundir RUNDIR=${TESTDIR} STANDALONE=YES UADIR=`pwd`
+	mkdir ${TESTDIR}/inputs
+	cp srcData/UAM.in.hime ${TESTDIR}/UAM.in
+	cp srcData/HIME/b20170302_0626UTto0629UT_sample.npfisr ${TESTDIR}/inputs/
+	cp srcData/HIME/imf20170302.dat ${TESTDIR}/inputs/
+
+test_hime_run:
+	cd ${TESTDIR}; ${MPIRUN} ./GITM.exe > runlog
 
 dist:
 	make distclean

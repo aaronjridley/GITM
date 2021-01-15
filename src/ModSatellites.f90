@@ -21,15 +21,18 @@ module ModSatellites
 
   implicit none
 
-  integer, parameter :: nMaxSats = 20
+  integer, parameter :: nMaxSats = 115
   integer, parameter :: nMaxSatInputLines = 100000 !Asad: increased for RCAC
-  integer, parameter :: nMaxSatPos = 10
+  integer, parameter :: nMaxSatPos = 120
 
   integer :: nSats = 0
 
   integer :: iSatUnit = UnitTmp_
 
   character (len=iCharLen_) :: cSatFileName(nMaxSats)
+
+  !!! Xing
+  character (len=iCharLen_) :: SatOutputType(nMaxSats)
 
   Integer, parameter :: dblprec = selected_real_kind(14,200)
 

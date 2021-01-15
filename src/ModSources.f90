@@ -39,9 +39,19 @@ module ModSources
   real, allocatable :: QnirLTE(:,:,:,:)
   real, allocatable :: CirLTE(:,:,:,:)
 
+  real(kind=8), allocatable :: eHeatingp(:,:,:)
+  real(kind=8), allocatable :: iHeatingp(:,:,:)
+  real(kind=8), allocatable :: eHeatingm(:,:,:)
+  real(kind=8), allocatable :: iHeatingm(:,:,:)
+  real(kind=8), allocatable :: iHeating(:,:,:)
+  real(kind=8), allocatable :: lame(:,:,:)
+  real(kind=8), allocatable :: lami(:,:,:)
 
   real, dimension(nLons,nLats,nAlts,3) :: GWAccel = 0.0
 
+  !BP
+  real, dimension(40,11) :: qIR_table
+  
   !\
   ! Reactions used in chemistry output
   ! i.e. in2p_e -->  n2+ + e
@@ -92,7 +102,8 @@ module ModSources
   !/
 
   real, dimension(:), allocatable :: &
-       ED_grid, ED_Energies, ED_Flux, ED_Ion, ED_Heating
+       ED_grid, ED_Energies, ED_Flux, ED_Ion, ED_Heating, &
+       ED_energy_edges, ED_delta_energy, ED_EnergyFlux
   integer :: ED_N_Energies, ED_N_Alts
   real, dimension(nAlts) :: ED_Interpolation_Weight
   integer, dimension(nAlts) :: ED_Interpolation_Index
@@ -105,7 +116,16 @@ module ModSources
   real :: ChemicalHeatingRateIon(nLons, nLats, nAlts)
   real :: ChemicalHeatingRateEle(nLons, nLats, nAlts)
 
+  !\
+  ! Needed for Fang et al, 2010:
+  !/
+  real, allocatable :: Fang_Ci(:,:)  ! nEnergies, 8
+  real, allocatable :: Fang_y(:,:)   ! nEnergies, nAlts
+  real, allocatable :: Fang_f(:,:)   ! nEnergies, nAlts
   
+  !BP
+  real, dimension(40,11) :: qIR_NLTE_table
+  real, dimension(19,16) :: diurnalHeating, semiDiurnalHeating  
 
   real :: HorizontalTempSource(nLons, nLats, nAlts)
 
@@ -140,6 +160,15 @@ contains
     allocate(IonPrecipIonRateS(nLons,nLats,nAlts,nSpecies,nBlocks))
     allocate(IonPrecipHeatingRate(nLons,nLats,nAlts,nBlocks))
     allocate(KappaEddyDiffusion(nLons,nLats,-1:nAlts+2,nBlocks))
+
+    allocate(eHeatingp(0:nLons+1,0:nLats+1,0:nAlts+1))
+    allocate(iHeatingp(0:nLons+1,0:nLats+1,0:nAlts+1))
+    allocate(eHeatingm(0:nLons+1,0:nLats+1,0:nAlts+1))
+    allocate(iHeatingm(0:nLons+1,0:nLats+1,0:nAlts+1))
+    allocate(iHeating(0:nLons+1,0:nLats+1,0:nAlts+1))
+    allocate(lame(0:nLons+1,0:nLats+1,0:nAlts+1))
+    allocate(lami(0:nLons+1,0:nLats+1,0:nAlts+1))
+
   end subroutine init_mod_sources
   !=========================================================================
   subroutine clean_mod_sources

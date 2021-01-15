@@ -59,6 +59,7 @@ foreach (@Arguments){
     if(/^-LV-426$/i)          {$Planet="LV-426";               next};
     if(/^-Titan$/i)           {$Planet="Titan";                next};
     if(/^-mars$/i)            {$Planet="Mars";                 next};
+    if(/^-venus$/i)           {$Planet="Venus";                next};
     if(/^-earth$/i)           {$Planet="Earth";                next};
     if(/^-noflush$/i)         {$NoFlush=1     ;                next};
     if(/^-s$/)                {$Show=1;                        next};
@@ -231,12 +232,12 @@ sub set_planet{
           $nLon = 9;
           $nLat = 9;
           $nAlt = 50;
-          $MaxBlock = 4;
+          $MaxBlock = 1;
     }elsif($Planet eq 'LV-426'){
           $nLon = 9;
           $nLat = 9;
           $nAlt = 100;
-          $MaxBlock = 4;
+          $MaxBlock = 1;
     }elsif($Planet eq 'Mars'){
           $nLon = 9;
           $nLat = 9;
@@ -247,6 +248,11 @@ sub set_planet{
           $nLat = 2;
           $nAlt = 100;
           $MaxBlock = 4;
+    } elsif($Planet eq 'Venus'){
+          $nLon = 9;
+          $nLat = 9;
+          $nAlt = 50;
+          $MaxBlock = 1;
     }
 
     @ARGV = ($NameGridFile);

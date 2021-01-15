@@ -111,7 +111,7 @@ contains
     character(len=*), parameter:: NameSub = 'make_dir'
     !------------------------------------------------------------------------
     if(.not. present(iPermissionIn)) then
-       iPermission = O'0755'
+       iPermission = 493 ! which is O'0755'
     else
        iPermission = iPermissionIn
     endif

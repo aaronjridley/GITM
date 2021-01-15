@@ -121,7 +121,7 @@ subroutine ED_Get_Energies(energies)
   COMMON /R_DE/ EMAT_SAVE,DEMAT_SAVE
 
   real, dimension(1:spectra_levels), intent(out) :: energies
-  real :: ED_Max_Energy, ED_Min_Energy, de
+  real :: ED_Max_Energy, ED_Min_Energy, de, logmin
   integer :: i
 
   ! Now we want to figure out what energies we are going to use:
@@ -130,9 +130,10 @@ subroutine ED_Get_Energies(energies)
   ED_Min_Energy = 10.0
 
   de = (alog10(ED_Max_Energy) - alog10(ED_Min_Energy))/(spectra_levels-1)
-
+  logmin = alog10(ED_Min_Energy)
+  
   do i=1,spectra_levels
-     energies(spectra_levels - (i-1)) = ED_Min_Energy + 10.0**((i-1)*de)
+     energies(spectra_levels - (i-1)) = 10.0**(logmin + (i-1)*de)
   enddo
 
 end subroutine ED_Get_Energies

@@ -1,0 +1,181 @@
+
+#DEBUG
+0	debug level
+0	cpu to watch
+10.0	dt between normal code output to stdout
+F	usebarriers - forces the code to stop and wait more often
+
+#RESTART
+F
+
+#GRID
+40	    lons
+20	    lats
+-90.0	    minimum latitude to model
+90.0	    maximum latitude to model
+0.0	    start longitude to model
+0.0	    end longitude to model
+
+#DIFFUSION
+T
+2250.0	   Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
+0.00010	   Total Eddy Diffusion applied at alts below this pressures level
+0.00000	   No Eddy Diffusion at altitudes above this pressure level
+
+#PHOTOELECTRON
+0.06	   Efficiency of photoelectron heating
+
+#THERMALDIFFUSION
+5.6e-4	   Thermal conductivity (code use kappa = number * T**0.75)
+
+#CPUTIMEMAX
+129000	   Maximum amount of cputime to use before stopping the code
+
+#TIMESTART
+2017      year
+03        month
+02        day
+06        hour
+25        minute
+00        second
+
+#TIMEEND
+2017      year
+03        month
+02        day
+06        hour
+29        minute
+00        second
+
+#CFL
+0.75	 percentage of maximum allowable time-step to take
+
+#LIMITER
+mc	only limiter available
+1.6      Beta=1.6 seems to be more stable than 2.0
+
+#STATISTICALMODELSONLY
+F	if you want to run with msis and iri only (i.e. not GITM)
+1800.0	  time step to take if you run with msis and iri
+
+#LOGFILE
+60.0		dt for output to a log file
+
+#SAVEPLOTS
+7200.0		dt for writing restart files
+2		how many output files do you want
+2DHME		output style
+120		dt for output
+3DHME           output style
+120              dt for output
+
+#SAVEHIMEPLOT
+200.0		HIMEPlotLonStart
+220.0		HIMEPlotLonEnd
+60.0		HIMEPlotLatStart
+70.0		HIMEPlotLatEnd
+
+#ELECTRODYNAMICS
+60.0		how often to update potential
+60.0		how often to update aurora and euv
+
+#KP
+1.0
+
+#ALTITUDE
+100.0		minimum altitude to use
+600.0		maximum altitude to use (ignored unless the following is F)
+T		use stretched grid
+
+#INITIAL
+T		initialize thermosphere using MSIS
+T		initialize ionosphere using IRI
+100.0		if msis is false, then this is the temperature at the base
+1000.0		if msis is false, then this is the temperature at the top
+5.0e17		if msis is false, then this is the N(species1) at the base
+7.0e18		if msis is false, then this is the N(species2) at the base
+3.0e19		if msis is false, then this is the N(species3) at the base
+
+#APEX
+T		Use apex magnetic coordinate system
+
+#TIDES
+F               UseMSISFlat
+T               UseMSISTides
+F               UseGSWMTides
+F               UseWACCMTides
+
+#DYNAMO
+T
+65.0            Latitude to start dynamo
+500             iterations to use for the solve
+1.0             minimum residual for the solver
+T		IncludeCowling
+10.0		DynamoLonAverage
+
+#NGDC_INDICES
+DataIn/f107.txt
+
+#MHD_INDICES
+inputs/imf20170302.dat
+
+#EUV_DATA
+T
+DataIn/FISM/fismflux_daily_2017.dat
+
+#AMIEFILES
+inputs/b20170302_0626UTto0629UT_sample.npfisr      northern hemisphere amie file
+mirror
+
+#USEREGIONALAMIE
+T                       UseRegionalAMIE
+T			UseTwoAMIEPotentials
+2017 03 02 06 27 00     AMIETimeStart
+2017 03 02 08 00 00     AMIETimeEnd
+-98.0                   AMIELonStart
+-90.0                   AMIELonEnd  
+67.5                    AMIELatStart
+70.0                    AMIELatEnd  
+2.0                     AMIEBoundaryWidth
+
+#NEWELLAURORA
+T		UseNewellAurora
+T		UseNewellAveraged
+T		UseNewellMono
+T		UseNewellWave
+T		DoNewellRemoveSpikes
+T		DoNewellAverage
+
+#THERMO
+T		 UseSolarHeating
+T		 UseJouleHeating
+T		 UseAuroralHeating
+T		 UseNOCooling
+T		 UseOCooling
+T		 UseConduction
+T		 UseTurbulentConduction
+T		 UseUpdatedTurbulentConduction
+1.0		 EddyScalingFactor
+
+#FORCING
+T		UsePressureGradient
+T		UseIonDrag
+T		UseNeutralDrag
+T		UseViscosity
+T		UseCoriolis
+T		UseGravity
+
+#IONFORCING
+T
+T
+T
+T
+T        dynamo is on!
+
+#CHEMISTRY
+T		UseIonChemistry
+T		UseIonAdvection
+T		UseNeutralChemistry
+
+#END
+

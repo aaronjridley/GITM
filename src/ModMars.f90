@@ -133,6 +133,7 @@ module ModPlanet
   logical :: IsEarth = .false.
   logical :: IsMars = .true.
   logical :: IsTitan = .false.
+  logical :: IsVenus = .false.
   logical :: NonMagnetic = .true.
   real, parameter :: PlanetNum = 0.04 
   character (len=10) :: cPlanet = "Mars"

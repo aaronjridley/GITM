@@ -16,15 +16,11 @@ subroutine euv_ionization_heat(iBlock)
 
   integer, intent(in) :: iBlock
 
-  integer :: iAlt, iWave, iSpecies, iIon, iError, iLon,iLat
+  integer :: iAlt, iWave, iSpecies, iNeutral, iIon, iError, iLon,iLat
   integer :: iRxn
   real, dimension(nLons,nLats) :: Tau, Intensity
 
   logical :: IsFirstTime(nBlocksMax) = .true.
-
-  real :: photoion(Num_WaveLengths_High, nIons-1)
-  real :: photoabs(Num_WaveLengths_High, nSpeciesTotal)
-  real :: photodis(Num_WaveLengths_High, nSpeciesTotal)
 
   real :: NeutralDensity(nLons, nLats, nSpecies)
   real :: ChapmanLittle(nLons, nLats, nSpecies)
@@ -32,7 +28,14 @@ subroutine euv_ionization_heat(iBlock)
   real :: nEuvHeating(nLons,nLats,nAlts), neEuvHeating(nLons,nLats,nAlts)
 
   if (IsFirstTime(iBlock)) then
+
      IsFirstTime(iBlock) = .false.
+
+     ! This transfers the specific photo absorption and ionization cross
+     ! sections into general variables, so we can use loops...
+
+     call fill_photo
+
   else
      if (floor((tSimulation - dT)/dTAurora) == &
           floor(tSimulation/dTAurora)) return
@@ -51,20 +54,6 @@ subroutine euv_ionization_heat(iBlock)
   nEuvHeating(:,:,:) = 0.0
   neEuvHeating(:,:,:) = 0.0
 
-  photoion(1:Num_Wavelengths_High,1:nIons-1) = 0.0
-  photoabs(1:Num_Wavelengths_High,1:nSpeciesTotal)= 0.0
-  photodis(1:Num_Wavelengths_High,1:nSpeciesTotal) = 0.0
-
-   N2PERateS(:,:,:,:,iBlock) = 0.0
-  CH4PERateS(:,:,:,:,iBlock) = 0.0
-   O2PERateS(:,:,:,:,iBlock) = 0.0
-    OPERateS(:,:,:,:,iBlock) = 0.0
-
-  ! This transfers the specific photo absorption and ionization cross
-  ! sections into general variables, so we can use loops...
-
-  call fill_photo(photoion, photoabs, photodis)
-
   do iAlt = 1, nAlts
 
      NeutralDensity = NDensityS(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock)
@@ -82,54 +71,30 @@ subroutine euv_ionization_heat(iBlock)
         Intensity = Flux_of_EUV(iWave) * exp(-1.0*Tau)
 
         do iIon = 1, nIons-1
+           iNeutral = PhotoIonFrom(iIon)
            EuvIonRateS(:,:,iAlt,iIon,iBlock) = &
                 EuvIonRateS(:,:,iAlt,iIon,iBlock) + &
-                Intensity*PhotoIon(iWave,iIon)
+                Intensity * PhotoIon(iWave,iIon) * &
+                NeutralDensity(:,:,iNeutral) * &
+                (1.0 + PhotoElecIon(iWave,iIon))
         enddo
- 
-       do iSpecies = 1, nSpeciesTotal
+
+        do iSpecies = 1, nSpeciesTotal
            EuvDissRateS(:,:,iAlt,iSpecies,iBlock) = &
                 EuvDissRateS(:,:,iAlt,iSpecies,iBlock) + &
-                Intensity*PhotoDis(iWave,iSpecies)
+                Intensity*PhotoDis(iWave,iSpecies) * &
+                NeutralDensity(:,:,iSpecies) * &
+                (1.0 + PhotoElecDiss(iWave,iSpecies))
         enddo
-
-        ! Total Photoelectron rates are relative to the total ionization 
-        ! rate only
-        ! Thus, we use the total ionization rates for each species.
-        ! Note: that we are missing the dissociative ionizatoin of O2->O + O+
-        do iRxn = 1, 3
-            O2PERateS(:,:,iAlt,iRxn,iBlock) = & 
-            O2PERateS(:,:,iAlt,iRxn,iBlock) + & 
-               Intensity*(photoion(iWave,iO2P_))*&
-                pelecratio_O2(iWave,iRxn)
-        enddo 
-
-        do iRxn = 1, 3
-            N2PERateS(:,:,iAlt,iRxn,iBlock) = & 
-            N2PERateS(:,:,iAlt,iRxn,iBlock) + & 
-               Intensity*(photoion(iWave,iN2P_) + &
-                          photoion(iWave,iNP_))*&
-                pelecratio_N2(iWave,iRxn)
-        enddo 
-
-        do iRxn = 1, 3
-            OPERateS(:,:,iAlt,iRxn,iBlock) = & 
-            OPERateS(:,:,iAlt,iRxn,iBlock) + & 
-               Intensity*(photoion(iWave,iO_4SP_) + &
-                          photoion(iWave,iO_2DP_) + &
-                          photoion(iWave,iO_2PP_))*&
-                pelecratio_O(iWave,iRxn)
-        enddo 
 
         do iSpecies = 1, nSpecies
            EHeat = EHeat + &
                 Intensity*PhotonEnergy(iWave)* &
                 photoabs(iWave, iSpecies) * NeutralDensity(:,:,iSpecies)
-
         enddo
 
      enddo
-     
+
      EuvHeating(:,:,iAlt,iBlock)  = EHeat*HeatingEfficiency_CB(:,:,iAlt,iBlock)
      eEuvHeating(:,:,iAlt,iBlock) = EHeat*eHeatingEfficiency_CB(:,:,iAlt,iBlock)
      do ilon = 1, nlons 
@@ -140,10 +105,11 @@ subroutine euv_ionization_heat(iBlock)
            endif
         enddo
      enddo
+     
   enddo
-
+  
   if (IncludeEclipse) call calc_eclipse_effects
-  call night_euv_ionization
+  if (IsEarth) call night_euv_ionization
 
   EuvIonRateS = EuvIonRateS + nEuvIonRateS
   EuvHeating(:,:,:,iBlock) = EuvHeating(:,:,1:nAlts,iBlock) + nEuvHeating
@@ -163,11 +129,11 @@ subroutine euv_ionization_heat(iBlock)
              EuvHeating2d(1:nLons,1:nLats) + &
              EuvHeating(:,:,iAlt,iBlock)  * &
              dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
-                     
+
         EuvHeating(:,:,iAlt,iBlock) = EuvHeating(:,:,iAlt,iBlock) / &
-           Rho(1:nLons,1:nLats,iAlt,iBlock) / &
-           cp(1:nLons,1:nLats,iAlt,iBlock) / &
-           TempUnit(1:nLons,1:nLats,iAlt)
+             Rho(1:nLons,1:nLats,iAlt,iBlock) / &
+             cp(1:nLons,1:nLats,iAlt,iBlock) / &
+             TempUnit(1:nLons,1:nLats,iAlt)
 
         EuvTotal(:,:,iAlt,iBlock) = EuvHeating(:,:,iAlt,iBlock) * &
              TempUnit(1:nLons,1:nLats,iAlt) / &
@@ -193,7 +159,7 @@ contains
     real :: factor(nLons,nLats,nAlts)
 
     Factor = 1.0
-    
+
     if ( CurrentTime > EclipseStartTime .and. &
          CurrentTime < EclipseEndTime) then
 
@@ -211,7 +177,7 @@ contains
        !
        !   xp = x * cos(tilt) - z * sin(tilt)
        !   zp = x * sin(tilt) + z * cos(tilt)
-       
+
        do iLon = 1,nLons 
           do iLat = 1,nLats
              do iAlt = 1,nAlts
@@ -234,9 +200,9 @@ contains
                 zp = x * sin(-SunDeclination) + z * cos(-SunDeclination)
 
                 distance = sqrt( (yPos - yp)**2 + (zPos-zp)**2 )
-       
+
                 ! If it is close to the eclipse, do calculations
-                
+
                 if (Distance < EclipseMaxDistance + EclipseExpWidth*2) then
 
                    ! Assume a linearly decreasing effect:
@@ -267,11 +233,11 @@ contains
                         CH4PERateS(iLon,iLat,iAlt,:,iBlock) * Factor(iLon,iLat,iAlt)
 
                 endif
-                
+
              enddo
           enddo
        enddo
-                       
+
     endif
 
   end subroutine calc_eclipse_effects
@@ -279,13 +245,11 @@ contains
   !\
   ! -------------------------------------------------------------
   !/
-  
+
   subroutine night_euv_ionization
 
 !!! Nighttime EUV Ionization
 
-    real :: night_photoion(Num_NightWaveLens, nIons-1)
-    real :: night_photoabs(Num_NightWaveLens, nSpecies)
     real :: night_col(nLons,nLats,nAlts,nSpecies)
     real :: dAlts(nLons,nLats)
     real, dimension(nLons,nLats) :: nTau, nIntensity
@@ -299,77 +263,61 @@ contains
     real :: nPhotonEnergy(Num_NightWaveLens)
     real :: tempPhotonEnergy = 0.0
 
-    night_photoion = 0.0
-    night_photoabs = 0.0
     nEuvIonRates   = 0.0
     night_col   = 0
-    night_photoion(:,iN2P_)    = Night_PhotoIon_N2 *1.e-4
-    night_photoion(:,iO2P_)    = Night_PhotoIon_O2 *1.e-4
-    night_photoion(:,iNOP_)    = Night_PhotoIon_NO *1.e-4
-    night_photoion(:,iO_4SP_)  = Night_PhotoIon_OPlus4S *1.e-4
-    night_photoion(:,iO_2DP_)  = Night_PhotoIon_OPlus2D *1.e-4
-    night_photoion(:,iO_2PP_)  = Night_PhotoIon_OPlus2P *1.e-4
-    night_photoion(:,iNP_)     = Night_PhotoIon_N *1.e-4
- 
-    night_photoabs(:,iN2_)    = Night_PhotoAbs_N2 *1.e-4
-    night_photoabs(:,iO2_)    = Night_PhotoAbs_O2 *1.e-4
-    night_photoabs(:,iNO_)    = Night_PhotoAbs_NO *1.e-4
-    night_photoabs(:,iO_3P_)  = Night_PhotoAbs_O *1.e-4
-    night_photoabs(:,iN_4S_)  = Night_PhotoAbs_N *1.e-4
-
 
     SZALocal = SZA(1:nLons,1:nLats,iBlock)
-    
+
     do iWave=1, Num_NightWaveLens
        tempflux = 0.0
        select case (iWave)
-          case (1)
-             where(SZALocal .GE. Pi/2.) tempflux = -0.573563 * SZALocal**3 &
-                  + 4.66159 * SZALocal**2 - 12.6936 * SZALocal +11.66
+       case (1)
+          where(SZALocal .GE. Pi/2.) tempflux = -0.573563 * SZALocal**3 &
+               + 4.66159 * SZALocal**2 - 12.6936 * SZALocal +11.66
 
-             where(SZALocal .LT. Pi/2.) tempflux = (-0.573563 * (Pi/2.)**3 &
-                  + 4.66159 * (Pi/2.)**2 - 12.6936 * (Pi/2.) +11.66) &
-                  * sin(SZALocal)**sinexpo
+          where(SZALocal .LT. Pi/2.) tempflux = (-0.573563 * (Pi/2.)**3 &
+               + 4.66159 * (Pi/2.)**2 - 12.6936 * (Pi/2.) +11.66) &
+               * sin(SZALocal)**sinexpo
 
-             tempflux = tempflux * Flux_of_EUV(18) * scatterfac
-          
-             where(tempflux .LE. 0.) tempflux = 0.0
+          tempflux = tempflux * Flux_of_EUV(18) * scatterfac
 
-             tempPhotonEnergy = PhotonEnergy(18)
+          where(tempflux .LE. 0.) tempflux = 0.0
 
-          case (2)
-             where(SZALocal .GE. Pi/2.) tempflux = - 4.39459 * SZALocal**3 &
-                  + 28.8112*SZALocal**2  - 62.9068*SZALocal + 45.7575
+          tempPhotonEnergy = PhotonEnergy(18)
 
-             where(SZALocal .LT. Pi/2.) tempflux = (- 4.39459 * (Pi/2.)**3 &
-                  + 28.8112*(Pi/2.)**2  - 62.9068*(Pi/2.)  + 45.7575) &
-                  * sin(SZALocal)**sinexpo         
-             
-             tempflux = tempflux * Flux_of_EUV(35) * scatterfac
+       case (2)
+          where(SZALocal .GE. Pi/2.) tempflux = - 4.39459 * SZALocal**3 &
+               + 28.8112*SZALocal**2  - 62.9068*SZALocal + 45.7575
 
-             where(tempflux .LE. 0.0) tempflux = 0.0
+          where(SZALocal .LT. Pi/2.) tempflux = (- 4.39459 * (Pi/2.)**3 &
+               + 28.8112*(Pi/2.)**2  - 62.9068*(Pi/2.)  + 45.7575) &
+               * sin(SZALocal)**sinexpo         
 
-             tempPhotonEnergy = PhotonEnergy(35)
+          tempflux = tempflux * Flux_of_EUV(35) * scatterfac
 
-          case (4)    
-             where(SZALocal .GE. Pi/2.) tempflux = - 0.356061 * SZALocal**3 &
-                  + 3.0883 * SZALocal**2  - 8.98066 *SZALocal+ 8.86673
-             
-             where(SZALocal .LT. Pi/2.) tempflux = (- 0.356061 * (Pi/2.)**3 &
-                  + 3.0883 * (Pi/2.)**2  - 8.98066 *(Pi/2.) + 8.86673) &
-                  * sin(SZALocal)**sinexpo
-             
-             tempflux = tempflux * Flux_of_EUV(12) * scatterfac
+          where(tempflux .LE. 0.0) tempflux = 0.0
 
-             where(tempflux .LE. 0.0) tempflux = 0.0
-             
-             tempPhotonEnergy= PhotonEnergy(12) 
+          tempPhotonEnergy = PhotonEnergy(35)
 
-          case default
-             tempflux = 0.0
-             tempPhotonEnergy = 0.0
+       case (4)    
+          where(SZALocal .GE. Pi/2.) tempflux = - 0.356061 * SZALocal**3 &
+               + 3.0883 * SZALocal**2  - 8.98066 *SZALocal+ 8.86673
+
+          where(SZALocal .LT. Pi/2.) tempflux = (- 0.356061 * (Pi/2.)**3 &
+               + 3.0883 * (Pi/2.)**2  - 8.98066 *(Pi/2.) + 8.86673) &
+               * sin(SZALocal)**sinexpo
+
+          tempflux = tempflux * Flux_of_EUV(12) * scatterfac
+
+          where(tempflux .LE. 0.0) tempflux = 0.0
+
+          tempPhotonEnergy= PhotonEnergy(12) 
+
+       case default
+          tempflux = 0.0
+          tempPhotonEnergy = 0.0
        end select
-          
+
        nighteuvflux(iWave,:,:,iBlock) = tempflux
        nPhotonEnergy(iWave) = tempPhotonEnergy
 
@@ -382,11 +330,11 @@ contains
        dAlts = dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
 
        do iSpecies = 1, nSpecies
-          
+
           if (iAlt .LT. nAlts) then
 
-          night_col(:,:,iAlt,iSpecies) = night_col(:,:,iAlt+1,iSpecies) &
-               + nNeutralDensity(:,:,iSpecies)*dAlts
+             night_col(:,:,iAlt,iSpecies) = night_col(:,:,iAlt+1,iSpecies) &
+                  + nNeutralDensity(:,:,iSpecies)*dAlts
 
           else
 
@@ -397,7 +345,7 @@ contains
              night_col(:,:,iAlt,iSpecies) = nNeutralDensity(:,:,iSpecies) &
                   * ScaleHeightS
           endif
-          
+
        enddo
     enddo
 
@@ -416,19 +364,20 @@ contains
           nIntensity = nighteuvflux(iWave,:,:,iBlock) * exp(-1.0*nTau)
 
           do iIon = 1, nIons-1
+             iNeutral = PhotoIonFrom(iIon)
              nEuvIonRateS(:,:,iAlt,iIon,iBlock) = &
                   nEuvIonRateS(:,:,iAlt,iIon,iBlock) + &
-                  nIntensity*night_photoion(iWave,iIon)
+                  nIntensity*night_photoion(iWave,iIon) * &
+                  nNeutralDensity(:,:,iNeutral)
           enddo
-   
 
           do iSpecies = 1, nSpecies
              nEHeat = nEHeat + &
                   nIntensity*nPhotonEnergy(iWave)* &
                   night_photoabs(iWave, iSpecies) * nNeutralDensity(:,:,iSpecies)            
 
-          enddo                     
-          
+          enddo
+
        enddo
 
        nEuvHeating(:,:,iAlt)  = nEHeat*HeatingEfficiency_CB(:,:,iAlt,iBlock)
@@ -442,9 +391,9 @@ contains
           enddo
        enddo
 
-  enddo
+    enddo
 
-end subroutine night_euv_ionization
+  end subroutine night_euv_ionization
 
 
 
@@ -620,7 +569,7 @@ subroutine calc_scaled_euv
      !!need to convert from W/m^2 to photons/m^2/s
      do N=1,Num_WaveLengths_High 
         Flux_of_EUV(N) = Timed_Flux(N)*wvavg(N)*1.0e-10/(6.626e-34*2.998e8) &
-             /(SunOrbitEccentricity**2)
+             /(SunPlanetDistance**2)
      enddo
      call end_timing("new_euv")
 
@@ -636,7 +585,7 @@ subroutine calc_scaled_euv
                 RidleyIntercepts(N)
            wvavg(N)=(WAVEL(N)+WAVES(N))/2.
            Flux_of_EUV(N) = Solar_Flux(N)*wvavg(N)*1.0e-10/(6.626e-34*2.998e8) &
-                /(SunOrbitEccentricity**2)
+                /(SunPlanetDistance**2)
         enddo
 
      else
@@ -758,7 +707,7 @@ subroutine calc_scaled_euv
         endif
   
         ! Take into account the sun distance to the planet:
-        Flux_of_EUV = Flux_of_EUV/(SunOrbitEccentricity**2)
+        Flux_of_EUV = Flux_of_EUV/(SunPlanetDistance**2)
 
      endif
 

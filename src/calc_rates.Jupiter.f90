@@ -18,7 +18,6 @@ subroutine calc_rates(iBlock)
   use ModConstants
   use ModPlanet
   use ModInputs
-  use ModEUV, only : SunOrbitEccentricity
 
   implicit none
 

@@ -5,9 +5,9 @@
 
 subroutine overwrite_ionosphere
 
-  use ModInputs
-  use ModSizeGitm
-  use ModGITM, only : iProc
+  use ModInputs, only: DoOverwriteWithIRI
+  use ModGITM, only: iProc
+  use ModSizeGitm, only: nBlocks
   
   implicit none
 
@@ -18,7 +18,7 @@ subroutine overwrite_ionosphere
      ! This doesn't include the velocities
      call init_iri
   else
-     if (iProc == 0) write(*,*) 'Overwriting Ionosphere with SAMI-3!'
+     call report('Overwriting Ionosphere with SAMI-3!',0)
      do iBlock = 1, nBlocks
         call ionosphere_overwrite_sami(iBlock)
      enddo

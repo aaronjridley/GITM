@@ -16,29 +16,64 @@ subroutine aurora(iBlock)
   integer, intent(in) :: iBlock
 
   real :: alat, hpi, ped, hal, av_kev, eflx_ergs, a,b, maxi
-  real :: Factor,temp_ED, avee, eflux, p
-  integer :: i, j, k, n, iError, iED
+  real :: Factor,temp_ED, avee, eflux, p, E0, Q0
+  integer :: i, j, k, n, iError, iED, iErr, iEnergy
   logical :: IsDone, IsTop, HasSomeAurora, UseMono, UseWave
 
   real, dimension(nLons,nLats,nAlts) :: temp, AuroralBulkIonRate, &
        IonPrecipitationBulkIonRate, IonPrecipitationHeatingRate
 
+  real :: fac(nAlts)
+  
   logical :: IsFirstTime(nBlocksMax) = .true.
 
   real :: f1, f2, f3, f4, f5, power
   real :: de1, de2, de3, de4, de5, detotal, h
 
   real :: LocalVar, HPn, HPs, avepower, ratio
-  
+
+  real :: Fang_Pij(8,4), Ci(8), Fang_de = 0.035
+  data Fang_Pij(1,:) /1.25E+00,1.45903,-2.42E-01,5.95E-02/
+  data Fang_Pij(2,:) /2.24E+00,-4.23E-07,1.36E-02,2.53E-03/
+  data Fang_Pij(3,:) /1.42E+00,1.45E-01,1.70E-02,6.40E-04/
+  data Fang_Pij(4,:) /0.248775,-1.51E-01,6.31E-09,1.24E-03/
+  data Fang_Pij(5,:) /-0.465119,-1.05E-01,-8.96E-02,1.22E-02/
+  data Fang_Pij(6,:) /3.86E-01,1.75E-03,-7.43E-04,4.61E-04/
+  data Fang_Pij(7,:) /-6.45E-01,8.50E-04,-4.29E-02,-2.99E-03/
+  data Fang_Pij(8,:) /9.49E-01,1.97E-01,-2.51E-03,-2.07E-03/
+
+  real BulkScaleHeight1d(nAlts)
+
   HPn = 0.0
   HPs = 0.0
 
   if (IsFirstTime(iBlock)) then
+     
      IsFirstTime(iBlock) = .false.
 
      if (iBlock == 1 .and. UseIonPrecipitation) then
         call ReadIonHeat(IonIonizationFilename,  .true.) 
         call ReadIonHeat(IonHeatingRateFilename, .false.) 
+     endif
+
+     if (UseFangEnergyDeposition) then
+        allocate(Fang_Ci(ED_N_Energies,8), stat=iErr)
+        allocate(Fang_y(ED_N_Energies,nAlts), stat=iErr)
+        allocate(Fang_f(ED_N_Energies,nAlts), stat=iErr)
+        if (iErr /= 0) then
+           call stop_gitm("Error allocating Fang arrays in aurora")
+        endif
+
+        do iEnergy = 1, ED_N_Energies
+           do i=1,8
+              Fang_Ci(iEnergy,i) = 0.0
+              do j=0,3
+                 Fang_Ci(iEnergy,i) = Fang_Ci(iEnergy,i) + &
+                      Fang_Pij(i,j+1) * log(ED_Energies(iEnergy)/1000.0)**j
+              enddo
+           enddo
+        enddo
+        Fang_Ci = exp(Fang_Ci)
      endif
 
   else
@@ -172,13 +207,32 @@ subroutine aurora(iBlock)
            ! The eflux/avee gives the number flux, which is what is the code
            ! needs.
 !           a = (eflux/avee) * 2*sqrt(1 / (pi*(avee/2)**3))
-           a = (eflux/avee)* (2**0.5) * ((3/(avee*pi))**(3.0/2.0)) * pi
+           !
+           ! This was the latest one that I was using, which it seems is
+           ! wrong also.  It gives you the right average energy, which is good.
+           ! a = (eflux/avee)* (2**0.5) * ((3/(avee*pi))**(3.0/2.0)) * pi
+
+           ! Looking at other papers (Fang et al., [2010]), a
+           ! Maxwellian is defined as:
+           ! DifferentialNumberFlux = Q0/2/E0**3 * E * exp(-E/E0),
+           ! where:
+           ! Q0 = Total Energy Flux
+           ! E0 = Characteristic Energy (0.5*avee)
+           ! E = mid-point of energy bin
+           !
+           Q0 = eflux
+           E0 = avee/2
+           a = Q0/2/E0**3
 
            do n=1,ED_N_Energies
               ! I think that this is wrong
-              ED_flux(n) = &
-                   a*sqrt(ed_energies(n))*exp(-1.5*ed_energies(n)/avee)
+              !ED_flux(n) = &
+              !     a*sqrt(ed_energies(n))*exp(-1.5*ed_energies(n)/avee)
 
+              ! This is a Maxwellian from Fang et al. [2010]:
+              ED_flux(n) = a * ed_energies(n) * exp(-ed_energies(n)/E0)
+              ED_EnergyFlux(n) = ED_flux(n) * ED_Energies(n) * ED_delta_energy(n)
+              
               ! Pat Newell says that while the ratio of the total energy flux
               ! to the number flux is 3kT/2, in reality, it is 2kT, since
               ! the distribution is skewed.
@@ -225,8 +279,8 @@ subroutine aurora(iBlock)
         endif
 
         UseWave = .false.
-        if (UseNewellAurora .and. UseNewellWave    ) UseMono = .true.
-        if (UseOvationSME   .and. UseOvationSMEWave) UseMono = .true.
+        if (UseNewellAurora .and. UseNewellWave    ) UseWave = .true.
+        if (UseOvationSME   .and. UseOvationSMEWave) UseWave = .true.
 
         if (UseWave .and. ElectronNumberFluxWave(j,i) > 0.0) then
 
@@ -282,58 +336,97 @@ subroutine aurora(iBlock)
 
         if (HasSomeAurora) then
 
+           if (UseFangEnergyDeposition) then
 
-!           do n=1,ED_N_Energies
-!              UserData2d(j,i,1,7+n,iBlock) = ED_flux(n)
-!           enddo
+              BulkScaleHeight1d = &
+                      Temperature(j,i,1:nAlts,iBlock) &
+                      * TempUnit(j,i,1:nAlts) * Boltzmanns_Constant &
+                      / (-Gravity_GB(j,i,1:nAlts,iBlock) * &
+                      MeanMajorMass(j,i,1:nAlts))*100.0 ! Convert to cm
+              
+              do iEnergy = 1,ED_N_Energies
 
-           call R_ELEC_EDEP (ED_Flux, 15, ED_Energies, 3, ED_Ion, 7)
-           call R_ELEC_EDEP (ED_Flux, 15, ED_Energies, 3, ED_Heating, 11)
+                 ! /10.0 in this statement is for kg/m2 to g/cm2
+                 ! /1000.0 is conversion from eV to keV
+                 ! Fang doesn't include the dip angle, be we do.
+                 Fang_y(iEnergy,:) = 2.0 / (ED_Energies(iEnergy)/1000.0) * &
+                      (ColumnIntegralRho(j,i,:) / 10.0 / 6e-6) ** 0.7
+                      !sinDipAngle(j,i,1:nAlts,iBlock) / 6e-6) ** 0.7
 
-           iED = 1
+                 Ci = Fang_Ci(iEnergy,:)
+                 ! write(*,*) iEnergy, ED_Energies(iEnergy), Ci
+                 Fang_f(iEnergy,:) = &
+                      Ci(1) * Fang_y(iEnergy,:) ** Ci(2) * &
+                      exp(-Ci(3) * Fang_y(iEnergy,:) ** Ci(4)) + &
+                      Ci(5) * Fang_y(iEnergy,:) ** Ci(6) * & 
+                      exp(-Ci(7) * Fang_y(iEnergy,:) ** Ci(8)) 
 
-!           factor = 0.4
-           factor = 1.0
+                 ! Energy flux is in eV/cm2/s and Fang needs keV/cm2/s:
+                 fac = ED_energyflux(iEnergy)/1000.0 / &
+                      Fang_de / &
+                      BulkScaleHeight1d
 
-           do k = 1, nAlts
+                 AuroralBulkIonRate(j,i,1:nAlts) = &
+                      AuroralBulkIonRate(j,i,1:nAlts) + 1e6*Fang_f(iEnergy,:) * fac
 
-              p = alog(Pressure(j,i,k,iBlock)*factor)
+              enddo
+              !do k = 1, nAlts
+              !   write(*,*) k,  AuroralBulkIonRate(j,i,k), fac(k), fang_f(25,k), ColumnIntegralRho(j,i,k)
+              !enddo
+              AuroralHeatingRate(j,i,1:nAlts,iBlock) = 0.0
 
-              IsDone = .false.
-              IsTop = .false.
-              do while (.not.IsDone)
-                 if (ED_grid(iED) >= p .and. ED_grid(iED+1) <= p) then
-                    IsDone = .true.
-                    ED_Interpolation_Index(k) = iED
-                    ED_Interpolation_Weight(k) = (ED_grid(iED) - p) /  &
-                         (ED_grid(iED) - ED_grid(iED+1))
-                 else
-                    if (iED == ED_N_Alts-1) then
+              !write(*,*) AuroralBulkIonRate(j,i,1:nAlts)
+              
+           else
+
+              call R_ELEC_EDEP (ED_Flux, 15, ED_Energies, 3, ED_Ion, 7)
+              call R_ELEC_EDEP (ED_Flux, 15, ED_Energies, 3, ED_Heating, 11)
+
+              iED = 1
+
+              factor = 1.0
+
+              do k = 1, nAlts
+
+                 p = alog(Pressure(j,i,k,iBlock)*factor)
+
+                 IsDone = .false.
+                 IsTop = .false.
+                 do while (.not.IsDone)
+                    if (ED_grid(iED) >= p .and. ED_grid(iED+1) <= p) then
                        IsDone = .true.
-                       IsTop = .true.
+                       ED_Interpolation_Index(k) = iED
+                       ED_Interpolation_Weight(k) = (ED_grid(iED) - p) /  &
+                            (ED_grid(iED) - ED_grid(iED+1))
                     else
-                       iED = iED + 1
+                       if (iED == ED_N_Alts-1) then
+                          IsDone = .true.
+                          IsTop = .true.
+                       else
+                          iED = iED + 1
+                       endif
                     endif
+                 enddo
+
+                 if (.not.IsTop) then
+                    n = ED_Interpolation_Index(k)
+                    AuroralBulkIonRate(j,i,k) = ED_Ion(n) - &
+                         (ED_Ion(n) - ED_Ion(n+1))*ED_Interpolation_Weight(k)
+                    AuroralHeatingRate(j,i,k,iBlock) = ED_Heating(n) - &
+                         (ED_Heating(n) - ED_Heating(n+1))*ED_Interpolation_Weight(k)
+                 else
+
+                    ! Decrease after top of model
+                    AuroralBulkIonRate(j,i,k) = ED_Ion(ED_N_Alts) * &
+                         factor*Pressure(j,i,k,iBlock) / exp(ED_grid(ED_N_Alts)) 
+                    AuroralHeatingRate(j,i,k,iBlock) = ED_Heating(ED_N_Alts) * &
+                         factor*Pressure(j,i,k,iBlock) / exp(ED_grid(ED_N_Alts))
+
                  endif
+
               enddo
 
-              if (.not.IsTop) then
-                 n = ED_Interpolation_Index(k)
-                 AuroralBulkIonRate(j,i,k) = ED_Ion(n) - &
-                      (ED_Ion(n) - ED_Ion(n+1))*ED_Interpolation_Weight(k)
-                 AuroralHeatingRate(j,i,k,iBlock) = ED_Heating(n) - &
-                      (ED_Heating(n) - ED_Heating(n+1))*ED_Interpolation_Weight(k)
-              else
-
-                 ! Decrease after top of model
-                 AuroralBulkIonRate(j,i,k) = ED_Ion(ED_N_Alts) * &
-                      factor*Pressure(j,i,k,iBlock) / exp(ED_grid(ED_N_Alts)) 
-                 AuroralHeatingRate(j,i,k,iBlock) = ED_Heating(ED_N_Alts) * &
-                      factor*Pressure(j,i,k,iBlock) / exp(ED_grid(ED_N_Alts))
-
-              endif
-
-           enddo
+           endif
 
         endif
 

@@ -1,5 +1,19 @@
-subroutine calc_electron_temperature(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeatingm,iHeating, lame, lami)
 
+subroutine calc_electron_temperature(iBlock)
+
+  integer, intent(in) :: iBlock
+
+  call calc_electron_ion_sources(iBlock)
+  call calc_electron_ion_temperature(iBlock)
+  
+end subroutine calc_electron_temperature
+
+
+subroutine calc_electron_ion_temperature(iBlock)
+
+!subroutine calc_electron_temperature(iBlock,eHeatingp,iHeatingp, &
+!     eHeatingm,iHeatingm,iHeating, lame, lami)
+  
   use ModSizeGitm
   use ModGITM
   use ModPlanet
@@ -14,10 +28,11 @@ subroutine calc_electron_temperature(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
   implicit none
 
   integer, intent(in) :: iBlock
-  real(kind=8), intent(in), dimension(0:nLons+1,0:nLats+1,0:nAlts+1) :: &
-       eHeatingp, iHeatingp, eHeatingm, &
-       iHeatingm, iHeating, lame, lami
- 
+  
+!  real(kind=8), intent(in), dimension(0:nLons+1,0:nLats+1,0:nAlts+1) :: &
+!       eHeatingp, iHeatingp, eHeatingm, &
+!       iHeatingm, iHeating, lame, lami
+  
   real, dimension(nLons,nLats,0:nAlts+1) :: tn, te, ti, etemp, itemp, nn, ni, ne
   real, dimension(0:nLons+1,0:nLats+1,0:nAlts+1) :: lam_e, lam_i, sinI2, sinI
   real(kind=8), dimension(nLons,nLats,nAlts) :: eConduction, iConduction
@@ -54,6 +69,8 @@ subroutine calc_electron_temperature(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
 
   logical :: NanFound
 
+  !call calc_electron_ion_sources(iBlock)
+  
   tn = Temperature(1:nLons,1:nLats,0:nAlts+1,iBlock)*TempUnit(1:nLons,1:nLats,0:nAlts+1)
   nn = NDensity(1:nLons,1:nLats,0:nAlts+1,iBlock)
   ne = IDensityS(1:nLons,1:nLats,0:nAlts+1,ie_,iBlock)
@@ -446,9 +463,10 @@ contains
 
   end Subroutine calc_thermoelectric_current
 
-end subroutine calc_electron_temperature
+end subroutine calc_electron_ion_temperature
 
-subroutine calc_electron_ion_sources(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeatingm, iHeating, lame, lami)
+!subroutine calc_electron_ion_sources(iBlock)
+subroutine calc_electron_ion_sources(iBlock) !,eHeatingp,iHeatingp,eHeatingm,iHeatingm, iHeating, lame, lami)
 
   use ModSizeGitm
   use ModGITM
@@ -464,9 +482,10 @@ subroutine calc_electron_ion_sources(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
   implicit none
   integer, intent(in) :: iBlock
 
-  real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1), intent(out) :: &
-       eHeatingp, iHeatingp, eHeatingm, &
-       iHeatingm, iHeating, lame, lami
+!  real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1), intent(out) :: &
+!       eHeatingp, iHeatingp, eHeatingm, &
+!       iHeatingm, iHeating, lame, lami
+
   real(kind=8), dimension(0:nLons+1,0:nLats+1,0:nAlts+1) :: &
        nn, ni, ne, nh, nhe, no, nn2, no2, nnr, nno, &
        tn, te, ti, temp, te_6000, te_exc, tn_exc, &
@@ -592,13 +611,13 @@ subroutine calc_electron_ion_sources(iBlock,eHeatingp,iHeatingp,eHeatingm,iHeati
 !   where(alts .LE. 20000.) epsilon = 0.0001
 
    Qphe(1:nLons,1:nLats,1:nAlts) = epsilon(1:nLons,1:nLats,1:nAlts) * ( &
-        EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_4SP_,iBlock)*no(1:nLons,1:nLats,1:nAlts)  &
-        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO2P_,iBlock)*no2(1:nLons,1:nLats,1:nAlts)  &
-        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iN2P_,iBlock)*nn2(1:nLons,1:nLats,1:nAlts)  &
-        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iNP_,iBlock)*nnr(1:nLons,1:nLats,1:nAlts)  &
-        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iNOP_,iBlock)*nno(1:nLons,1:nLats,1:nAlts)  &
-        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_2DP_,iBlock)*no(1:nLons,1:nLats,1:nAlts)  &
-        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_2PP_,iBlock)*no(1:nLons,1:nLats,1:nAlts)  &
+        EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_4SP_,iBlock) & ! *no(1:nLons,1:nLats,1:nAlts)  &
+        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO2P_,iBlock) & ! *no2(1:nLons,1:nLats,1:nAlts)  &
+        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iN2P_,iBlock) & ! *nn2(1:nLons,1:nLats,1:nAlts)  &
+        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iNP_,iBlock)  & ! *nnr(1:nLons,1:nLats,1:nAlts)  &
+        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iNOP_,iBlock) & ! *nno(1:nLons,1:nLats,1:nAlts)  &
+        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_2DP_,iBlock) & ! *no(1:nLons,1:nLats,1:nAlts)  &
+        + EuvIonRateS(1:nLons,1:nLats,1:nAlts,iO_2PP_,iBlock) & !*no(1:nLons,1:nLats,1:nAlts)  &
         ) 
 
    if (DoCheckForNans) then

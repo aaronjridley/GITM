@@ -12,7 +12,7 @@ subroutine calc_ion_v(iBlock)
   integer, intent(in) :: iBlock
   integer :: iLon, iLat, iAlt, iIon, iSpecies
   integer :: imax, jmax, kmax, iError, iDir
-  real    :: maxi, tl
+  real    :: maxi, TanLat
 
   real, dimension(-1:nLons+2,-1:nLats+2,-1:nAlts+2) ::           &
                   B02, ForceDotB, Nie, RhoNu, IRho, &
@@ -190,12 +190,12 @@ subroutine calc_ion_v(iBlock)
            do iLon = 1, nLons
               do iLat = 1, nLats
                  do iAlt = 1, nAlts
-                    tl = TanLatitude(iLat,iBlock)
-                    if (tl > 5.0) tl = 5.0
-                    if (tl < -5.0) tl = -5.0
+                    TanLat = TanLatitude(iLat,iBlock)
+                    if (TanLat > 5.0) TanLat = 5.0
+                    if (TanLat < -5.0) TanLat = -5.0
                     DivIVelocity(iLon,iLat,iAlt,iBlock) = &
                          DivIVelocity(iLon,iLat,iAlt,iBlock) - &
-                         tl * ViDotB(iLon,iLat,iAlt) * &
+                         TanLat * ViDotB(iLon,iLat,iAlt) * &
                          InvRadialDistance_GB(iLon,iLat,iAlt,iBlock)
                  enddo
               enddo

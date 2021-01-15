@@ -185,6 +185,21 @@ end subroutine set_nVarsUser1d
 !
 ! ----------------------------------------------------------------
 
+subroutine set_nVarsUser0d
+
+  use ModUserGITM
+
+  nVarsUser0d = 6
+
+  if (nVarsUser0d-3 > nUserOutputs) &
+       call stop_gitm("Too many user outputs!! Increase nUserOutputs!!")
+
+end subroutine set_nVarsUser0d
+
+! ----------------------------------------------------------------
+!
+! ----------------------------------------------------------------
+
 subroutine output_header_user(cType, iOutputUnit_)
 
   use ModUserGITM
@@ -249,6 +264,27 @@ subroutine output_header_user(cType, iOutputUnit_)
      do n=1,ED_N_Energies
         write(iOutputUnit_,"(I7,A6,1P,E9.3,A11)") 10+n, " Flux@",ED_energies(n), "eV (/cm2/s)"
      enddo
+  endif
+
+  ! ------------------------------------------
+  ! 0D Output Header
+  ! ------------------------------------------
+
+  if (cType(1:2) == '0D') then
+
+     write(iOutputUnit_,*) "NUMERICAL VALUES"
+     write(iOutputUnit_,"(I7,6A)") nVarsUser0d, " nvars"
+     write(iOutputUnit_,"(I7,7A)") 1, " nAltitudes"
+     write(iOutputUnit_,"(I7,7A)") 1, " nLatitudes"
+     write(iOutputUnit_,"(I7,7A)") 1, " nLongitudes"
+
+     write(iOutputUnit_,*) "VARIABLE LIST"
+     write(iOutputUnit_,"(I7,A1,a)")  1, " ", "Longitude"
+     write(iOutputUnit_,"(I7,A1,a)")  2, " ", "Latitude"
+     write(iOutputUnit_,"(I7,A1,a)")  3, " ", "Altitude"
+     write(iOutputUnit_,"(I7,A1,a)")  4, " ", "Electron Density"
+     write(iOutputUnit_,"(I7,A1,a)")  5, " ", "Electron Temperature"
+     write(iOutputUnit_,"(I7,A1,a)")  6, " ", "Ion Temperature"
   endif
 
   write(iOutputUnit_,*) ""
@@ -337,3 +373,53 @@ subroutine output_1dUser(iBlock, iOutputUnit_)
 
 end subroutine output_1dUser
 
+!----------------------------------------------------------------
+!
+!----------------------------------------------------------------
+
+subroutine output_0dUser(iiLon, iiLat, iiAlt, iBlock, rLon, rLat, rAlt, iOutputUnit_)
+
+  use ModGITM
+  use ModUserGITM
+  use ModPlanet, only: ie_
+
+  implicit none
+
+  integer, intent(in) :: iiLat, iiLon, iiAlt, iBlock, iOutputUnit_
+  real, intent(in)    :: rLon, rLat, rAlt
+
+  write(iOutputUnit_)       &
+       rLon*Longitude(iiLon,iBlock)+(1-rLon)*Longitude(iiLon+1,iBlock), &
+       rLat*Latitude(iiLat,iBlock)+(1-rLat)*Latitude(iiLat+1,iBlock), &
+       rAlt*Altitude_GB(iiLon, iiLat, iiAlt, iBlock)+ &
+       (1-rAlt)*Altitude_GB(iiLon, iiLat, iiAlt+1, iBlock), &
+       inter(IDensityS(0:nLons+1,0:nLats+1,0:nAlts+1,ie_,iBlock), &
+       iiLon, iiLat, iiAlt, rLon, rLat, rAlt), &
+       inter(eTemperature(0:nLons+1,0:nLats+1,0:nAlts+1,iBlock), &
+       iiLon, iiLat, iiAlt, rLon, rLat, rAlt), &
+       inter(ITemperature(0:nLons+1,0:nLats+1,0:nAlts+1,iBlock), &
+       iiLon, iiLat, iiAlt, rLon, rLat, rAlt)
+
+  contains
+
+    real function inter(variable, iiLon, iiLat, iiAlt, rLon, rLat, rAlt) &
+       result(PointValue)
+
+    implicit none
+
+    real :: variable(:,:,:), rLon, rLat, rAlt
+    integer :: iiLon, iiLat, iiAlt
+
+    PointValue = &
+         (  rLon)*(  rLat)*(  rAlt)*Variable(iiLon  ,iiLat  ,iiAlt  ) + &
+         (1-rLon)*(  rLat)*(  rAlt)*Variable(iiLon+1,iiLat  ,iiAlt  ) + &
+         (  rLon)*(1-rLat)*(  rAlt)*Variable(iiLon  ,iiLat+1,iiAlt  ) + &
+         (1-rLon)*(1-rLat)*(  rAlt)*Variable(iiLon+1,iiLat+1,iiAlt  ) + &
+         (  rLon)*(  rLat)*(1-rAlt)*Variable(iiLon  ,iiLat  ,iiAlt+1) + &
+         (1-rLon)*(  rLat)*(1-rAlt)*Variable(iiLon+1,iiLat  ,iiAlt+1) + &
+         (  rLon)*(1-rLat)*(1-rAlt)*Variable(iiLon  ,iiLat+1,iiAlt+1) + &
+         (1-rLon)*(1-rLat)*(1-rAlt)*Variable(iiLon+1,iiLat+1,iiAlt+1)
+
+  end function inter
+
+end subroutine output_0dUser

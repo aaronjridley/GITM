@@ -15,5 +15,6 @@ module ModUserGITM
   integer :: nVarsUser3d=0
   integer :: nVarsUser1d=0
   integer :: nVarsUser2d=0
+  integer :: nVarsUser0d=0
 
 end module ModUserGITM

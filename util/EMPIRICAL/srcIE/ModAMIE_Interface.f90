@@ -3,13 +3,13 @@
 Module ModAMIE_Interface
 
   use ModCharSize
-  
   character (len=iCharLenIE_) :: AMIE_FileName
   integer :: AMIE_nLats, AMIE_nMlts, AMIE_nTimes
 
   ! For a single file
   real*4, allocatable,dimension(:)     :: AMIE_Lats, AMIE_MLTs
   real*4, allocatable,dimension(:,:,:,:) :: AMIE_Potential,AMIE_EFlux,AMIE_AveE
+  real*4, allocatable,dimension(:,:,:,:) :: AMIE_PotentialY
   real*4, allocatable,dimension(:,:,:,:) :: AMIE_Value
   real*8, allocatable,dimension(:,:)     :: AMIE_Time
 
@@ -25,5 +25,6 @@ Module ModAMIE_Interface
   integer, parameter :: potential_ = 1
   integer, parameter :: eflux_     = 2
   integer, parameter :: avee_      = 3
+  integer, parameter :: potentialy_ = 4
 
 end Module ModAMIE_Interface
