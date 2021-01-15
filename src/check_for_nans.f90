@@ -109,6 +109,25 @@ subroutine check_for_nans_temps(cMarker)
               write(*,*) iLon,iLat,iAlt,iProc
               IsFound = .true.
            endif
+           ! Check for negative Temperatures:
+           if (Temperature(iLon,iLat,iAlt,1)<0.0) then
+              write(*,*) 'Negative found in Temperature : '
+              write(*,*) cMarker
+              write(*,*) iLon,iLat,iAlt,iProc
+              IsFound = .true.
+           endif
+           if (iTemperature(iLon,iLat,iAlt,1)<0.0) then
+              write(*,*) 'Negative found in iTemperature : '
+              write(*,*) cMarker
+              write(*,*) iLon,iLat,iAlt,iProc
+              IsFound = .true.
+           endif
+           if (eTemperature(iLon,iLat,iAlt,1)<0.0) then
+              write(*,*) 'Negative found in eTemperature : '
+              write(*,*) cMarker
+              write(*,*) iLon,iLat,iAlt,iProc
+              IsFound = .true.
+           endif
         enddo
      enddo
   enddo
