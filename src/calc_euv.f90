@@ -91,7 +91,6 @@ subroutine euv_ionization_heat(iBlock)
            EHeat = EHeat + &
                 Intensity*PhotonEnergy(iWave)* &
                 photoabs(iWave, iSpecies) * NeutralDensity(:,:,iSpecies)
-
         enddo
 
      enddo
