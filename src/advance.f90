@@ -53,23 +53,8 @@ subroutine advance
   if (.not. UseStatisticalModelsOnly) then
 
      call advance_vertical_all
-     if (DoCheckForNans) then
-        call check_for_nans_ions("After Vertical")
-        call check_for_nans_neutrals("After Vertical")
-        call check_for_nans_temps("After Vertical")
-     endif
      call add_sources 
-     if (DoCheckForNans) then
-        call check_for_nans_ions("After Sources")
-        call check_for_nans_neutrals("After Sources")
-        call check_for_nans_temps("After Sources")
-     endif
      if (.not. Is1D) call advance_horizontal_all
-     if (DoCheckForNans) then
-        call check_for_nans_ions("After Horizontal")
-        call check_for_nans_neutrals("After Horizontal")
-        call check_for_nans_temps("After Horizontal")
-     endif
 
   else
 
@@ -140,6 +125,12 @@ contains
 
     end do
 
+    if (DoCheckForNans) then
+       call check_for_nans_ions("After Vertical")
+       call check_for_nans_neutrals("After Vertical")
+       call check_for_nans_temps("After Vertical")
+    endif
+
     call end_timing("vertical_all")
 
   end subroutine advance_vertical_all
@@ -172,6 +163,12 @@ contains
        if (.not. IsFullSphere) &
             call set_horizontal_bcs(iBlock)
     enddo
+
+    if (DoCheckForNans) then
+       call check_for_nans_ions("After Horizontal")
+       call check_for_nans_neutrals("After Horizontal")
+       call check_for_nans_temps("After Horizontal")
+    endif
 
     call end_timing("horizontal_all")
 
