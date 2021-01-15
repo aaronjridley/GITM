@@ -102,7 +102,8 @@ module ModSources
   !/
 
   real, dimension(:), allocatable :: &
-       ED_grid, ED_Energies, ED_Flux, ED_Ion, ED_Heating
+       ED_grid, ED_Energies, ED_Flux, ED_Ion, ED_Heating, &
+       ED_energy_edges, ED_delta_energy, ED_EnergyFlux
   integer :: ED_N_Energies, ED_N_Alts
   real, dimension(nAlts) :: ED_Interpolation_Weight
   integer, dimension(nAlts) :: ED_Interpolation_Index
@@ -115,8 +116,14 @@ module ModSources
   real :: ChemicalHeatingRateIon(nLons, nLats, nAlts)
   real :: ChemicalHeatingRateEle(nLons, nLats, nAlts)
 
-  
+  !\
+  ! Needed for Fang et al, 2010:
+  !/
 
+  real, allocatable :: Fang_Ci(:,:)  ! nEnergies, 8
+  real, allocatable :: Fang_y(:,:)   ! nEnergies, nAlts
+  real, allocatable :: Fang_f(:,:)   ! nEnergies, nAlts
+  
   real :: HorizontalTempSource(nLons, nLats, nAlts)
 
   real :: Diffusion(nLons, nLats, nAlts, nSpecies)
