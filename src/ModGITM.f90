@@ -49,6 +49,7 @@ module ModGITM
   real, dimension(nLons,nLats,nBlocksMax) :: Altzero
 
   real, allocatable :: Rho(:,:,:,:)
+  real, allocatable :: ColumnIntegralRho(:,:,:)
   real, allocatable :: Temperature(:,:,:,:)
   real, allocatable :: Pressure(:,:,:,:)
   real, allocatable :: NDensity(:,:,:,:)
@@ -103,6 +104,7 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
   real :: MLT(-1:nLons+2, -1:nLats+2, -1:nAlts+2)
   real, allocatable :: MLongitude(:,:,:,:)
   real, allocatable :: DipAngle(:,:,:,:)
+  real, allocatable :: sinDipAngle(:,:,:,:)
   real, allocatable :: DecAngle(:,:,:,:)
 
   real, allocatable :: b0_d1(:,:,:,:,:)
@@ -199,6 +201,7 @@ contains
     allocate(dAltDLon_CB(nLons,nLats,nAlts,nBlocks))
     allocate(dAltDLat_CB(nLons,nLats,nAlts,nBlocks))
     allocate(Rho(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
+    allocate(ColumnIntegralRho(-1:nLons+2, -1:nLats+2, -1:nAlts+2))
     allocate(Temperature(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
     allocate(Pressure(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
     allocate(NDensity(-1:nLons+2, -1:nLats+2, -1:nAlts+2, nBlocks))
@@ -229,6 +232,7 @@ contains
     allocate(MLatitude(-1:nLons+2,-1:nLats+2,-1:nAlts+2,nBlocks))
     allocate(MLongitude(-1:nLons+2,-1:nLats+2,-1:nAlts+2,nBlocks))
     allocate(DipAngle(-1:nLons+2,-1:nLats+2,-1:nAlts+2,nBlocks))
+    allocate(sinDipAngle(-1:nLons+2,-1:nLats+2,-1:nAlts+2,nBlocks))
     allocate(DecAngle(-1:nLons+2,-1:nLats+2,-1:nAlts+2,nBlocks))
     allocate(b0_d1(-1:nLons+2,-1:nLats+2,-1:nAlts+2,3,nBlocks))
     allocate(b0_d2(-1:nLons+2,-1:nLats+2,-1:nAlts+2,3,nBlocks))
