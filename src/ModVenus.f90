@@ -88,6 +88,12 @@ module ModPlanet
   integer, parameter :: iVernalMinute =    40
   integer, parameter :: iVernalSecond =    0
 
+! real, parameter :: SunOrbit_A = 1.52
+! real, parameter :: SunOrbit_B = 0.04
+! real, parameter :: SunOrbit_C = 0.15
+! real, parameter :: SunOrbit_D = 0.00
+! real, parameter :: SunOrbit_E = 0.00
+
   real, parameter :: SunOrbit_A = semimajor_Venus
   real, parameter :: SunOrbit_B = eccentricity_Venus
   real, parameter :: SunOrbit_C = longitudePerihelion_Venus
@@ -114,10 +120,11 @@ module ModPlanet
   real, dimension(nAlts) :: VertTau = 1.0e9
 
   logical :: IsEarth = .false.
-  logical :: IsMars = .true.
+  logical :: IsMars = .false.
   logical :: IsTitan = .false.
+  logical :: IsVenus = .true.
   logical :: NonMagnetic = .true.
-  real, parameter :: PlanetNum = 0.03
+  real, parameter :: PlanetNum = 0.02
   character (len=10) :: cPlanet = "Venus"
 
   integer, parameter :: i3371_ = 1
@@ -461,6 +468,11 @@ module ModPlanet
 
       real :: XLTEFACTOR(L_NLTE),XLTEPRESSURE(L_NLTE)
 
+!BP: For Newtonian Cooling 
+      real, dimension(56) :: referenceTemperature, referenceAltitude1
+      real, dimension(31) :: newtonianCoolingRate, referenceAltitude2
+
+      real :: ModCoolingRateVenus
 !  These are for the Gauss-split 0.95 case
 
       DATA GWEIGHT  / 4.8083554740D-02, 1.0563099137D-01,&
@@ -602,7 +614,7 @@ real*4 :: dummyalbedo(24,36), dummyti(24,36)
 
 !       Ptop_atm and Pbot_atm to Mars:  Domain of calculation applicability?
         !BP: Updates for Venus (units: bars)
-        real, parameter  ::  Ptop_atm = 2.e-9, Pbottom_atm = 3.2e-2
+        real, parameter  ::  Ptop_atm = 1.e-10, Pbottom_atm = 3.2e-2
 
         real*8,parameter ::  rf19 = 1.d0, rf20 = 1.d0, rf21a = 1.d0, &
                              rf21b = 1.d0, rf21c = 1.d0, rf33bc = 1.d0
@@ -927,7 +939,7 @@ contains
     !###########################################################
 
     call readVenusIRTable
-  
+    
   end subroutine init_planet
 
 
@@ -975,7 +987,9 @@ contains
       PTOP = 10.0**PFGASREF(1)
 
       !print*,'vis2ir=',vis2ir
-
+      
+      !BP: Initialize the newtonian cooling
+      call readNewtonianCoolingFiles
     end subroutine radsetup
 
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1698,11 +1712,40 @@ contains
 
 
 !##########################################################
+  
 
+  !BP (7/25/2020)                                
+  subroutine readNewtonianCoolingFiles
+    use ModIoUnit, only : UnitTmp_
+    !use ModSources, only : RadCoolingRate
+    
+    integer :: iiAlt
 
-  subroutine init_radcooling
-    return
-  end subroutine init_radcooling
+    open(UNIT = UnitTmp_, FILE = 'DataIn/HausReferenceTemperature.csv', &
+         STATUS='OLD', ACTION = 'READ')
+
+    !Reference temperature .csv file is temperature vs. Altitude                             
+    !Figure 4 in Haus et al. 2015                                                        
+    do iiAlt = 1,56
+      read(UnitTmp_,*) referenceTemperature(iiAlt), referenceAltitude1(iiAlt)
+    enddo
+
+    close(Unit = UnitTmp_)
+
+    !Figure 24 in Haus et al. 2015                                                               
+    !Contains the globally averaged cooling rates as a function of altitude         
+    open(UNIT = UnitTmp_, FILE = 'DataIn/Sub100kmGlobalAverageCooling.csv', &
+         STATUS='OLD', ACTION = 'READ')
+
+    do iiAlt = 1,31
+      read(UnitTmp_,*) newtonianCoolingRate(iiAlt), referenceAltitude2(iiAlt)
+    enddo
+
+    close(Unit = UnitTmp_)
+
+    newtonianCoolingRate = newtonianCoolingRate/86400
+    !write(*,*) "Newtonian Cooling:", newtonianCoolingRate
+  end subroutine readNewtonianCoolingFiles
 
   subroutine init_magheat
   return
@@ -1712,5 +1755,8 @@ contains
   return
   end subroutine init_aerosol
 
+  subroutine init_radcooling
+  return
+  end subroutine init_radcooling
 end module ModPlanet
   

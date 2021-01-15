@@ -1,10 +1,100 @@
+!BP (8/24/2020): Compute the time scales for eddy diffusion, horizontal winds 
+!and vertical motion
+subroutine timescales
+
+  use ModConstants, only:  Boltzmanns_Constant
+  use ModPlanet
+  use ModSizeGITM, only: nAlts  
+  use ModGITM
+  use ModSources, only: KappaEddyDiffusion
+  use ModTime 
+
+  integer :: iLon, iLat, iAlt
+  integer ::  iBlock = -1
+  real, dimension(nAlts) :: tauEddy
+  real, dimension(nAlts) :: tauHorizontal, tauVertical
+  real :: surfaceGravity = 8.87 !m/s^2
+  real :: scaleHeight, SSLon, SSLat
+  real :: RP_hours = RP_Venus/3600.0
+  logical :: exist   
+  
+  call get_subsolar(CurrentTime, VernalTime, SSLon, SSLat) 
+  if (SSLon == 0) then
+    SSLon = 1e-2
+  endif
+  
+  if (SSLat == 0) then
+    SSLat = 1e-2
+  endif
+  
+  call LocationIndex(SSLon, SSLat, iBlock, iLon, iLat, rLon, rLat)
+!  if (iBlock .eq. 1) then
+!    write(*,*) "Trying to find:", SSLon*180.0/pi, SSLat*180.0/pi
+!    write(*,*) "Found:", Longitude(iLon,iBlock)*180.0/pi, &
+!                         Latitude(iLat, iBlock)*180.0/pi
+!  endif
+
+  if (iBlock .eq. 1) then
+    !Check for 12 LST
+    geo_lon = SSLon*180.0/pi
+    geo_lst = mod(UTime/3600.0 + SSLon*180.0/(360*pi/RP_hours), &
+                         RP_hours)
+
+    !Convert to a 0 - 24 scale instead of the 0 - VenusHoursPerDay                     
+    geo_lst = 24*geo_lst/RP_hours  
+
+    do iAlt = 1, nAlts
+      gravity = surfaceGravity * (R_Venus /(R_Venus + Altitude_GB(iLon,iLat,iAlt,iBlock)))**2
+ 
+      SSTemperature = &
+        rLon*rLat*Temperature(iLon,iLat,iAlt,iBlock)*TempUnit(iLon,iLat,iAlt) + &
+        (1-rLon)*rLat*Temperature(iLon+1,iLat,iAlt,iBlock)*TempUnit(iLon+1,iLat,iAlt) + &
+        rLon*(1-rLat)*Temperature(iLon,iLat+1,iAlt,iBlock)*TempUnit(iLon,iLat+1,iAlt) + &
+        (1-rLon)*(1-rLat)*Temperature(iLon+1,iLat+1,iAlt,iBlock)*TempUnit(iLon+1,iLat+1,iAlt)
+
+      scaleHeight = Boltzmanns_Constant*SSTemperature &
+                    /(Mass(iCO2_)*gravity)
+
+      tauEddy(iAlt) = scaleHeight**2/KappaEddyDiffusion(iLon,iLat,iAlt,iBlock)       
+
+      !Horizontal time calculation
+      
+      tauHorizontal(iAlt) = pi*(R_Venus + Altitude_GB(iLon,iLat,iAlt,iBlock))/&
+                            Velocity(iLon,iLat,iAlt,iEast_,iBlock)
+      tauVertical(iAlt) = scaleHeight/Velocity(iLon,iLat,iAlt,iNorth_,iBlock)
+
+    enddo
+
+    inquire(file = "eddy.txt", exist = exist)
+    if (exist .eq. .False.) then
+      open(32, file = "eddy.txt", status = "new", action = "write")
+      write(32, *) tauEddy
+      close(32)
+    end if
+
+    inquire(file = "horizontal.txt", exist = exist)
+    if (exist .eq. .False.) then
+      open(33, file = "horizontal.txt", status = "new", action = "write")
+      write(33, *) tauHorizontal
+      close(33)
+    end if
+    
+    inquire(file = "vertical.txt", exist = exist)
+    if (exist .eq. .False.) then
+      open(33, file = "vertical.txt", status = "new", action = "write")
+      write(33, *) tauVertical
+      close(33)
+    end if
+  endif
+end subroutine timescales
+
 !BP (5/29/2020) Read in the IR table needed in calc_sources.f90
 !to include IR heating from Crips & Roland Venus IR heating rates
 
 subroutine readVenusIRTable
 
   use ModIoUnit, only : UnitTmp_
-  use ModSources, only: qIR_table
+  use ModSources, only: qIR_NLTE_table, diurnalHeating, semiDiurnalHeating
   real, dimension(40) :: qAlts
  
   integer :: iiAlt, iSza
@@ -15,12 +105,45 @@ subroutine readVenusIRTable
   read(UnitTmp_, *)
 
   do iiAlt = 1,40
-     read(UnitTmp_,*) qAlts(iiAlt), qIR_table(iiAlt, :)
+     read(UnitTmp_,*) qAlts(iiAlt), qIR_NLTE_table(iiAlt, :)
   enddo
   close(Unit = UnitTmp_)
-    
+
   !Convert from K/day to K/sec
-  qIR_table = qIR_table/86400
+  qIR_NLTE_table = qIR_NLTE_table/86400
+
+   !Reading the Crisp 1986 data                                                                    
+    !In a latitude vs. altitude format with the heating rate K/day as the contour                   
+    !  There are two files here containing Figure 16 and Figure 17 in the paper                     
+    !  which are the diurnal and semidiurnal components respectively                                
+    open(UNIT = UnitTmp_, FILE = 'DataIn/crispDiurnalData_2km5deg.txt', &
+         STATUS='OLD', ACTION = 'READ')
+
+    !Skip two lines of header stuff                                                                 
+    read(UnitTmp_, *)
+    read(UnitTmp_, *)
+
+    !0 - 90 deg, in 5 deg increments                                                                
+    do iiLat = 1,19
+       read(UnitTmp_,*) diurnalHeating(iiLat, :)
+    enddo
+    close(Unit = UnitTmp_)
+
+    !Read the semidiurnal file                                                                      
+    open(UNIT = 97, FILE = 'DataIn/crispSemidiurnalData_2km5deg.txt', &
+         STATUS='OLD', ACTION = 'READ')
+
+    !Skip two lines of header stuff                                           
+    read(97, *)
+    read(97, *)
+
+    do iiLat = 1,19
+       read(97,*) semiDiurnalHeating(iiLat, :)
+    enddo
+    close(Unit = 97)
+  
+    diurnalHeating = diurnalHeating/86400.0
+    semiDiurnalHeating = semiDiurnalHeating/86400.0
     
 end subroutine readVenusIRTable
 
@@ -113,7 +236,6 @@ subroutine fill_photo
   PhotoElecIon = 0.0
   PhotoElecDiss = 0.0
   
-  
 end subroutine fill_photo
 
 !---------------------------------------------------------------------
@@ -180,7 +302,7 @@ subroutine calc_planet_sources(iBlock)
   ! CO2 NLTE Cooling Formulation from Miguel Lopez-Valverde (2017)
   !/
   !/ Cooling ON
-  if (.False.) call nlte_tcool(iBlock)
+  if (.True.) call nlte_tcool(iBlock)
 
   !\
   ! RadCoolingRate is in K/s (from nlte_tcool.F routine)
@@ -195,7 +317,7 @@ subroutine calc_planet_sources(iBlock)
   ! 1.0/(cp*rho) is in (K*m^3)/J
   ! --------------------------------------------------
   !/ Cooling ON
-  if (.False.) then
+  if (.True.) then
     RadCooling(1:nLons,1:nLats,1:nAlts,iBlock) = &
          RadCoolingRate(1:nLons,1:nLats,1:nAlts,iBlock)/&
          (TempUnit(1:nLons,1:nLats,1:nAlts))
@@ -205,8 +327,8 @@ subroutine calc_planet_sources(iBlock)
   endif
 
   !/ Cooling OFF (zeroed out)
-  RadCooling = 0.0
-  RadCoolingRate = 0.0
+  !RadCooling = 0.0
+  !RadCoolingRate = 0.0
 
   !\ -------------------------------------------------------------------
   ! O(63 micron) Cooling Formulation from Kockarts (1970)
@@ -346,7 +468,7 @@ subroutine calc_planet_sources(iBlock)
            L_NLEVRAD  = L_LAYERS+2
 
            !BP: turn off until figure out what this is
-           if (.FALSE.) then
+           if (.true.) then
              call calc_lowatmosrad(iblock,iLat,iLon,L_LAYERS,L_LEVELS,&
                   L_NLAYRAD,L_NLEVRAD)
            endif
@@ -363,7 +485,11 @@ subroutine calc_planet_sources(iBlock)
   !################# END MAIN COMPUTATIONAL LOOP#################
 
   call end_timing("calc_planet_sources")
-
+  
+  if (iTimeArray(3) .eq. 25 .and. iTimeArray(4) &
+      .eq. 12 .and. iTimeArray(5) .eq. 0) then 
+    call timescales
+  endif
 end subroutine calc_planet_sources
 
 !---------------------------------------------------------+
@@ -517,6 +643,12 @@ subroutine nlte_tcool(iBlock)
   real :: zmin_gcm
   integer :: ierr
   real*8 :: varerr
+
+  real :: refCooling = 0.0
+  integer :: jAlt
+  real :: alpha
+  real :: pMerge = 0.5 !Pa
+
 
   !  -----------------------------------------------------------------
   ! Repository for MGITM fields into 2-D arrays (not needed)
@@ -772,6 +904,55 @@ subroutine nlte_tcool(iBlock)
   !-------------------------------------------------------------
 
   !-------------------------------------------------------------
+  
+  !BP (7/7/2020)
+  !Hotfix to Venus RadCooling that produces positive "cooling rates (~250,000 K/day)
+  !below 85 km. Making it zero until we implement a better cooling scheme in the 
+  !LTE region like Newtonian cooling or something else
+  do iAlt = 1, nAlts
+    if (Altitude_GB(1,1,iAlt,iBlock)/1000.0 < 85.0) then
+      RadCoolingRate(1:nLons,1:nLats,iAlt,iBlock) = 0.0
+    endif
+  enddo
+
+  !Newtonian cooling
+  do iAlt = 1, nAlts
+    do iLon = 1, nLons
+      do iLat = 1, nLats
+        if (RadCoolingRate(iLon,iLat,iAlt,iBlock) .le. 0.0) then
+          RadCoolingRate(iLon,iLat,iAlt,iBlock) = 0.0
+        endif
+      !Altitudes above 0.01 Pa, NLTE effects dominate                                   
+      !Blend below these altitudes according to the Gilli 2016 paper 
+        if (Pressure(iLon,iLat,iAlt,iBlock) > 0.01) then
+          !Find the cooling amount
+          do jAlt = 1,31
+            if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 .le. referenceAltitude2(jAlt+1) .and. &
+                Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 .ge. referenceAltitude2(jAlt)) then
+              refCooling = -newtonianCoolingRate(jAlt)
+              exit
+            endif
+          enddo
+            
+          !Scale the cooling appropriately
+          do jAlt = 1, 56
+            if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 .le. referenceAltitude1(jAlt+1) .and. &
+                Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 .ge. referenceAltitude1(jAlt)) then
+              !Altitudes above 0.01 Pa, NLTE effects dominate
+              !Blend below these altitudes according to the Gilli 2016 paper
+
+              alpha = 1/(1 + Pressure(iLon,iLat,iAlt,iBlock)/pMerge)**4
+              RadCoolingRate(iLon,iLat,iAlt,iBlock) = &
+                  alpha*RadCoolingRate(iLon,iLat,iAlt,iBlock) + &
+                  (1 - alpha)*refCooling*Temperature(iLon,iLat,iAlt,iBlock)*&
+                  TempUnit(iLon,iLat,iAlt)/ReferenceTemperature(jAlt)
+              exit
+            endif
+          enddo
+        endif
+      enddo
+    enddo
+  enddo
 
 end subroutine nlte_tcool
 !---------------------------------------------------------
@@ -1438,86 +1619,6 @@ end subroutine init_isochem
 !write(*,*) plev(l_levels),l_levels
 !stop
 
-     if (UseDustDistribution) then
-
-!        if (floor((tSimulation-dt)/DtDust) /= &
-!             floor((tsimulation)/DtDust) .or. IsFirstDust(iBlock)) then
-
-           if (iDebugLevel > 1) then
-            if (iproc .eq. 0) write(*,*) "==> Getting Dust Distribution"
-          endif
-           DustTime(:) = 0
-           ConrathTime(:) = 0
-
-           do N = 1, nDustTimes
-              DustTime(N) = TimeDust(N)
-
-           enddo
-
-
-           if ((CurrentTime - DustTime(1)) .lt. 0 .or.  (DustTime(ndusttimes) - CurrentTime) .lt. 0) then
-              write(*,*) currenttime- dusttime(ndusttimes),dusttime(1)-currenttime
-              write(*,*) 'Dust isnt specified at this time'
-              call stop_gitm('Stopping in Mars.f90')
-           endif
-
-           tDiff = CurrentTime - DustTime
-           where(tDiff .lt. 0) tDiff = 1e20
-           iMin = minloc(tDiff)
-
-           if (DustFileType .eq. "FullHorizontal") then
-             do N = 1, nConrathTimes
-                ConrathTime(N) = TimeConrath(N)
-             enddo
-
-             ctDiff = CurrentTime - ConrathTime
-             where(ctDiff .lt. 0) ctDiff = 1e20
-             cMin = minloc(ctDiff)
-             invDDiff = 1 / &
-                  (DustTime(iMin(1)+1)-DustTime(imin(1)))
-             rtime = (CurrentTime - Dusttime(imin(1)))*(HorizontalDustProfile(imin(1) + 1,iLat,iLon,iBlock) - &
-                  HorizontalDustProfile(imin(1),iLat,iLon,iBlock)) * invDDiff
-
-             invDDiff = 1 / &
-                  (ConrathTime(cMin(1)+1)-ConrathTime(cmin(1)))
-             conrathrtime = (CurrentTime - Conrathtime(cmin(1)))*&
-                  (HorizontalConrathProfile(cmin(1) + 1,iLat,iLon,iBlock) - &
-                  HorizontalConrathProfile(cmin(1),iLat,iLon,iBlock)) * invDDiff
-
-
-             DustDistribution(iLon,iLat,iBlock) = HorizontalDustProfile(imin(1),iLat,iLon,iBlock) + rtime
-             ConrathDistribution(iLon,iLat,iBlock) = HorizontalConrathProfile(imin(1),iLat,iLon,iBlock) + conrathrtime
-
-             tautot(1) = DustDistribution(ilon,ilat,iblock)
-
-             conrnu = ConrathDistribution(ilon,ilat,iblock)
-
-             if (tautot(1) .ne. tautot(1)) then
-                write(*,*) 'Problem with the dust distribution!'
-                call stop_gitm('Stopping in mars.f90')
-             endif
-
-           else if (DustFileType .eq. "MCSVertical") then
-
-             invDDiff = 1 / &
-                  (DustTime(iMin(1)+1)-DustTime(imin(1)))
-             TimeFactor = (CurrentTime - Dusttime(imin(1)))*(CumulativeTauProfile(imin(1) + 1,iLat,1:nDustAlts,iBlock) - &
-                  CumulativeTauProfile(imin(1),iLat,1:nDustAlts,iBlock)) * invDDiff
-             tautot(1:nDustAlts) = CumulativeTauProfile(imin(1),ilat,1:nDustAlts,iBlock)+timefactor
-
-          endif
-        isFirstDust(iBlock) = .false.
-!     endif
-
-     else
-
-        tautot = tautot_temp
-        conrnu = conrnu_temp
-     endif
-
-
-    CALL DUSTPROFILE(PLEV(L_LEVELS),PTROP,PLEV,TAUCUM,TAUREF,L_LEVELS,TauTot,ConrNU)
-
       !C  Fill QPI with water information
 
     !C  QH2O is the mixing ratio.  The GCM computes it as mass mixing ratio.
@@ -1845,155 +1946,6 @@ ALTBOUND(0) = altbot
   END SUBROUTINE FILLPT
 
   ! ----------------------------------------------------------------------
-
-
-  ! ----------------------------------------------------------------------
-
-  subroutine dustprofile(PSF,PTROP,PLEV,TAUCUM,TAUREF,L_LEVELS,TauTot,ConrNU)
-
-    !C Bob's updates 9/17/99
-    !C Reference the dust optical depth to PSF (The surface pressure, mbar),
-    !C and modify the way the dust mixing ratio is calculated to more accurately
-    !C reflect the pressure-optical depth relationship.
-    !C GCM2.0  Sept 2002
-    !C Driver:  Jan 2003 - Modified from GCM 3-D to DRIVER 1-D
-
-    use ModPlanet
-    use ModInputs
-    use ModGITM, only : iproc
-    implicit none
-
-    integer JSRCHGT
-    external JSRCHGT
-
-    INTEGER, PARAMETER :: NPDST = 100
-    real, INTENT(in) :: tautot(nDustAlts),conrnu(nDustAlts)
-    integer, INTENT(in) :: L_LEVELS
-    integer :: n, k, nstar
-    REAL ::  QRDST(NPDST), PRDST(NPDST), TAUDST(NPDST)
-    real, INTENT(in) ::  PSF, PTROP
-    real ::  TAUCUM(LL_LEVELS),TAUREF(LL_LEVELS+1),PLEV(LL_LEVELS+1)
-    real ::  refpr, pave, sum, qrdst0, pstar, pstar1, pdif1, pdif2
-    real :: DustPressureLevelMB(nDustAlts)
-
-    !C======================================================================C
-
-    !C Calculate the Reference Pressure Grid (prdst)
-    DustPressureLevelMB = 0.0
-
-     if (DustFileType .ne. "MCSVertical") then
-      refpr    = (5.0*psf/ptrop)**(1.0/(float(npdst)-1.0))
-      prdst(1) = ptrop
-
-      do n=2,npdst
-         prdst(n) = refpr*prdst(n-1)
-      end do
-
-      !C Calculate the Mixing Ratio at the Reference Pressure Level
-
-      sum = 0.
-      do n = 2,npdst
-         if (prdst(n).lt.rptau) then
-            pave = 0.5*(prdst(n)+prdst(n-1))
-            sum  = sum + exp(conrnu(1)*(1.-(rptau/pave)))*&
-                 (prdst(n)-prdst(n-1))
-         end if
-         if (prdst(n).ge.rptau) go to 10
-      end do
-
-  10  continue
-
-      pave = 0.5*(rptau+prdst(n-1))
-      sum  = sum + exp(conrnu(1)*(1.-(rptau/pave)))*(rptau-prdst(n-1))
-
-      !C  GCM1.7  6/28/01   spatially varying dust
-
-      qrdst0 = tautot(1)/sum
-
-      !C Now calculate the mixing ratio at all other levels
-
-      do n=1,npdst-1
-
-         !C Region 1: Mixing ratio changes continuously through the layer
-
-         if (rptau.gt.prdst(n+1)) then
-            pave     = 0.5*(prdst(n+1)+prdst(n))
-            qrdst(n) = qrdst0*exp(conrnu(1)*(1.0-(rptau/pave)))
-         end if
-
-         !C Region 2: Reference pressure level within this layer.
-
-         if (rptau.le.prdst(n+1).and.rptau.ge.prdst(n)) then
-            pave     = 0.5*(prdst(n)+rptau)
-            pdif1    = rptau-prdst(n)
-            pdif2    = prdst(n+1)-rptau
-            qrdst(n) = qrdst0*(&
-                 exp(conrnu(1)*(1.0-(rptau/pave)))*pdif1+pdif2) / &
-                 (prdst(n+1)-prdst(n))
-         end if
-
-         !C Region 3: Mixing ratio constant
-
-         if (rptau.lt.prdst(n)) then
-            qrdst(n) = qrdst0
-         end if
-
-      end do
-
-      !C Now compute the optical depths (taudst).
-
-      taudst(1) = 0.0
-
-      do n=2,npdst
-         taudst(n) = taudst(n-1) + qrdst(n-1)*(prdst(n)-prdst(n-1))
-      end do
-
-      !C  Dust optical depth at the bottom of each sub-layer.
-
-      TAUCUM = 0.0
-      TAUREF = 0.0
-
-      DO K=4,L_LEVELS
-         PSTAR     = PLEV(K)
-         PSTAR1    = MAX(PSTAR,PRDST(1))
-         NSTAR     = MIN0(JSRCHGT(NPDST-1,PRDST,1,PSTAR1)-1,NPDST-1)
-
-         TAUCUM(K) = TAUDST(NSTAR)+(PSTAR1-PRDST(NSTAR))*&
-              (TAUDST(NSTAR+1) - TAUDST(NSTAR))/&
-              (PRDST(NSTAR+1)-PRDST(NSTAR))
-         TAUREF(K) = TAUCUM(K) - TAUCUM(K-1)
-
-      END DO
-
-
-      TAUREF(L_LEVELS+1) = 0.0D0
-    else
-      !Using MCS Longitudinally averaged vertical profiles
-      DustPressureLevelMB = DustPressureLevel(1:nDustAlts)*.01
-      TAUCUM = 0.0
-      TAUREF = 0.0
-      DO K=4,L_LEVELS
-
-         PSTAR     = PLEV(K)
-         PSTAR1    = MAX(PSTAR,DustPressureLevelMB(1))
-         NSTAR     = MIN0(JSRCHGT(NPDST-1,DustPressureLevelMB(1:nDustAlts),1,PSTAR1)-1,NPDST-1)
-
-         TAUCUM(K) = TauTot(NSTAR)+(PSTAR1-DustPressureLevelMB(NSTAR))*&
-              (TauTot(NSTAR+1) - TauTot(NSTAR))/&
-              (DustPressureLevelMB(NSTAR+1)-DustPressureLevelMB(NSTAR))
-
-         TAUREF(K) = TAUCUM(K) - TAUCUM(K-1)
-
-      END DO
-
-      TAUREF(L_LEVELS+1) = 0.0D0
-    endif
-
-
-  END SUBROUTINE DUSTPROFILE
-
-  ! ----------------------------------------------------------------------
-
 
   ! ----------------------------------------------------------------------
   function jsrchgt(N,SX,INC,TARGET)
@@ -3880,16 +3832,16 @@ subroutine NLTEdlvr11_ZGRID (n_gcm, &
                                 ! Top boundary for NLTE model :
                                 !   Ptop_atm = 1e-9 atm                          (see mz1d.par)
       jtopboundary = jlowerboundary
-      !write(*,*) "Ptop_atm:", Ptop_atm
+      !write(*,*) "Ptop_atm:", Ptop_atm, pbottom_atm
       do while ( p_gcm(jtopboundary) .gt. Ptop_atm )
          jtopboundary = jtopboundary + 1
          if (jtopboundary .gt. n_gcm) then
-            write (*,*) '!!!!!!!! Warning in top boundary pressure. '
-            write (*,*) ' Ptop_atm too high for p_gcm. '
-            write (*,*) ' p_gcm, Ptop_atm =',  &
-                 p_gcm(n_gcm), Ptop_atm
-            write (*,*) '!!!!!!!! NLTE upper boundary modified '// &
-                 ' to match p_gcm'
+            !write (*,*) '!!!!!!!! Warning in top boundary pressure. '
+            !write (*,*) ' Ptop_atm too high for p_gcm. '
+            !write (*,*) ' p_gcm, Ptop_atm =',  &
+            !     p_gcm(n_gcm), Ptop_atm
+            !write (*,*) '!!!!!!!! NLTE upper boundary modified '// &
+            !     ' to match p_gcm'
             jtopboundary=n_gcm
             goto 5000
          endif
@@ -4045,12 +3997,12 @@ subroutine NLTEdlvr11_ZGRID (n_gcm, &
       do while ( p_gcm(jtopCTS) .gt. pl_cts(nl_cts_real) )
          jtopCTS = jtopCTS + 1
          if (jtopCTS .gt. n_gcm) then
-            write (*,*) '!!!!!!!! Warning in top boundary pressure. '
-            write (*,*) ' Ptop_NLTECTS too high for p_gcm. '
-            write (*,*) ' p_gcm, Ptop_NLTECTS =',  &
-                      p_gcm(n_gcm), pl_cts(nl_cts_real)
-            write (*,*) '!!!!!!!! NLTE-CTS upper boundary modified '// &
-                      ' to match p_gcm'
+            !write (*,*) '!!!!!!!! Warning in top boundary pressure. '
+            !write (*,*) ' Ptop_NLTECTS too high for p_gcm. '
+            !write (*,*) ' p_gcm, Ptop_NLTECTS =',  &
+            !          p_gcm(n_gcm), pl_cts(nl_cts_real)
+            !write (*,*) '!!!!!!!! NLTE-CTS upper boundary modified '// &
+            !          ' to match p_gcm'
             jtopCTS=n_gcm
             goto 7000
          endif

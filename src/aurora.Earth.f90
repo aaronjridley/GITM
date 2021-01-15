@@ -279,8 +279,8 @@ subroutine aurora(iBlock)
         endif
 
         UseWave = .false.
-        if (UseNewellAurora .and. UseNewellWave    ) UseMono = .true.
-        if (UseOvationSME   .and. UseOvationSMEWave) UseMono = .true.
+        if (UseNewellAurora .and. UseNewellWave    ) UseWave = .true.
+        if (UseOvationSME   .and. UseOvationSMEWave) UseWave = .true.
 
         if (UseWave .and. ElectronNumberFluxWave(j,i) > 0.0) then
 

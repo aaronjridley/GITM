@@ -119,11 +119,14 @@ module ModSources
   !\
   ! Needed for Fang et al, 2010:
   !/
-
   real, allocatable :: Fang_Ci(:,:)  ! nEnergies, 8
   real, allocatable :: Fang_y(:,:)   ! nEnergies, nAlts
   real, allocatable :: Fang_f(:,:)   ! nEnergies, nAlts
   
+  !BP
+  real, dimension(40,11) :: qIR_NLTE_table
+  real, dimension(19,16) :: diurnalHeating, semiDiurnalHeating  
+
   real :: HorizontalTempSource(nLons, nLats, nAlts)
 
   real :: Diffusion(nLons, nLats, nAlts, nSpecies)

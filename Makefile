@@ -237,6 +237,31 @@ test_mars_check:
 		srcData/log00000002.dat.Mars >& test_mars.diff)
 	ls -l test_mars.diff
 
+# DSO: Test to run HIME
+test_hime:
+	@echo "test_hime_compile..." > test_hime.diff
+	make test_hime_compile
+	@echo "test_hime_rundir..." >> test_hime.diff
+	make test_hime_rundir
+	@echo "test_hime_run..." >> test_hime.diff
+	make test_hime_run
+
+test_hime_compile:
+	./Config.pl -Earth
+	./Config.pl -g=9,9,50,1
+	make GITM
+	
+test_hime_rundir:
+	rm -rf ${TESTDIR}
+	make rundir RUNDIR=${TESTDIR} STANDALONE=YES UADIR=`pwd`
+	mkdir ${TESTDIR}/inputs
+	cp srcData/UAM.in.hime ${TESTDIR}/UAM.in
+	cp srcData/HIME/b20170302_0626UTto0629UT_sample.npfisr ${TESTDIR}/inputs/
+	cp srcData/HIME/imf20170302.dat ${TESTDIR}/inputs/
+
+test_hime_run:
+	cd ${TESTDIR}; ${MPIRUN} ./GITM.exe > runlog
+
 dist:
 	make distclean
 	tar cvzf gitm_`date "+%y%m%d"`.tgz Makefile* Config.pl get_info.pl \
