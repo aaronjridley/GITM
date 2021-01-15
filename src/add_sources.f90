@@ -75,36 +75,6 @@ subroutine add_sources
      UserData3D(:,:,:,1,iBlock) = 0.0
      UserData3D(1:nLons, 1:nLats, 1:nAlts, 1, iBlock) = JouleHeating
 
-     do while (minval(temperature(1:nLons, 1:nLats, 1:nAlts, iBlock)) < 0.0)
-        write(*,*) "Negative Temperature Found!!!  Correcting!!!"
-        do iLon = 1, nLons
-           do iLat = 1, nLats
-              iAlt = 1
-              if (temperature(iLon, iLat, iAlt, iBlock) < 0.0) &
-                   temperature(iLon, iLat, iAlt, iBlock) = &
-                   temperature(iLon, iLat, iAlt-1, iBlock)
-              do iAlt = 2, nAlts
-                 if (temperature(iLon, iLat, iAlt, iBlock) < 0.0) then
-                    temperature(iLon, iLat, iAlt, iBlock) = &
-                         (temperature(iLon, iLat, iAlt-1, iBlock) +  &
-                         temperature(iLon, iLat, iAlt+1, iBlock))/2.0
-
-                    write(*,*) "Sources : ", &
-                         temperature(iLon, iLat, iAlt, iBlock), &
-                         EuvHeating(iLon, iLat, iAlt, iBlock) * dt, &
-                         RadCooling(iLon, iLat, iAlt, iBlock) * dt, &
-                         AuroralHeating(iLon, iLat, iAlt) * dt, &
-                         JouleHeating(iLon, iLat, iAlt) * dt, &
-                         Conduction(iLon, iLat, iAlt), &
-                         ChemicalHeatingRate(iLon, iLat, iAlt)
-                    call stop_gitm('Negative Temperature Found')
-
-                 endif
-              enddo
-           enddo
-        enddo
-     enddo
-
      !! To turn off IonDrag, turn UseIonDrag=.false. in UAM.in
      do iDir = 1, 3
        Velocity(1:nLons, 1:nLats, 1:nAlts, iDir, iBlock) = &
@@ -160,7 +130,6 @@ subroutine add_sources
 
      endif
 
-     !! To turn off Diffusion, turn UseDiffusion=.false. in UAM.in
      do iLon = 1, nLons
         do iLat = 1, nLats
            do iAlt = 1, nAlts
@@ -184,5 +153,11 @@ subroutine add_sources
      enddo
 
   enddo
+
+  if (DoCheckForNans) then
+     call check_for_nans_ions("After Sources")
+     call check_for_nans_neutrals("After Sources")
+     call check_for_nans_temps("After Sources")
+  endif
 
 end subroutine add_sources
