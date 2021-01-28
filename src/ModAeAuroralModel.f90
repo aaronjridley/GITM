@@ -52,9 +52,6 @@ contains
     
     call get_ae(GitmCurrentTime+TimeDelayHighLat, ae, iError)
 
-    write(*,*) "Ae : ", ae
-
-    
     if (ae > MaxAe) ae = MaxAe
     iAe = ae/AeBinSize
 
