@@ -925,6 +925,9 @@ subroutine calc_electron_ion_sources(iBlock) !,eHeatingp,iHeatingp,eHeatingm,iHe
   ! now. - AJR, Nov 2, 2019.
   
   Qinc_t = 0.0
+  Qinc_tp = 0.0
+  Qnic_v = 0.0
+  Qinc_v = 0.0
   do iSpecies = 1, nSpecies
      do iIon = 1, nIons-1
 
@@ -958,7 +961,7 @@ subroutine calc_electron_ion_sources(iBlock) !,eHeatingp,iHeatingp,eHeatingm,iHe
              IDensityS(0:nLons+1,0:nLats+1,0:nAlts+1,iIon,iBlock) * &
              MassI(iIon) * MassI(iIon) * &
              IonCollisions(0:nLons+1,0:nLats+1,0:nAlts+1,iIon,iSpecies) * &
-             dv2 * &
+             dv2 / &
              (MassI(iIon) + Mass(iSpecies))
         
      enddo
