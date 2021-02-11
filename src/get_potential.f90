@@ -302,6 +302,7 @@ subroutine get_potential(iBlock)
   real    :: mP, dis, TempWeight
   real    ::  LocalSumDiffPot, MeanDiffPot
 
+  real, dimension(-1:nLons+2, -1:nLats+2) :: TempPotential2d
   real, dimension(-1:nLons+2, -1:nLats+2, 2) :: TempPotential, AMIEPotential
   real, dimension(-1:nLons+2, -1:nLats+2) :: Grid, dynamo, SubMLats, SubMLons
   real, dimension(-1:nLons+2, -1:nLats+2) :: lats, mlts, EFlux
@@ -355,8 +356,10 @@ subroutine get_potential(iBlock)
              write(*,*) "==> Getting IE potential"
 
         TempPotential = 0.0
+        TempPotential2d = 0.0
 
-        call UA_GetPotential(TempPotential(:,:,1), iError)
+        call UA_GetPotential(TempPotential2d, iError)
+        TempPotential(:,:,1) = TempPotential2d
 
         if (iError /= 0) then
            write(*,*) "Error in get_potential (UA_GetPotential):"
