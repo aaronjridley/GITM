@@ -183,6 +183,7 @@ subroutine UA_GetPotential(PotentialOut, iError)
   real, dimension(UAi_NeednMLTs,UAi_NeednLats)               :: ValueOut
   real, dimension(UAi_NeednMLTs,UAi_NeednLats), intent(out)  :: PotentialOut
   real :: Filler = 0.0
+  integer :: iMLT, iLat
 
   iError = 0
 
@@ -204,6 +205,27 @@ subroutine UA_GetPotential(PotentialOut, iError)
 
      call UA_GetNonGridBasedPotential(ValueOut, iError)
 
+     ! In Weimer, there are sometimes 0 potentials.  I don't know why.
+     if (maxval(abs(UAr2_NeedLats)) > 80.0) then
+
+        do iMlt=2,UAi_NeednMLTs-1
+           do iLat=2,UAi_NeednLats-1
+              if (ValueOut(iMlt, iLat) == 0.0) then
+                 if (ValueOut(iMlt, iLat-1) * ValueOut(iMlt, iLat+1) > 0) then
+                    ! this is a "hole" in the potential, since the potential is
+                    ! the same sign both above and below the current point.
+                    ValueOut(iMlt, iLat) = ( &
+                         ValueOut(iMlt-1, iLat) + &
+                         ValueOut(iMlt, iLat-1) + &
+                         ValueOut(iMlt+1, iLat) + &
+                         ValueOut(iMlt, iLat+1))/4.0
+                 endif
+              endif
+           enddo
+        enddo
+
+     endif
+     
      if (iError == 0) then
         PotentialOut = ValueOut
      else
