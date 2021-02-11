@@ -95,6 +95,7 @@ allclean:
 #       Create run directories
 #
 rundir:
+	@echo ${RUNDIR}
 	mkdir -p ${RUNDIR}/UA
 	if [ -d srcSAMI ]; then \
 		mkdir -p ${RUNDIR}/PS; \
@@ -250,7 +251,7 @@ test_hime_compile:
 	./Config.pl -Earth
 	./Config.pl -g=9,9,50,1
 	make GITM
-	
+
 test_hime_rundir:
 	rm -rf ${TESTDIR}
 	make rundir RUNDIR=${TESTDIR} STANDALONE=YES UADIR=`pwd`
