@@ -280,10 +280,10 @@ C     stand-alone, this routine doesn't have to do anything.
 C       Must set this before calling CON_io_unit_new, so if it is running
 C       stand-alone, this routine doesn't have to do anything.
         if (.not. IsOpenKonsol) then
-           KONSOL=12
-           call CON_io_unit_new(KONSOL)
-           write(NameFile,"(a,i4.4,a)") 'UA/data/iriOut_',iProc,'.dat'
-           open(unit = konsol,file=NameFile)
+           KONSOL=6
+!           call CON_io_unit_new(KONSOL)
+!           write(NameFile,"(a,i4.4,a)") 'UA/data/iriOut_',iProc,'.dat'
+!           open(unit = konsol,file=NameFile)
            IsOpenKonsol = .true.
         endif
       else
@@ -328,27 +328,27 @@ C
 
 !!!	write(konsol,*) '*** IRI parameters are being calculated ***'
         if(NODEN) goto 2889
-	if(LAYVER) write(konsol,*) 'Ne, E-F: The LAY-Version is ',
-     &	  'prelimenary. Erroneous profile features can occur.'
+!	if(LAYVER) write(konsol,*) 'Ne, E-F: The LAY-Version is ',
+!     &	  'prelimenary. Erroneous profile features can occur.'
 !!!	if(GULB0) write(konsol,*) 'Ne, B0: Bottomside thickness is ',
 !!!     &	  'obtained with Gulyaeva-1987 model.'
-	if(OLD79) write(konsol,*) 'Ne: Using IRI-79. Correction',
-     &	  ' of equatorial topside is not included.'
-	if(HMF2IN) write(konsol,*) 'Ne, hmF2: Input values are used.'
+!	if(OLD79) write(konsol,*) 'Ne: Using IRI-79. Correction',
+!     &	  ' of equatorial topside is not included.'
+!	if(HMF2IN) write(konsol,*) 'Ne, hmF2: Input values are used.'
 	if(FOF2IN) then
-	  write(konsol,*) 'Ne, foF2: Input values are used.'
+!	  write(konsol,*) 'Ne, foF2: Input values are used.'
 	  goto 2889
 	  endif
-	if(URSIF2) then
+!	if(URSIF2) then
 !!! 	  write(konsol,*) 'Ne, foF2: URSI model is used.'
-	else
-	  write(konsol,*) 'Ne, foF2: CCIR model is used.'
-	endif
+!	else
+!	  write(konsol,*) 'Ne, foF2: CCIR model is used.'
+!	endif
 2889  continue
 !!!if((.not.NOION).and.(DY)) 
 !!!&	   write(konsol,*) 'Ion Com.: Using Danilov-Yaichnikov-1985.'
-      if((.not.NOTEM).and.(TENEOP))
-     &     write(konsol,*) 'Te: Temperature-density correlation is used'
+!      if((.not.NOTEM).and.(TENEOP))
+!     &     write(konsol,*) 'Te: Temperature-density correlation is used'
 C
 C CALCULATION OF MEAN F10.7CM SOLAR RADIO FLUX (COV)................
 C CALCULATION OF RESTRICTED SOLAR ACTIVITIES (RG,COVG)..............
@@ -473,14 +473,14 @@ C          Read URSI coefficient set for chosen month....................
       MONTHO = MONTH
       GOTO 4291
 
- 7796 WRITE (KONSOL,'(''IRI90: File not found:'',A)') CCIRNM
+ 7796 WRITE (*,'(''IRI90: File not found:'',A)') CCIRNM
       call CON_stop("died in iri90.f")
- 7797 WRITE (KONSOL,'(''IRI90: Trouble skipping to month'',I4,
+ 7797 WRITE (*,'(''IRI90: Trouble skipping to month'',I4,
      +               '' at rec'',I6,'' of '',A)')  MONTH, I, CCIRNM
       call CON_stop("died in iri90.f")
- 7798 WRITE (KONSOL,'(''IRI90: File not found:'',A)') URSINM
+ 7798 WRITE (*,'(''IRI90: File not found:'',A)') URSINM
       call CON_stop("died in iri90.f")
- 7799 WRITE (KONSOL,'(''IRI90: Trouble skipping to month'',I4,
+ 7799 WRITE (*,'(''IRI90: Trouble skipping to month'',I4,
      +               '' at rec'',I6,'' of '',A)')  MONTH, I, URSINM
       call CON_stop("died in iri90.f")
 
@@ -582,7 +582,7 @@ C!!!!!!! PARAMETER FOR E AND VALLEY-REGION !!!!!!!!!!!!!!!!!!!!!
 	IF(NIGHT) DEPTH=-DEPTH
       	CALL TAL(HDEEP,DEPTH,WIDTH,DLNDH,EXT,E)
       	IF(.NOT.EXT) GOTO 667
-      	  WRITE(KONSOL,650)
+!      	  WRITE(KONSOL,650)
 650   FORMAT(1X,'*NE* E-REGION VALLEY CAN NOT BE MODELLED')
 600   	  WIDTH=.0
 667   HEF=HME+WIDTH
@@ -617,7 +617,7 @@ C
 	XE2H=XE2(HEF)
       CALL REGFA1(HEF,HMF2,XE2H,NMF2,0.001,NMF1,XE2,SCHALT,HMF1)
 	IF(.not.SCHALT) GOTO 380
-	  WRITE(KONSOL,11)
+!	  WRITE(KONSOL,11)
 11    FORMAT(1X,'*NE* HMF1 IS NOT EVALUATED BY THE FUNCTION XE2')
 	IREGFA=1
 c
@@ -625,7 +625,7 @@ c change B1 and try again ..........................................
 c
 9244 	IF(B1.GT.4.5) GOTO (7398,8922) IREGFA
 	   	B1=B1+0.5
- 		WRITE(KONSOL,902) B1-0.5,B1
+! 		WRITE(KONSOL,902) B1-0.5,B1
 902   FORMAT(6X,'CORR.: B1(OLD)=',F4.1,' B1(NEW)=',F4.1)
 		IF(GULB0) then
 			ib1=int(b1*2.-5.)
@@ -635,9 +635,7 @@ c
 c
 c omit F1 feature ....................................................
 c
-7398  WRITE(KONSOL,9269)
-9269  FORMAT(1X,'CORR.: NO F1 REGION, B1=3, C1=0.0')
-      	HMF1=0.
+7398   	HMF1=0.
       	NMF1=0.
       	C1=0.0
       	B1=3.
@@ -678,9 +676,7 @@ C
       CALL REGFA1(h,HF1,XE3H,XF1,0.001,NME,XE3,SCHALT,HST)
 	STR=HST
 	IF(.not.SCHALT) GOTO 360
-3885	WRITE(KONSOL,100)
-100   FORMAT(1X,'*NE* HST IS NOT EVALUATED BY THE FUNCTION XE3')
-	IREGFA=2
+3885	IREGFA=2
 	IF(XXMIN/NME.LT.1.3) GOTO 9244
 c
 c assume linear interpolation between HZ and HEF ..................
@@ -691,7 +687,7 @@ c
           RRRR=RRRR+.1
           GOTO 8922
           endif
-        WRITE(KONSOL,901) HZ,HEF
+!        WRITE(KONSOL,901) HZ,HEF
 901   FORMAT(6X,'CORR.: LIN. APP. BETWEEN HZ=',F5.1,
      &          ' AND HEF=',F5.1)
         T=(XNEHZ-NME)/(HZ-HEF)
@@ -714,9 +710,9 @@ C
 	HHMF2 = HMF2
 	CALL INILAY(NIGHT,NMF2,NMF1,NME,VNER,HHMF2,HMF1M,HME,
      &			HV1R,HV2R,HHALF,HXL,SCL,AMP,IIQU)
-	IF(IIQU.EQ.1) WRITE(KONSOL,7733)
+!	IF(IIQU.EQ.1) WRITE(KONSOL,7733)
 7733	FORMAT('*NE* LAY amplitudes found with 2nd choice of HXL(1).')
-	IF(IIQU.EQ.2) WRITE(KONSOL,7722)
+!	IF(IIQU.EQ.2) WRITE(KONSOL,7722)
 7722	FORMAT('*NE* LAY amplitudes could not be found.')
 
 C---------- CALCULATION OF NEUTRAL TEMPERATURE PARAMETER-------
