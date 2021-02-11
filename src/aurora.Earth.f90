@@ -32,10 +32,6 @@ subroutine aurora(iBlock)
 
   real :: LocalVar, HPn, HPs, avepower, ratio
 
-  real :: AveEFactor = 1.0
-  logical :: IsKappaAurora = .true.
-  real :: kappa = 3
-  
   real :: Fang_Pij(8,4), Ci(8), Fang_de = 0.035
   data Fang_Pij(1,:) /1.25E+00,1.45903,-2.42E-01,5.95E-02/
   data Fang_Pij(2,:) /2.24E+00,-4.23E-07,1.36E-02,2.53E-03/
@@ -105,12 +101,8 @@ subroutine aurora(iBlock)
   ! Let's scale our hemispheric power so it is roughly the same as what
   ! is measured.
 
-  if ( .not.UseNewellAurora .and. &
-       .not.UseOvationSME   .and. &
-       .not.UseAEModel      .and. &
-       .not. Is1D           .and. &
-       iBlock==1) then
-
+  if (NormalizeAuroraToHP) then
+  
      do i=1,nLats
         do j=1,nLons
 
@@ -158,7 +150,7 @@ subroutine aurora(iBlock)
      call get_hpi(CurrentTime,Hpi,iError)
      ratio = Hpi/avepower
 
-     write(*,*) 'ratio : ', Hpi, avepower, ratio
+     write(*,*) 'Auroral normalizing ratio : ', Hpi, avepower, ratio
      
      do i=1,nLats
         do j=1,nLons
@@ -184,7 +176,7 @@ subroutine aurora(iBlock)
   endif
   if (iProc == 0 .and. IsKappaAurora) then
      write(*,*) "Auroral Experiments!!!!"
-     write(*,*) "kappa : ", kappa
+     write(*,*) "kappa : ", AuroraKappa
   endif
   
   do i=1,nLats
@@ -236,9 +228,10 @@ subroutine aurora(iBlock)
 
               if (IsKappaAurora) then
                  ! This is a Kappa Function from Fang et al. [2010]:
-                 ED_Flux(n) = a * (kappa-1) * (kappa-2) / (kappa**2) * &
+                 ED_Flux(n) = a * (AuroraKappa-1) * (AuroraKappa-2) / &
+                      (AuroraKappa**2) * &
                       ed_energies(n) * &
-                      (1 + ed_energies(n) / (kappa * E0)) ** (-k-1)
+                      (1 + ed_energies(n) / (AuroraKappa * E0)) ** (-k-1)
               else
                  ! This is a Maxwellian from Fang et al. [2010]:
                  ED_flux(n) = a * ed_energies(n) * exp(-ed_energies(n)/E0)
