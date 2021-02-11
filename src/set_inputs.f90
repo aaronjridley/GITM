@@ -45,6 +45,7 @@ subroutine set_inputs
   real :: Vx, Bx, Bz, By, Kp, HemisphericPower, tsim_temp
   real :: EDC_est_tmp
   real*8 :: DTime
+  logical :: HasSetAuroraMods = .false.
 
   call report("set_inputs",1)
 
@@ -392,6 +393,12 @@ subroutine set_inputs
               write(*,*) 'SamiInFile'
            endif
 
+        case ("#DIRECTORIES")
+           call read_in_string(outputDir,iError)
+           call read_in_string(logDir,iError)
+           call read_in_string(restartOutDir,iError)
+           call read_in_string(restartInDir,iError)
+
         case ("#GITMBCS")
            call read_in_logical(UseGitmBCs,iError)
            call read_in_string(GitmBCsDir,iError)
@@ -568,23 +575,26 @@ subroutine set_inputs
            endif
 
         case ("#AURORAMODS")
+           HasSetAuroraMods = .true.
            call read_in_logical(NormalizeAuroraToHP, iError)
-           call read_in_real(AuroralHeightFactor, iError)
+           call read_in_real(AveEFactor, iError)
+           call read_in_logical(IsKappaAurora, iError)
+           call read_in_real(AuroraKappa, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #AURORAMODS'
               write(*,*) 'This is for modifying the aurora a bit.  The'
               write(*,*) 'NormalizeAuroraToHP variable calculates the '
               write(*,*) 'modeled hemispheric power and then normalizes it'
-              write(*,*) 'the hemispheric power read in.  AuroralHeightFactor'
-              write(*,*) 'adjusts the pressure to that the ionization height'
-              write(*,*) 'can be at the right height.  A value of 1 is the'
-              write(*,*) 'default height.  Lowering it to 0.4 changes the'
-              write(*,*) 'height to be consistent with FLIP (but that was a'
-              write(*,*) 'while ago that I checked this.'
+              write(*,*) 'the hemispheric power read in. '
+              write(*,*) 'AveEFactor - changes the aveE of the aurora by factor'
+              write(*,*) 'IsKappaAurora - use a kappa instead of Maxwellian'
+              write(*,*) 'AuroraKappa - kappa to use in the distribution'
               write(*,*) ''
               write(*,*) '#AURORAMODS'
               write(*,*) 'NormalizeAuroraToHP     (logical)'
-              write(*,*) 'AuroralHeightFactor     (real)'
+              write(*,*) 'AveEFactor    (real)'
+              write(*,*) 'IsKappaAurora     (logical)'
+              write(*,*) 'AuroraKappa    (real)'
            endif
 
         case ("#NEWELLAURORA")
@@ -606,6 +616,9 @@ subroutine set_inputs
               write(*,*) 'UseNewellRemoveSpikes (logical)'
               write(*,*) 'UseNewellAverage      (logical)'
               IsDone = .true.
+           else
+              if (UseNewellAurora .and. .not. HasSetAuroraMods) &
+                   NormalizeAuroraToHP = .false.
            endif
 
         case ("#OVATIONSME")
@@ -623,6 +636,9 @@ subroutine set_inputs
               write(*,*) 'UseOvationSMEWave (logical)'
               write(*,*) 'UseOvationSMEIon  (logical)'
               IsDone = .true.
+           else
+              if (UseOvationSME .and. .not. HasSetAuroraMods) &
+                   NormalizeAuroraToHP = .false.
            endif
 
         case ("#AEMODEL")
@@ -634,6 +650,9 @@ subroutine set_inputs
               write(*,*) '#AEMODEL'
               write(*,*) 'UseAeModel        (logical)'
               IsDone = .true.
+           else
+              if (UseAeModel .and. .not. HasSetAuroraMods) &
+                   NormalizeAuroraToHP = .false.
            endif
 
         case ("#FANGENERGY")

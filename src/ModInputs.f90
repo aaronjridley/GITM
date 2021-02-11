@@ -21,6 +21,11 @@ module ModInputs
 
   integer, parameter        :: iCharLen_     = 400
 
+  character (len=iCharLen_) :: outputDir = "UA/data"
+  character (len=iCharLen_) :: logDir = "UA/data"
+  character (len=iCharLen_) :: restartOutDir = "UA/restartOUT"
+  character (len=iCharLen_) :: restartInDir = "UA/restartIN"
+  
   integer                   :: iOutputUnit_  = UnitTmp_
   integer                   :: iInputUnit_   = UnitTmp_
   integer                   :: iRestartUnit_ = UnitTmp_
@@ -75,6 +80,12 @@ module ModInputs
   
   logical :: UseAeModel        = .false.
 
+  logical :: IsKappaAurora = .false.
+  real :: AuroraKappa = 3
+  real :: AveEFactor = 1.0
+  ! This is true because FR&E is default.
+  logical :: NormalizeAuroraToHP = .true.
+    
   logical :: UseCusp = .false.
   real :: CuspAveE = 0.1
   real :: CuspEFlux = 2.0
@@ -85,9 +96,6 @@ module ModInputs
   logical :: DoOverwriteWithIRI    = .true.
   logical :: DoOverwriteWithSami   = .false.
   character (len=iCharLen_) :: SamiInFile
-
-  real :: AuroralHeightFactor = 1.0
-  logical :: NormalizeAuroraToHP = .false.
 
   logical :: UseFangEnergyDeposition = .false.
   
