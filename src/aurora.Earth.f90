@@ -32,6 +32,10 @@ subroutine aurora(iBlock)
 
   real :: LocalVar, HPn, HPs, avepower, ratio
 
+  real :: AveEFactor = 1.0
+  logical :: IsKappaAurora = .true.
+  real :: kappa = 3
+  
   real :: Fang_Pij(8,4), Ci(8), Fang_de = 0.035
   data Fang_Pij(1,:) /1.25E+00,1.45903,-2.42E-01,5.95E-02/
   data Fang_Pij(2,:) /2.24E+00,-4.23E-07,1.36E-02,2.53E-03/
@@ -103,6 +107,7 @@ subroutine aurora(iBlock)
 
   if ( .not.UseNewellAurora .and. &
        .not.UseOvationSME   .and. &
+       .not.UseAEModel      .and. &
        .not. Is1D           .and. &
        iBlock==1) then
 
@@ -153,6 +158,8 @@ subroutine aurora(iBlock)
      call get_hpi(CurrentTime,Hpi,iError)
      ratio = Hpi/avepower
 
+     write(*,*) 'ratio : ', Hpi, avepower, ratio
+     
      do i=1,nLats
         do j=1,nLons
            if (ElectronEnergyFlux(j,i)>0.1) then
@@ -170,6 +177,16 @@ subroutine aurora(iBlock)
      HemisphericPowerSouth = 0.0
   endif
 
+  AveEFactor = 1.0
+  if (iProc == 0 .and. AveEFactor /= 1.0) then
+     write(*,*) "Auroral Experiments!!!!"
+     write(*,*) "AveEFactor : ", AveEFactor
+  endif
+  if (iProc == 0 .and. IsKappaAurora) then
+     write(*,*) "Auroral Experiments!!!!"
+     write(*,*) "kappa : ", kappa
+  endif
+  
   do i=1,nLats
      do j=1,nLons
 
@@ -202,16 +219,6 @@ subroutine aurora(iBlock)
               HemisphericPowerNorth = HemisphericPowerNorth + power
            endif
 
-           ! I think that this wrong
-           ! a= sqrt(27.0/(2.0*3.14159)) * eflux /(avee**2.5)
-           ! The eflux/avee gives the number flux, which is what is the code
-           ! needs.
-!           a = (eflux/avee) * 2*sqrt(1 / (pi*(avee/2)**3))
-           !
-           ! This was the latest one that I was using, which it seems is
-           ! wrong also.  It gives you the right average energy, which is good.
-           ! a = (eflux/avee)* (2**0.5) * ((3/(avee*pi))**(3.0/2.0)) * pi
-
            ! Looking at other papers (Fang et al., [2010]), a
            ! Maxwellian is defined as:
            ! DifferentialNumberFlux = Q0/2/E0**3 * E * exp(-E/E0),
@@ -225,20 +232,23 @@ subroutine aurora(iBlock)
            a = Q0/2/E0**3
 
            do n=1,ED_N_Energies
-              ! I think that this is wrong
-              !ED_flux(n) = &
-              !     a*sqrt(ed_energies(n))*exp(-1.5*ed_energies(n)/avee)
 
-              ! This is a Maxwellian from Fang et al. [2010]:
-              ED_flux(n) = a * ed_energies(n) * exp(-ed_energies(n)/E0)
-              ED_EnergyFlux(n) = ED_flux(n) * ED_Energies(n) * ED_delta_energy(n)
+
+              if (IsKappaAurora) then
+                 ! This is a Kappa Function from Fang et al. [2010]:
+                 ED_Flux(n) = a * (kappa-1) * (kappa-2) / (kappa**2) * &
+                      ed_energies(n) * &
+                      (1 + ed_energies(n) / (kappa * E0)) ** (-k-1)
+              else
+                 ! This is a Maxwellian from Fang et al. [2010]:
+                 ED_flux(n) = a * ed_energies(n) * exp(-ed_energies(n)/E0)
+              endif
+
+              ED_EnergyFlux(n) = &
+                   ED_flux(n) * &
+                   ED_Energies(n) * &
+                   ED_delta_energy(n)
               
-              ! Pat Newell says that while the ratio of the total energy flux
-              ! to the number flux is 3kT/2, in reality, it is 2kT, since
-              ! the distribution is skewed.
-!              ED_flux(n) = &
-!                   a*sqrt(ed_energies(n))*exp(-2.0*ed_energies(n)/avee)
-
            enddo
 
         endif
