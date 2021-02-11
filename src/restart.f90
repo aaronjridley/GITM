@@ -36,7 +36,7 @@ subroutine write_restart(dir)
 
   if (iProc == 0) then
 
-     open(unit=iRestartUnit_, file=dir//"header.rst", status="unknown")
+     open(unit=iRestartUnit_, file=trim(dir)//"header.rst", status="unknown")
 
      write(iRestartUnit_, *) ""
      write(iRestartUnit_, '(a)') "#ISTEP"
@@ -71,7 +71,7 @@ subroutine write_restart(dir)
   do iBlock = 1, nBlocks
 
      write(cBlock,'(a1,i4.4)') "b",iBlock+iStartBLK
-     open(unit=iRestartUnit_, file=dir//"/"//cBlock//".rst", &
+     open(unit=iRestartUnit_, file=trim(dir)//"/"//cBlock//".rst", &
           status="unknown", form="unformatted")
 
      write(iRestartUnit_) Longitude(:,iBlock)
@@ -305,7 +305,7 @@ subroutine read_restart(dir)
      write(cBlock,'(a1,i4.4)') "b",iBlock+iStartBLK
      if (iDebugLevel > 2) write(*,*) "===> Reading block ",cBlock
 
-     open(unit=iRestartUnit_, file=dir//"/"//cBlock//".rst", &
+     open(unit=iRestartUnit_, file=trim(dir)//"/"//cBlock//".rst", &
           status="old", form="unformatted")
 
      if (iDebugLevel > 4) write(*,*) "=====> Reading Longitude"

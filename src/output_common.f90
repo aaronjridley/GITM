@@ -245,15 +245,15 @@ subroutine output(dir, iBlock, iOutputType)
   !! ---------------------------------------------
 
   if (iOutputType <= -1) then
-     inquire(file=dir//"/"//trim(CurrentSatelliteName)//"_"//cTime(1:cL)//".sat", &
+     inquire(file=trim(dir)//"/"//trim(CurrentSatelliteName)//"_"//cTime(1:cL)//".sat", &
           EXIST=IsThere)
      if (.not. DoAppendFiles .or. tSimulation < 0.1 .or. .not. IsThere) then
         open(unit=iOutputUnit_, form="unformatted", &
-             file=dir//"/"//trim(CurrentSatelliteName)//"_"//cTime(1:cL)//".sat",&
+             file=trim(dir)//"/"//trim(CurrentSatelliteName)//"_"//cTime(1:cL)//".sat",&
              status="unknown")
      else
         open(unit=iOutputUnit_, form="unformatted", &
-             file=dir//"/"//trim(CurrentSatelliteName)//"_"//cTime(1:cL)//".sat",&
+             file=trim(dir)//"/"//trim(CurrentSatelliteName)//"_"//cTime(1:cL)//".sat",&
              status="unknown",position='append')
      endif
   else
@@ -261,15 +261,15 @@ subroutine output(dir, iBlock, iOutputType)
      ! because other iProcs with DoSaveHIMEPlot=F exit the subroutine earlier.
      if ((cType(3:5) /= 'HME' .and. (cType /= '2DMEL' .or. iBLK == 1)) .or. &
           (cType(3:5) == 'HME' .and. DoSaveHIMEPlot)) then
-        inquire(file=dir//"/"//cType//"_"//cTime(1:cL)//"."//cBlock,&
+        inquire(file=trim(dir)//"/"//cType//"_"//cTime(1:cL)//"."//cBlock,&
              EXIST=IsThere)
         if (.not. DoAppendFiles .or. tSimulation < 0.1 .or. .not. IsThere) then
            open(unit=iOutputUnit_, form="unformatted", &
-                file=dir//"/"//cType//"_"//cTime(1:cL)//"."//cBlock,&
+                file=trim(dir)//"/"//cType//"_"//cTime(1:cL)//"."//cBlock,&
                 status="unknown")
         else
            open(unit=iOutputUnit_, form="unformatted", &
-                file=dir//"/"//cType//"_"//cTime(1:cL)//"."//cBlock,&
+                file=trim(dir)//"/"//cType//"_"//cTime(1:cL)//"."//cBlock,&
                 status="unknown",position='append')
         endif
      endif
@@ -435,26 +435,26 @@ subroutine output(dir, iBlock, iOutputType)
   if ((iProc == 0 .and. iBlock == nBlocks) .or. iOutputType <= -1) then 
 
      if (iOutputType <= -1) then
-        inquire(file=dir//"/"//trim(CurrentSatelliteName)//"_"//cTime(1:cL)//".header", EXIST=IsThere)
+        inquire(file=trim(dir)//"/"//trim(CurrentSatelliteName)//"_"//cTime(1:cL)//".header", EXIST=IsThere)
         if (.not. DoAppendFiles .or. tSimulation < 0.1 .or. .not. IsThere) then
            open(unit=iOutputUnit_, &
-                file=dir//"/"//trim(CurrentSatelliteName)//"_"//cTime(1:cL)//".header",&
+                file=trim(dir)//"/"//trim(CurrentSatelliteName)//"_"//cTime(1:cL)//".header",&
                 status="unknown") 
         else
            open(unit=iOutputUnit_, &
-                file=dir//"/"//trim(CurrentSatelliteName)//"_"//cTime(1:cL)//".header",&
+                file=trim(dir)//"/"//trim(CurrentSatelliteName)//"_"//cTime(1:cL)//".header",&
                 status="unknown",position='append')
         endif
      else
-        inquire(file=dir//"/"//cType//"_"//cTime(1:cL)//".header",&
+        inquire(file=trim(dir)//"/"//cType//"_"//cTime(1:cL)//".header",&
              EXIST=IsThere)
         if (.not. DoAppendFiles .or. tSimulation < 0.1 .or. .not. IsThere) then
            open(unit=iOutputUnit_, &
-                file=dir//"/"//cType//"_"//cTime(1:cL)//".header",&
+                file=trim(dir)//"/"//cType//"_"//cTime(1:cL)//".header",&
                 status="unknown")
         else
            open(unit=iOutputUnit_, &
-                file=dir//"/"//cType//"_"//cTime(1:cL)//".header",&
+                file=trim(dir)//"/"//cType//"_"//cTime(1:cL)//".header",&
                 status="unknown",position='append')
         endif
      endif
@@ -1089,7 +1089,7 @@ end subroutine output
 !!  
 !!    !! open file
 !!    open(unit=iOutputUnit_, &
-!!         file=dir//"/"//cName//"_"//cTime(1:cL)//"."//"dat",&
+!!         file=trim(dir)//"/"//cName//"_"//cTime(1:cL)//"."//"dat",&
 !!         status="unknown")
 !!  
 !!    write(iOutputUnit_,*) ""

@@ -64,9 +64,9 @@ subroutine initialize_gitm(TimeIn)
   call init_grid
 
   if (DoRestart) then
-     call read_inputs("UA/restartIN/header.rst")
+     call read_inputs(trim(restartInDir)//"/header.rst")
      call set_inputs
-     call read_restart("UA/restartIN")
+     call read_restart(restartInDir)
      call init_msis
 !     if (UsePerturbation) call user_create_perturbation
   endif
