@@ -1168,17 +1168,17 @@ subroutine calc_chemical_sources(iLon,iLat,iAlt,iBlock,IonSources, &
 !                   edensity
 
 
-              NeutralSources(iN_2D_) = NeutralSources(iN_2D_) + Reaction
-              NeutralSources(iO_3P_)    = NeutralSources(iO_3P_)    +      Reaction
-              IonLosses(iNOP_)       = IonLosses(iNOP_)       +      Reaction
+              NeutralSources(iN_2D_) = NeutralSources(iN_2D_) + 0.22*Reaction
+              NeutralSources(iO_3P_)    = NeutralSources(iO_3P_) + 0.78*Reaction
+              IonLosses(iNOP_)       = IonLosses(iNOP_) + Reaction
 
               ChemicalHeatingSub = &
                    ChemicalHeatingSub + &
-                   Reaction * (0.38 * 0.78)
+                   Reaction * (0.38 * 0.78) + Reaction * (2.75 * 0.22)
 
                ChemicalHeatingS(inop_e) =  &
                    ChemicalHeatingS(inop_e) + &
-                   Reaction * (0.38 * 0.78)
+                   Reaction * (0.38 * 0.78) + Reaction * (2.75 * 0.22)
 
               ! ----------------------------------------------------------
               ! N(4S)
