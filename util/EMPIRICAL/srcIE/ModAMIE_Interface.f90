@@ -7,11 +7,15 @@ Module ModAMIE_Interface
   integer :: AMIE_nLats, AMIE_nMlts, AMIE_nTimes
 
   ! For a single file
-  real*4, allocatable,dimension(:)     :: AMIE_Lats, AMIE_MLTs
-  real*4, allocatable,dimension(:,:,:,:) :: AMIE_Potential,AMIE_EFlux,AMIE_AveE
+  real*4, allocatable,dimension(:) :: AMIE_Lats, AMIE_MLTs
+  real*8, allocatable,dimension(:,:) :: AMIE_Time
+  real*4, allocatable,dimension(:,:,:,:) :: AMIE_Potential
   real*4, allocatable,dimension(:,:,:,:) :: AMIE_PotentialY
   real*4, allocatable,dimension(:,:,:,:) :: AMIE_Value
-  real*8, allocatable,dimension(:,:)     :: AMIE_Time
+  real*4, allocatable,dimension(:,:,:,:) :: AMIE_EFlux
+  real*4, allocatable,dimension(:,:,:,:) :: AMIE_AveE
+  real*4, allocatable,dimension(:,:,:,:) :: AMIE_IonEFlux
+  real*4, allocatable,dimension(:,:,:,:) :: AMIE_IonAveE
 
   integer, parameter :: AMIE_Closest_     = 1
   integer, parameter :: AMIE_After_       = 2
@@ -26,5 +30,7 @@ Module ModAMIE_Interface
   integer, parameter :: eflux_     = 2
   integer, parameter :: avee_      = 3
   integer, parameter :: potentialy_ = 4
+  integer, parameter :: ioneflux_ = 5
+  integer, parameter :: ionavee_ = 6
 
 end Module ModAMIE_Interface

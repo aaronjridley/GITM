@@ -266,6 +266,20 @@ subroutine EIE_InitGrid(nLats, nMlts, nBlocks, iOutputError)
      stop
   endif
 
+  allocate(EIEr3_HaveIonEFlux(EIEi_HavenMlts,EIEi_HavenLats,EIEi_HavenBLKs), &
+       stat=iError)
+  if (iError /= 0) then
+     write(*,*) "Error in allocating array EIEr3_HaveEFlux in Interface"
+     stop
+  endif
+
+  allocate(EIEr3_HaveIonAveE(EIEi_HavenMlts,EIEi_HavenLats,EIEi_HavenBLKs), &
+       stat=iError)
+  if (iError /= 0) then
+     write(*,*) "Error in allocating array EIEr3_HaveAveE in Interface"
+     stop
+  endif
+
   iOutputError = iError
 
 end subroutine EIE_InitGrid

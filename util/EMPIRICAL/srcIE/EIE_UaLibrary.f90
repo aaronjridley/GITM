@@ -170,6 +170,56 @@ subroutine UA_SetGrid(MLTsIn, LatsIn, iError)
 end subroutine UA_SetGrid
 
 !----------------------------------------------------------------------
+! General get value code - just do linear interpolation with the value
+!----------------------------------------------------------------------
+
+subroutine UA_GetValue(ValueIn, ValueOut, Filler, iError)
+  
+  use ModEIE_Interface
+
+  implicit none
+
+  integer, intent(out) :: iError
+  real, intent(in)     :: Filler
+  real, dimension(EIEi_HavenMlts,EIEi_HavenLats,EIEi_HavenBLKs), intent(in) :: &
+       ValueIn
+  real, dimension(UAi_NeednMLTs,UAi_NeednLats), intent(out) :: ValueOut
+
+  integer :: iMLT, iLat, iB, iM, iL
+  real    :: dM, dL
+
+  iError = 0
+
+  do iMLT = 1, UAi_NeednMLTs
+     do iLat = 1, UAi_NeednLats
+
+        iB = UAi3_InterpolationIndices(iMLT,iLat,1)
+        iM = UAi3_InterpolationIndices(iMLT,iLat,2)
+        iL = UAi3_InterpolationIndices(iMLT,iLat,3)
+
+        if (iB < 0 .or. iM < 0 .or. iL < 0) then
+           ValueOut(iMLT, iLat) =  Filler
+        else
+
+           dM = UAr3_InterpolationRatios(iMLT,iLat,1)
+           dL = UAr3_InterpolationRatios(iMLT,iLat,2)
+
+           ValueOut(iMLT, iLat) =  &
+                (1.0 - dM) * (1.0 - dL) * ValueIn(iM  , IL  , iB) + &
+                (1.0 - dM) * (      dL) * ValueIn(iM  , IL+1, iB) + &
+                (      dM) * (      dL) * ValueIn(iM+1, IL+1, iB) + &
+                (      dM) * (1.0 - dL) * ValueIn(iM+1, IL  , iB)
+
+        endif
+
+     enddo
+  enddo
+
+end subroutine UA_GetValue
+  
+!----------------------------------------------------------------------
+! Potential
+!----------------------------------------------------------------------
 
 subroutine UA_GetPotential(PotentialOut, iError)
   
@@ -237,6 +287,10 @@ subroutine UA_GetPotential(PotentialOut, iError)
   endif
 
 end subroutine UA_GetPotential
+
+!----------------------------------------------------------------------
+! Potential - non-grid-based
+!----------------------------------------------------------------------
 
 subroutine UA_GetNonGridBasedPotential(PotentialOut, iError)
 
@@ -432,7 +486,8 @@ subroutine UA_GetNonGridBasedPotential(PotentialOut, iError)
 
 end subroutine UA_GetNonGridBasedPotential
 
-
+!----------------------------------------------------------------------
+! Electron Average Energy
 !----------------------------------------------------------------------
 
 subroutine UA_GetAveE(AveEOut, iError)
@@ -475,6 +530,10 @@ subroutine UA_GetAveE(AveEOut, iError)
 
 end subroutine UA_GetAveE
 
+!----------------------------------------------------------------------
+! Electron Average Energy - non-grid-based
+!----------------------------------------------------------------------
+
 subroutine UA_GetNonGridBasedAveE(AveEOut, iError)
 
   use ModEIE_Interface
@@ -512,44 +571,8 @@ subroutine UA_GetNonGridBasedAveE(AveEOut, iError)
 
 end subroutine UA_GetNonGridBasedAveE
 
-subroutine UA_GetNonGridBasedEFlux(EFluxOut, iError)
-
-  use ModEIE_Interface
-  use ModErrors
-
-  implicit none
-
-  integer, intent(out) :: iError
-  real, dimension(UAi_NeednMLTs,UAi_NeednLats) :: EFluxOut
-
-  integer :: iMLT, iLat
-  real :: Lat, MLT, hpi
-  real :: ped, hal, avkev, eflx
-
-  iError = 0
-
-  if (IOr_NeedHPINorm < -1000.0) then
-     iError = ecHPINotSet_
-     return
-  endif
-
-  do iMLT = 1, UAi_NeednMLTs
-     do iLat = 1, UAi_NeednLats
-
-        MLT = UAr2_NeedMLTs(iMLT,iLat)
-        Lat = UAr2_NeedLats(iMLT,iLat)
-
-        call get_auroral_conductance(Lat, MLT, IOr_NeedHPINorm, &
-             ped, hal, avkev, eflx)
-
-        ! Need to convert from erg/cm2/s to W/m2
-        EFluxOut(iMLT, iLat) = eflx !* 1.0e-7 * 100.0 * 100.0
-
-     enddo
-  enddo
-
-end subroutine UA_GetNonGridBasedEFlux
-
+!----------------------------------------------------------------------
+! Electron Energy Flux
 !----------------------------------------------------------------------
 
 subroutine UA_GetEFlux(EFluxOut, iError)
@@ -594,48 +617,170 @@ subroutine UA_GetEFlux(EFluxOut, iError)
 end subroutine UA_GetEFlux
 
 !----------------------------------------------------------------------
+! Electron Energy Flux - non-grid-based
+!----------------------------------------------------------------------
 
-subroutine UA_GetValue(ValueIn, ValueOut, Filler, iError)
-  
+subroutine UA_GetNonGridBasedEFlux(EFluxOut, iError)
+
   use ModEIE_Interface
+  use ModErrors
 
   implicit none
 
   integer, intent(out) :: iError
-  real, intent(in)     :: Filler
-  real, dimension(EIEi_HavenMlts,EIEi_HavenLats,EIEi_HavenBLKs), intent(in) :: &
-       ValueIn
-  real, dimension(UAi_NeednMLTs,UAi_NeednLats), intent(out) :: ValueOut
+  real, dimension(UAi_NeednMLTs,UAi_NeednLats) :: EFluxOut
 
-  integer :: iMLT, iLat, iB, iM, iL
-  real    :: dM, dL
+  integer :: iMLT, iLat
+  real :: Lat, MLT, hpi
+  real :: ped, hal, avkev, eflx
 
   iError = 0
+
+  if (IOr_NeedHPINorm < -1000.0) then
+     iError = ecHPINotSet_
+     return
+  endif
 
   do iMLT = 1, UAi_NeednMLTs
      do iLat = 1, UAi_NeednLats
 
-        iB = UAi3_InterpolationIndices(iMLT,iLat,1)
-        iM = UAi3_InterpolationIndices(iMLT,iLat,2)
-        iL = UAi3_InterpolationIndices(iMLT,iLat,3)
+        MLT = UAr2_NeedMLTs(iMLT,iLat)
+        Lat = UAr2_NeedLats(iMLT,iLat)
 
-        if (iB < 0 .or. iM < 0 .or. iL < 0) then
-           ValueOut(iMLT, iLat) =  Filler
-        else
+        call get_auroral_conductance(Lat, MLT, IOr_NeedHPINorm, &
+             ped, hal, avkev, eflx)
 
-           dM = UAr3_InterpolationRatios(iMLT,iLat,1)
-           dL = UAr3_InterpolationRatios(iMLT,iLat,2)
-
-           ValueOut(iMLT, iLat) =  &
-                (1.0 - dM) * (1.0 - dL) * ValueIn(iM  , IL  , iB) + &
-                (1.0 - dM) * (      dL) * ValueIn(iM  , IL+1, iB) + &
-                (      dM) * (      dL) * ValueIn(iM+1, IL+1, iB) + &
-                (      dM) * (1.0 - dL) * ValueIn(iM+1, IL  , iB)
-
-        endif
+        EFluxOut(iMLT, iLat) = eflx
 
      enddo
   enddo
 
-end subroutine UA_GetValue
+end subroutine UA_GetNonGridBasedEFlux
+
+!----------------------------------------------------------------------
+! Ions Average Energy
+!----------------------------------------------------------------------
+
+subroutine UA_GetIonAveE(IonAveEOut, iError)
   
+  use ModEIE_Interface
+  use ModErrors
+
+  implicit none
+
+  integer, intent(out) :: iError
+  real, dimension(EIEi_HavenMlts,EIEi_HavenLats,EIEi_HavenBLKs) :: EIE_Value
+  real, dimension(UAi_NeednMLTs,UAi_NeednLats)               :: ValueOut
+  real, dimension(UAi_NeednMLTs,UAi_NeednLats), intent(out)  :: IonAveEOut
+
+  iError = 0
+
+  if (UAl_UseGridBasedEIE) then
+
+     EIE_Value = EIEr3_HaveIonAveE
+     call UA_GetValue(EIE_Value, ValueOut, 0.1, iError)
+
+     if (iError /= 0) then
+        write(*,*) "Error in routine UA_GetAveE:"
+        write(*,*) cErrorCodes(iError)
+     else
+        IonAveEOut = ValueOut
+     endif
+
+  else
+
+     call UA_GetNonGridBasedAveE(ValueOut, iError)
+
+     if (iError == 0) then
+        IonAveEOut = ValueOut
+     else
+        IonAveEOut = 0.0
+     endif
+
+  endif
+
+end subroutine UA_GetIonAveE
+
+!----------------------------------------------------------------------
+! Ion Average Energy - non-grid-based
+!----------------------------------------------------------------------
+
+subroutine UA_GetNonGridBasedIonAveE(IonAveEOut, iError)
+
+  use ModEIE_Interface
+  use ModErrors
+
+  implicit none
+
+  integer, intent(out) :: iError
+  real, dimension(UAi_NeednMLTs,UAi_NeednLats) :: IonAveEOut
+
+  write(*,*) "UA_GetNonGridBasedIonAveE doen't work yet!"
+  IonAveEOut = 0.0
+
+end subroutine UA_GetNonGridBasedIonAveE
+
+!----------------------------------------------------------------------
+! Ion Energy Flux
+!----------------------------------------------------------------------
+
+subroutine UA_GetIonEFlux(IonEFluxOut, iError)
+  
+  use ModEIE_Interface
+  use ModErrors
+
+  implicit none
+
+  integer, intent(out) :: iError
+  real, dimension(EIEi_HavenMlts,EIEi_HavenLats,EIEi_HavenBLKs) :: EIE_Value
+  real, dimension(UAi_NeednMLTs,UAi_NeednLats)               :: ValueOut
+  real, dimension(UAi_NeednMLTs,UAi_NeednLats), intent(out)  :: IonEFluxOut
+
+  iError = 0
+
+  if (UAl_UseGridBasedEIE) then
+
+     EIE_Value = EIEr3_HaveIonEFlux
+     call UA_GetValue(EIE_Value, ValueOut, 1.0e-10, iError)
+
+     if (iError /= 0) then
+        write(*,*) "Error in routine UA_GetEFlux:"
+        write(*,*) cErrorCodes(iError)
+        stop
+     else
+        IonEFluxOut = ValueOut
+     endif
+
+  else
+
+     call UA_GetNonGridBasedEFlux(ValueOut, iError)
+
+     if (iError == 0) then
+        IonEFluxOut = ValueOut
+     else
+        IonEFluxOut = -1.0e32
+     endif
+
+  endif
+
+end subroutine UA_GetIonEFlux
+
+!----------------------------------------------------------------------
+! Ion Energy Flux - non-grid-based
+!----------------------------------------------------------------------
+
+subroutine UA_GetNonGridBasedIonEFlux(IonEFluxOut, iError)
+
+  use ModEIE_Interface
+  use ModErrors
+
+  implicit none
+
+  integer, intent(out) :: iError
+  real, dimension(UAi_NeednMLTs,UAi_NeednLats) :: IonEFluxOut
+
+  write(*,*) "UA_GetNonGridBasedIonEFlux doesn't work yet!"
+  IonEFluxOut = 0.0
+  
+end subroutine UA_GetNonGridBasedIonEFlux
+

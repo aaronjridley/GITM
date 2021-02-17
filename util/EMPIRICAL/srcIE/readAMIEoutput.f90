@@ -16,6 +16,8 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
   integer :: nfields
   integer :: ntemp, iyr, imo, ida, ihr, imi
   integer :: i,j, iField, iPot_, iAveE_, iEFlux_, iPotY_
+  integer :: iIonEFlux_ = -1
+  integer :: iIonAveE_ = -1
   real*4  :: swv,bx,by,bz,aei,ae,au,al,dsti,dst,hpi,sjh,pot
   real*8  :: rtime
   integer, dimension(7) :: itime_i
@@ -97,6 +99,9 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
         stop
      endif
 
+     ! ------------------------
+     ! Electron Energy Flux:
+
      allocate(AMIE_EFlux(AMIE_nMlts,AMIE_nLats+nCellsPad, &
                          AMIE_nTimes,2), stat=iError)
      if (iError /= 0) then
@@ -105,6 +110,9 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
      endif
 
      AMIE_EFlux = 0.0
+
+     ! ------------------------
+     ! Electron Average Energy:
 
      allocate(AMIE_AveE(AMIE_nMlts,AMIE_nLats+nCellsPad, &
                         AMIE_nTimes,2), stat=iError)
@@ -115,6 +123,33 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
 
      AMIE_AveE = 0.0
 
+     ! ------------------------
+     ! Ion Energy Flux:
+
+     allocate(AMIE_IonEFlux(AMIE_nMlts,AMIE_nLats+nCellsPad, &
+          AMIE_nTimes,2), stat=iError)
+     if (iError /= 0) then
+        write(*,*) "Error in allocating array AMIE_IonEFlux in "
+        stop
+     endif
+
+     AMIE_IonEFlux = 0.0
+
+     ! ------------------------
+     ! Ion Average Energy:
+
+     allocate(AMIE_IonAveE(AMIE_nMlts,AMIE_nLats+nCellsPad, &
+          AMIE_nTimes,2), stat=iError)
+     if (iError /= 0) then
+        write(*,*) "Error in allocating array AMIE_IonAveE in "
+        stop
+     endif
+
+     AMIE_IonAveE = 0.0
+
+     ! ------------------------
+     ! Generic AMIE Value:
+
      allocate(AMIE_Value(AMIE_nMlts,AMIE_nLats+nCellsPad, &
                          AMIE_nTimes,2), stat=iError)
      if (iError /= 0) then
@@ -123,6 +158,9 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
      endif
 
      AMIE_Value = 0.0
+
+     ! ------------------------
+     ! Time:
 
      allocate(AMIE_Time(AMIE_nTimes,2), stat=iError)
      if (iError /= 0) then
@@ -217,16 +255,30 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
      endif
 
      if ((index(Fields(iField),"Mean Energy") > 0) .and. &
-         (index(Fields(iField),"odel") < 1)) then
+          (index(Fields(iField),"Ion") < 1) .and. &
+          (index(Fields(iField),"odel") < 1)) then
         iAveE_ = iField
-        if (AMIE_iDebugLevel > 1) write(*,*) "<--- Mean Energy Found", iAveE_
+        if (AMIE_iDebugLevel > 1) write(*,*) "<--- Electron Mean Energy Found", iAveE_
+     endif
+
+     if ((index(Fields(iField),"Ion Mean Energy") > 0) .and. &
+         (index(Fields(iField),"odel") < 1)) then
+        iIonAveE_ = iField
+        if (AMIE_iDebugLevel > 1) write(*,*) "<--- Ion Mean Energy Found", iIonAveE_
      endif
 
      if ((index(Fields(iField),"Energy Flux") > 0) .and. &
-         (index(Fields(iField),"odel") < 1)) then
+          (index(Fields(iField),"Ion") < 1) .and. &
+          (index(Fields(iField),"odel") < 1)) then
         if (index(Fields(iField),"w/m2") > 0) energyfluxconvert = .true.
         iEFlux_ = iField
-        if (AMIE_iDebugLevel > 1) write(*,*) "<--- Energy Flux Found", iEFlux_, &
+        if (AMIE_iDebugLevel > 1) write(*,*) "<--- Electron Energy Flux Found", iEFlux_, &
+             Fields(iField)
+     endif
+     if ((index(Fields(iField),"Ion Energy Flux") > 0) .and. &
+          (index(Fields(iField),"odel") < 1)) then
+        iIonEFlux_ = iField
+        if (AMIE_iDebugLevel > 1) write(*,*) "<--- Ion Energy Flux Found", iIonEFlux_, &
              Fields(iField)
      endif
 
@@ -292,16 +344,25 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
         enddo
      endif
 
-     AMIE_AveE(:,1:AMIE_nLats,iTime,iBLK)      = AllData(:,1:AMIE_nLats,iAveE_)
+     AMIE_AveE(:,1:AMIE_nLats,iTime,iBLK) = AllData(:,1:AMIE_nLats,iAveE_)
+
+     if (iIonAveE_ > -1) &
+          AMIE_IonAveE(:,1:AMIE_nLats,iTime,iBLK) = AllData(:,1:AMIE_nLats,iIonAveE_)
 
      ! Need to convert from W/m^2 to erg/cm2/s
 
      if (energyfluxconvert) then
         AMIE_EFlux(:,1:AMIE_nLats,iTime,iBLK)     = &
              AllData(:,1:AMIE_nLats,iEFlux_) / (1.0e-7 * 100.0 * 100.0)
+        if (iIonEFlux_ > -1) &
+             AMIE_IonEFlux(:,1:AMIE_nLats,iTime,iBLK)     = &
+             AllData(:,1:AMIE_nLats,iIonEFlux_) / (1.0e-7 * 100.0 * 100.0)
      else
         AMIE_EFlux(:,1:AMIE_nLats,iTime,iBLK)     = & 
              AllData(:,1:AMIE_nLats,iEFlux_)
+        if (iIonEFlux_ > -1) &
+             AMIE_IonEFlux(:,1:AMIE_nLats,iTime,iBLK)     = & 
+             AllData(:,1:AMIE_nLats,iIonEFlux_)
      endif
 
      do i=1,AMIE_nMlts
@@ -314,6 +375,14 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
                 minval(AMIE_AveE(:,1:AMIE_nLats,iTime,iBLK))
            AMIE_EFlux(i,j,iTime,iBLK) = &
                 minval(AMIE_EFlux(:,1:AMIE_nLats,iTime,iBLK))
+
+           if (iIonAveE_ > -1) &
+                AMIE_IonAveE(i,j,iTime,iBLK)  = &
+                minval(AMIE_IonAveE(:,1:AMIE_nLats,iTime,iBLK))
+           if (iIonEFlux_ > -1) &
+                AMIE_IonEFlux(i,j,iTime,iBLK) = &
+                minval(AMIE_IonEFlux(:,1:AMIE_nLats,iTime,iBLK))
+
 
            AMIE_Potential(i,j,iTime,iBLK) = &
                 AMIE_Potential(i,j-1,iTime,iBLK) - dPotential
@@ -426,6 +495,11 @@ subroutine readAMIEoutput(iBLK, IsMirror, iError)
      enddo
   enddo
 
+  if (iIonAveE_ == -1 .or. iIonEFlux_ == -1) then
+     AMIE_IonAveE = 0.0
+     AMIE_IonEFlux = 0.0
+  endif
+                
   AMIE_nLats = AMIE_nLats + nCellsPad
 
   close(UnitTmp_)
