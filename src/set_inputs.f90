@@ -691,6 +691,10 @@ subroutine set_inputs
               write(*,*) 'cAMIEFileNorth  (string)'
               write(*,*) 'cAMIEFileSouth  (string)'
               IsDone = .true.
+           else
+              if (index(cAMIEFileNorth,"none") == 0 .and. &
+                   .not. HasSetAuroraMods) &
+                   NormalizeAuroraToHP = .false.
            endif
 
         case ("#USEREGIONALAMIE")
@@ -1535,15 +1539,12 @@ subroutine set_inputs
 
         case ("#IONPRECIPITATION")
            call read_in_logical(UseIonPrecipitation, iError)
-           call read_in_string(IonIonizationFilename, iError)
-           call read_in_string(IonHeatingRateFilename, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #IONPRECIPITATION'
-              write(*,*) 'This is really highly specific.  You dont want this.'
+              write(*,*) 'You can only have an AMIE input file for this now.'
+              write(*,*) 'Make sure you put the ions in the AMIE file!!!'
               write(*,*) '#IONPRECIPITATION'
               write(*,*) 'UseIonPrecipitation     (logical)'
-              write(*,*) 'IonIonizationFilename   (string)'
-              write(*,*) 'IonHeatingRateFilename  (string)'
               IsDone = .true.
            endif
 

@@ -16,7 +16,8 @@ subroutine aurora(iBlock)
   integer, intent(in) :: iBlock
 
   real :: alat, hpi, ped, hal, av_kev, eflx_ergs, a,b, maxi
-  real :: Factor,temp_ED, avee, eflux, p, E0, Q0
+  real :: ion_av_kev, ion_eflx_ergs, ion_eflux, ion_avee
+  real :: Factor,temp_ED, avee, eflux, p, E0, Q0, E0i, Q0i, ai
   integer :: i, j, k, n, iError, iED, iErr, iEnergy
   logical :: IsDone, IsTop, HasSomeAurora, UseMono, UseWave
 
@@ -42,6 +43,26 @@ subroutine aurora(iBlock)
   data Fang_Pij(7,:) /-6.45E-01,8.50E-04,-4.29E-02,-2.99E-03/
   data Fang_Pij(8,:) /9.49E-01,1.97E-01,-2.51E-03,-2.07E-03/
 
+  ! This is from:
+  ! Fang, X., D. Lummerzheim, and C. H. Jackman (2013),
+  !           Proton impact ionization and a fast calculation method,
+  !           J. Geophys. Res. Space Physics, 118, 5369–5378,
+  !           doi:10.1002/jgra.50484:
+
+  real :: Fang_Ion_Pij(12,4), Ion_Ci(12)
+  data Fang_Ion_Pij( 1, :) / 2.55050E+00,  2.69476e-01, -2.58425E-01,  4.43190E-02/
+  data Fang_Ion_Pij( 2, :) / 6.39287E-01, -1.85817e-01, -3.15636E-02,  1.01370E-02/
+  data Fang_Ion_Pij( 3, :) / 1.63996E+00,  2.43580e-01,  4.29873E-02,  3.77803E-02/
+  data Fang_Ion_Pij( 4, :) /-2.13479E-01,  1.42464e-01,  1.55840E-02,  1.97407E-03/
+  data Fang_Ion_Pij( 5, :) /-1.65764E-01,  3.39654e-01, -9.87971E-03,  4.02411E-03/
+  data Fang_Ion_Pij( 6, :) /-3.59358E-02,  2.50330e-02, -3.29365E-02,  5.08057E-03/
+  data Fang_Ion_Pij( 7, :) /-6.26528E-01,  1.46865e+00,  2.51853E-01, -4.57132E-02/
+  data Fang_Ion_Pij( 8, :) / 1.01384E+00,  5.94301e-02, -3.27839E-02,  3.42688E-03/
+  data Fang_Ion_Pij( 9, :) /-1.29454E-06, -1.43623e-01,  2.82583E-01,  8.29809E-02/
+  data Fang_Ion_Pij(10, :) /-1.18622E-01,  1.79191e-01,  6.49171E-02, -3.99715E-03/
+  data Fang_Ion_Pij(11, :) / 2.94890E+00, -5.75821e-01,  2.48563E-02,  8.31078E-02/
+  data Fang_Ion_Pij(12, :) /-1.89515E-01,  3.53452e-02,  7.77964E-02, -4.06034E-03/
+  
   real BulkScaleHeight1d(nAlts)
 
   HPn = 0.0
@@ -51,19 +72,25 @@ subroutine aurora(iBlock)
      
      IsFirstTime(iBlock) = .false.
 
-     if (iBlock == 1 .and. UseIonPrecipitation) then
-        call ReadIonHeat(IonIonizationFilename,  .true.) 
-        call ReadIonHeat(IonHeatingRateFilename, .false.) 
-     endif
-
      if (UseFangEnergyDeposition) then
+
+        ! Electrons
         allocate(Fang_Ci(ED_N_Energies,8), stat=iErr)
         allocate(Fang_y(ED_N_Energies,nAlts), stat=iErr)
         allocate(Fang_f(ED_N_Energies,nAlts), stat=iErr)
+
+        ! Ions
+        if (UseIonPrecipitation) then
+           allocate(Fang_Ion_Ci(ED_N_Energies,12), stat=iErr)
+           allocate(Fang_Ion_y(ED_N_Energies,nAlts), stat=iErr)
+           allocate(Fang_Ion_f(ED_N_Energies,nAlts), stat=iErr)
+        endif
+        
         if (iErr /= 0) then
            call stop_gitm("Error allocating Fang arrays in aurora")
         endif
 
+        ! Electrons
         do iEnergy = 1, ED_N_Energies
            do i=1,8
               Fang_Ci(iEnergy,i) = 0.0
@@ -74,6 +101,21 @@ subroutine aurora(iBlock)
            enddo
         enddo
         Fang_Ci = exp(Fang_Ci)
+
+        ! Ions
+        if (UseIonPrecipitation) then
+           do iEnergy = 1, ED_N_Energies
+              do i=1,12
+                 Fang_Ion_Ci(iEnergy,i) = 0.0
+                 do j=0,3
+                    Fang_Ion_Ci(iEnergy,i) = Fang_Ion_Ci(iEnergy,i) + &
+                         Fang_Ion_Pij(i,j+1) * log(ED_Energies(iEnergy)/1000.0)**j
+                 enddo
+              enddo
+           enddo
+           Fang_Ion_Ci = exp(Fang_Ion_Ci)
+        endif
+        
      endif
 
   else
@@ -86,12 +128,6 @@ subroutine aurora(iBlock)
 
   call report("Aurora",1)
   call start_timing("Aurora")
-
-  if (UseIonPrecipitation) call interpolate_ions( &
-       nLons, nLats, nAlts, &
-       Longitude(1:nLons,iBlock), Latitude(1:nLats,iBlock), &
-       Altitude_GB(1:nLons, 1:nLats, 1:nAlts, iBlock),&
-       IonPrecipitationBulkIonRate, IonPrecipitationHeatingRate)
 
   if (iBlock == 1) then
      HemisphericPowerNorth = 0.0
@@ -184,9 +220,17 @@ subroutine aurora(iBlock)
 
         UserData2d(j,i,1,2:nUserOutputs,iBlock) = 0.0
 
-        eflx_ergs = ElectronEnergyFlux(j,i) !/ (1.0e-7 * 100.0 * 100.0)
+        eflx_ergs = ElectronEnergyFlux(j,i)
         av_kev    = ElectronAverageEnergy(j,i)
 
+        if (UseIonPrecipitation) then
+           ion_eflx_ergs = IonEnergyFlux(j,i)
+           ion_av_kev = IonAverageEnergy(j,i)
+        else
+           ion_eflx_ergs = 0.0
+           ion_av_kev = 0.0
+        endif
+        
         ! For diffuse auroral models
 
         ED_Flux = 0.0
@@ -201,7 +245,11 @@ subroutine aurora(iBlock)
            avee = av_kev * 1000.0        ! keV -> eV
            eflux = eflx_ergs * 6.242e11  ! ergs/cm2/s -> eV/cm2/s
 
-           power = eflux * Element_Charge*100.0*100.0 * & !(eV/cm2/s -> J/m2/s)
+           ion_avee = ion_av_kev * 1000.0        ! keV -> eV
+           ion_eflux = ion_eflx_ergs * 6.242e11  ! ergs/cm2/s -> eV/cm2/s
+           
+           ! 100 * 100 is for (eV/cm2/s -> J/m2/s)
+           power = (eflux+ion_eflux) * Element_Charge*100.0*100.0 * &
                 dLatDist_FB(j, i, nAlts, iBlock) * &
                 dLonDist_FB(j, i, nAlts, iBlock)
 
@@ -223,8 +271,11 @@ subroutine aurora(iBlock)
            E0 = avee/2
            a = Q0/2/E0**3
 
-           do n=1,ED_N_Energies
+           Q0i = ion_eflux
+           E0i = ion_avee/2
+           ai = Q0i/2/E0i**3
 
+           do n=1,ED_N_Energies
 
               if (IsKappaAurora) then
                  ! This is a Kappa Function from Fang et al. [2010]:
@@ -235,10 +286,15 @@ subroutine aurora(iBlock)
               else
                  ! This is a Maxwellian from Fang et al. [2010]:
                  ED_flux(n) = a * ed_energies(n) * exp(-ed_energies(n)/E0)
+                 ED_ion_flux(n) = ai * ed_energies(n) * exp(-ed_energies(n)/E0i)
               endif
 
               ED_EnergyFlux(n) = &
                    ED_flux(n) * &
+                   ED_Energies(n) * &
+                   ED_delta_energy(n)
+              ED_Ion_EnergyFlux(n) = &
+                   ED_Ion_flux(n) * &
                    ED_Energies(n) * &
                    ED_delta_energy(n)
               
@@ -357,7 +413,6 @@ subroutine aurora(iBlock)
                       !sinDipAngle(j,i,1:nAlts,iBlock) / 6e-6) ** 0.7
 
                  Ci = Fang_Ci(iEnergy,:)
-                 ! write(*,*) iEnergy, ED_Energies(iEnergy), Ci
                  Fang_f(iEnergy,:) = &
                       Ci(1) * Fang_y(iEnergy,:) ** Ci(2) * &
                       exp(-Ci(3) * Fang_y(iEnergy,:) ** Ci(4)) + &
@@ -369,16 +424,39 @@ subroutine aurora(iBlock)
                       Fang_de / &
                       BulkScaleHeight1d
 
+                 ! I think that the 1e6 is cm3 to m3
                  AuroralBulkIonRate(j,i,1:nAlts) = &
                       AuroralBulkIonRate(j,i,1:nAlts) + 1e6*Fang_f(iEnergy,:) * fac
 
-              enddo
-              !do k = 1, nAlts
-              !   write(*,*) k,  AuroralBulkIonRate(j,i,k), fac(k), fang_f(25,k), ColumnIntegralRho(j,i,k)
-              !enddo
-              AuroralHeatingRate(j,i,1:nAlts,iBlock) = 0.0
+                 if (UseIonPrecipitation) then
 
-              !write(*,*) AuroralBulkIonRate(j,i,1:nAlts)
+                    ! /10.0 in this statement is for kg/m2 to g/cm2
+                    ! /1000.0 is conversion from eV to keV
+                    Fang_Ion_y(iEnergy,:) = 7.5 / (ED_Energies(iEnergy)/1000.0) * &
+                         (ColumnIntegralRho(j,i,:) / 10.0 / 1e-4) ** 0.9
+
+                    Ion_Ci = Fang_Ion_Ci(iEnergy,:)
+                    ! write(*,*) iEnergy, ED_Energies(iEnergy), Ci
+                    Fang_Ion_f(iEnergy,:) = &
+                         Ion_Ci(1) * Fang_Ion_y(iEnergy,:) ** Ion_Ci(2) * &
+                         exp(-Ion_Ci(3) * Fang_Ion_y(iEnergy,:) ** Ion_Ci(4)) + &
+                         Ion_Ci(5) * Fang_Ion_y(iEnergy,:) ** Ion_Ci(6) * & 
+                         exp(-Ion_Ci(7) * Fang_Ion_y(iEnergy,:) ** Ion_Ci(8)) + &
+                         Ion_Ci(9) * Fang_Ion_y(iEnergy,:) ** Ion_Ci(10) * & 
+                         exp(-Ion_Ci(11) * Fang_Ion_y(iEnergy,:) ** Ion_Ci(12)) 
+
+                    fac = ED_ion_energyflux(iEnergy)/1000.0 / &
+                         Fang_de / &
+                         BulkScaleHeight1d
+
+                    AuroralBulkIonRate(j,i,1:nAlts) = &
+                         AuroralBulkIonRate(j,i,1:nAlts) + 1e6*Fang_Ion_f(iEnergy,:) * fac
+                    
+                 endif
+                 
+              enddo
+
+              AuroralHeatingRate(j,i,1:nAlts,iBlock) = 0.0
               
            else
 
@@ -441,27 +519,6 @@ subroutine aurora(iBlock)
   temp = 0.92 * NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock) + &
          1.00 * NDensityS(1:nLons,1:nLats,1:nAlts,iO2_,iBlock) + &
          0.56 * NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock)
-
-  if (UseIonPrecipitation) then
-
-     IonPrecipIonRateS(:,:,:,iO_3P_,iBlock)  = &
-          0.56*IonPrecipitationBulkIonRate*&
-          NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock)/temp
-     IonPrecipIonRateS(:,:,:,iO2_,iBlock) = &
-          1.00*IonPrecipitationBulkIonRate*&
-          NDensityS(1:nLons,1:nLats,1:nAlts,iO2_,iBlock)/temp
-     IonPrecipIonRateS(:,:,:,iN2_,iBlock) = &
-          0.92*IonPrecipitationBulkIonRate*&
-          NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock)/temp
-
-     IonPrecipHeatingRate(:,:,:,iBlock) = IonPrecipitationHeatingRate
-
-  else
-
-     IonPrecipIonRateS(:,:,:,:,iBlock) = 0.0
-     IonPrecipHeatingRate(:,:,:,iBlock) = 0.0
-
-  endif
 
   AuroralIonRateS(:,:,:,iO_3P_,iBlock)  = &
        0.56*AuroralBulkIonRate*&

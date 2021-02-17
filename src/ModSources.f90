@@ -103,7 +103,8 @@ module ModSources
 
   real, dimension(:), allocatable :: &
        ED_grid, ED_Energies, ED_Flux, ED_Ion, ED_Heating, &
-       ED_energy_edges, ED_delta_energy, ED_EnergyFlux
+       ED_energy_edges, ED_delta_energy, ED_EnergyFlux, &
+       ED_Ion_EnergyFlux, ED_Ion_Flux
   integer :: ED_N_Energies, ED_N_Alts
   real, dimension(nAlts) :: ED_Interpolation_Weight
   integer, dimension(nAlts) :: ED_Interpolation_Index
@@ -122,6 +123,13 @@ module ModSources
   real, allocatable :: Fang_Ci(:,:)  ! nEnergies, 8
   real, allocatable :: Fang_y(:,:)   ! nEnergies, nAlts
   real, allocatable :: Fang_f(:,:)   ! nEnergies, nAlts
+  
+  !\
+  ! Needed for Fang et al, 2013:
+  !/
+  real, allocatable :: Fang_Ion_Ci(:,:)  ! nEnergies, 8
+  real, allocatable :: Fang_Ion_y(:,:)   ! nEnergies, nAlts
+  real, allocatable :: Fang_Ion_f(:,:)   ! nEnergies, nAlts
   
   !BP
   real, dimension(40,11) :: qIR_NLTE_table

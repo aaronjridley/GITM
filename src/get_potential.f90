@@ -549,6 +549,12 @@ subroutine get_potential(iBlock)
 
   endif
 
+  ! -----------------------------------------------------
+  ! Now get the aurora.
+  ! This assumes that the field lines are basically
+  ! vertical starting at the top of the model.
+  ! -----------------------------------------------------
+  
   if (floor((tSimulation-dt)/DtAurora) /= &
        floor((tsimulation)/DtAurora) .or. IsFirstAurora(iBlock)) then
 
@@ -578,10 +584,12 @@ subroutine get_potential(iBlock)
         if (iError /= 0) then
            write(*,*) "Error in get_potential (UA_GetAveE):"
            write(*,*) iError
-!           call stop_gitm("Stopping in get_potential")
            ElectronAverageEnergy = 1.0
         endif
 
+        ! Sometimes, in AMIE, things get messed up in the
+        ! Average energy, so go through and fix some of these.
+        
         do iLat=-1,nLats+2
            do iLon=-1,nLons+2
               if (ElectronAverageEnergy(iLon,iLat) < 0.0) then
@@ -602,9 +610,30 @@ subroutine get_potential(iBlock)
            write(*,*) "Error in get_potential (UA_GetEFlux):"
            write(*,*) iError
            ElectronEnergyFlux = 0.1
-!           call stop_gitm("Stopping in get_potential")
         endif
 
+        ! -----------------------------------------------------
+        ! Get Ion Precipitation if desired
+        ! -----------------------------------------------------
+
+        if (UseIonPrecipitation) then
+
+           call UA_GetIonAveE(IonAverageEnergy, iError)
+           if (iError /= 0) then
+              write(*,*) "Error in get_potential (UA_GetAveE):"
+              write(*,*) iError
+              IonAverageEnergy = 1.0
+           endif
+
+           call UA_GetIonEFlux(IonEnergyFlux, iError)
+           if (iError /= 0) then
+              write(*,*) "Error in get_potential (UA_GetEFlux):"
+              write(*,*) iError
+              IonEnergyFlux = 0.1
+           endif
+
+        endif
+        
      endif
 
     if (UseCusp) then

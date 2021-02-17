@@ -80,12 +80,17 @@ module ModInputs
   
   logical :: UseAeModel        = .false.
 
+  logical :: UseFangEnergyDeposition = .false.
+  
   logical :: IsKappaAurora = .false.
   real :: AuroraKappa = 3
   real :: AveEFactor = 1.0
   ! This is true because FR&E is default.
   logical :: NormalizeAuroraToHP = .true.
-    
+
+  logical :: xxx
+
+  
   logical :: UseCusp = .false.
   real :: CuspAveE = 0.1
   real :: CuspEFlux = 2.0
@@ -97,8 +102,6 @@ module ModInputs
   logical :: DoOverwriteWithSami   = .false.
   character (len=iCharLen_) :: SamiInFile
 
-  logical :: UseFangEnergyDeposition = .false.
-  
   character (len=iCharLen_) :: TypeLimiter = "minmod"
 
   integer, dimension(7) :: iStartTime
@@ -212,12 +215,10 @@ module ModInputs
   logical :: IsFixedTilt = .false.
 
   !\
-  ! These are things for the ion precipitation for the April 2002 storm:
+  ! These are things for the ion precipitation
   !/
 
   logical :: UseIonPrecipitation = .false.
-  character (len=iCharLen_) :: IonIonizationFilename
-  character (len=iCharLen_) :: IonHeatingRateFilename
 
   logical :: UseDamping = .false.
 

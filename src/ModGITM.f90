@@ -143,6 +143,7 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
 
   real, dimension(-1:nLons+2, -1:nLats+2) :: &
        ElectronEnergyFlux, ElectronAverageEnergy, &
+       IonEnergyFlux, IonAverageEnergy, &
        ElectronEnergyFluxMono, ElectronNumberFluxMono, &
        ElectronEnergyFluxWave, ElectronNumberFluxWave
 
