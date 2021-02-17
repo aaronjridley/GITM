@@ -1,0 +1,247 @@
+
+#DEBUG
+0		debug level
+0		cpu to watch
+10.0		dt between normal code output to stdout
+F		usebarriers - forces the code to stop and wait more often
+
+#RESTART
+F
+
+These are the default directories, so you only need to change them if
+you really want to mix it up.  Also, you HAVE to make sure the directories
+exist, since the code will just crash if they don't!
+
+DIRECTORIES
+UA/data			directory for output files
+UA/data			directory for log files
+UA/restartOUT		restart output directory
+UA/restartIN		restart input directory
+
+
+#GRID
+2		lons
+4		lats
+45.0		minimum latitude to model
+90.0		maximum latitude to model
+0.0		longitude start to model (set to 0.0 for whole Earth)
+0.0             longitude end to model (set to 0.0 for whole Earth)
+
+#DIFFUSION
+T
+50.0		Eddy Diffusion Coefficient
+0.010		Total Eddy Diffusion applied at alts below this pressures level
+0.005		No Eddy Diffusion at altitudes above this pressure level
+
+#THERMALCONDUCTION
+3.6e-4    ThermalConduction_AO2 (3.6e-4 to 5.6e-4)
+5.6e-4    ThermalConduction_AO (5.6e-4 to 7.6e-4)
+0.69      ThermalConduction_s (0.69 to 0.75)
+
+#PHOTOELECTRON
+0.00      PhotoElectronHeatingEfficiency
+
+#NEUTRALHEATING
+0.05	   Efficiency of photoelectron heating
+
+#CPUTIMEMAX
+86000.0		Maximum amount of cputime to use before stopping the code
+
+#TIMESTART
+2000		year
+03		month
+21		day
+11		hour
+30		minute
+00		second
+
+#TIMEEND
+2000		year
+03		month
+21		day
+12		hour
+30		minute
+00		second
+
+#CFL
+0.8		percentage of maximum allowable time-step to take
+
+#LIMITER
+mc		only limiter available
+2.0
+
+#STATISTICALMODELSONLY
+F		if you want to run with msis and iri only (i.e. not GITM)
+1800.0		time step to take if you run with msis and iri
+
+#LOGFILE
+1.0		dt for output to a log file
+
+#SAVEPLOTS
+7200.0		dt for writing restart files
+3		how many output files do you want
+3DMAG		first output style
+2592000		dt for output (1 per month)
+3DALL		second output style
+300.0		dt for output (1 every 5 min)
+2DGEL
+300.0
+
+#ELECTRODYNAMICS
+60.0		how often to update potential
+60.0		how often to update aurora and euv
+
+#ALTITUDE
+100.0		minimum altitude to use
+600.0		maximum altitude to use (ignored unless the following is F)
+T		use stretched grid
+
+#INITIAL
+T		initialize thermosphere using MSIS
+T		initialize ionosphere using IRI
+100.0		if msis is false, then this is the temperature at the base
+1000.0		if msis is false, then this is the temperature at the top
+5.0e17		if msis is false, then this is the N(species1) at the base
+7.0e18		if msis is false, then this is the N(species2) at the base
+3.0e19		if msis is false, then this is the N(species3) at the base
+
+#TIDES
+F		UseMSISFlat
+T		UseMSISTides
+F		UseGSWMTides
+F		UseWACCMTides
+
+#GSWMCOMP
+F		Diurnal Migrating
+F		Diurnal NonMigrating
+F		Semidiurnal Migrating
+F		Semidiurnal NonMigrating
+
+#APEX
+T		Use apex magnetic coordinate system
+
+------------------
+solar irradiance
+
+#F107
+150.0		f10.7
+150.0		f10.7 averaged over 81 days
+
+or
+
+NGDC_INDICES
+UA/DataIn/f107.txt
+
+or
+
+#EUV_DATA
+F		Use solar flux data
+fismflux.dat	Filename
+
+------------------
+Hemispheric Power
+
+#HPI
+10.0		hemispheric power
+
+or
+
+NOAAHPI_INDICES
+power file
+
+#KP
+1.0		kp
+
+----------------------
+IMF / potential
+
+#SOLARWIND
+0.0		IMF Bx
+0.0		IMF By
+-2.0		IMF Bz
+400.0		Solar wind Vx
+
+or
+
+SWPC_INDICES
+imf file
+solar wind file
+
+MHD_INDICES
+imf/solarwind file
+
+----------------------
+
+SME_INDICES
+UA/DataIn/Ae/sme_2002_12_21.txt
+none
+
+#FANGENERGY
+T
+
+#AMIEFILES
+amie_test_n.bin		northern hemisphere amie file
+amie_test_s.bin		southern hemisphere amie file
+
+#IONPRECIPITATION
+T
+
+#AEMODEL
+F		This is for the new AE model
+
+This can change characteristics of the aurora, but use with caution, since
+the behaviour can change with model selection:
+
+AURORAMODS
+F		NormalizeAuroraToHp
+1.0		AveEFactor
+F		IsKappaAurora
+3.0		AuroraKappa
+
+#THERMO
+T		 UseSolarHeating
+T		 UseJouleHeating
+T		 UseAuroralHeating
+T		 UseNOCooling
+T		 UseOCooling
+T		 UseConduction
+T		 UseTurbulentConduction
+F		 UseUpdatedTurbulentConduction
+1.0		 EddyScalingFactor
+
+#FORCING
+T		UsePressureGradient
+T		UseIonDrag
+T		UseNeutralDrag
+T		UseViscosity
+T		UseCoriolis
+T		UseGravity
+
+#IONFORCING
+T               UseExB
+T               UseIonPressureGradient
+T               UseIonGravity
+T               UseNeutralDrag
+F               UseDynamo
+
+#DYNAMO
+F
+45.0
+500
+1.0
+
+#CHEMISTRY
+T		UseIonChemistry
+T		UseIonAdvection
+T		UseNeutralChemistry
+
+#STRETCH
+65.0		! location of minimum grid spacing
+0.0		! Amount of stretch 0 (none) to 1 (lots)
+1.0		! More control of stretch ( > 1 stretch less < 1 stretch more)
+
+#GLOW
+F		Whether to couple to GLOW
+3600.0		How often to run glow
+
+#END
