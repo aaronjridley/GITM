@@ -14,10 +14,24 @@ from pylab import cm
 # 
 #-----------------------------------------------------------------------------
 
-def read_gitm_header():
+def read_gitm_header(file):
 
-    filelist = glob('./3DALL*.bin')
+    if (len(file) == 0):
 
+        filelist = glob('./3DALL*.bin')
+
+        if (len(filelist) == 0):
+            print("No 3DALL files found. Checking for 1DALL.")
+            filelist = glob('./1DALL*.bin')
+            if (len(filelist) == 0):
+                print("No 1DALL files found. Stopping.")
+                exit()
+            file = filelist[0]
+
+    else:
+        filelist = glob(file[0])
+        file = filelist[0]
+            
     header = {}
     header["nFiles"] = len(filelist)
     header["version"] = 0
@@ -28,8 +42,6 @@ def read_gitm_header():
     header["vars"] = []
     header["time"] = []
     header["filename"] = []
-
-    file = filelist[0]
 
     header["filename"].append(file)
 
@@ -60,13 +72,14 @@ def read_gitm_header():
 
     # Collect variable names.
     for i in range(header["nVars"]):
-        header["vars"].append(unpack(endChar+'%is'%(recLen),f.read(recLen))[0])
+        v = unpack(endChar+'%is'%(recLen),f.read(recLen))[0]
+        header["vars"].append(v.decode('utf-8').replace(" ",""))
         (oldLen, recLen)=unpack(endChar+'2l',f.read(8))
 
     # Extract time. 
     (yy,mm,dd,hh,mn,ss,ms)=unpack(endChar+'lllllll',f.read(recLen))
     header["time"].append(datetime(yy,mm,dd,hh,mn,ss,ms*1000))
-    print(header["time"][-1])
+    # print(header["time"][-1])
 
     f.close()
 
@@ -78,7 +91,7 @@ def read_gitm_header():
 
 def read_gitm_headers():
 
-    filelist = glob('./1DALL*.bin')
+    filelist = sorted(glob('./3DALL*.bin'))
 
     header = {}
     header["nFiles"] = len(filelist)
@@ -122,13 +135,15 @@ def read_gitm_headers():
 
         # Collect variable names.
         for i in range(header["nVars"]):
-            header["vars"].append(unpack(endChar+'%is'%(recLen),f.read(recLen))[0])
+            v = unpack(endChar+'%is'%(recLen),f.read(recLen))[0]
+            if (file == filelist[0]):
+                header["vars"].append(v.decode('utf-8').replace(" ",""))
             (oldLen, recLen)=unpack(endChar+'2l',f.read(8))
 
         # Extract time. 
         (yy,mm,dd,hh,mn,ss,ms)=unpack(endChar+'lllllll',f.read(recLen))
         header["time"].append(datetime(yy,mm,dd,hh,mn,ss,ms*1000))
-        print(header["time"][-1])
+        # print(header["time"][-1])
 
         f.close()
 
@@ -140,7 +155,7 @@ def read_gitm_headers():
 
 def read_gitm_one_file(file_to_read, vars_to_read=-1):
 
-    print(file_to_read)
+    print("Reading file : "+file_to_read)
 
     data = {}
     data["version"] = 0
@@ -187,7 +202,7 @@ def read_gitm_one_file(file_to_read, vars_to_read=-1):
     # Extract time. 
     (yy,mm,dd,hh,mn,ss,ms)=unpack(endChar+'lllllll',f.read(recLen))
     data["time"] = datetime(yy,mm,dd,hh,mn,ss,ms*1000)
-    print(data["time"])
+    #print(data["time"])
 
     # Header is this length:
     # Version + start/stop byte
@@ -206,7 +221,7 @@ def read_gitm_one_file(file_to_read, vars_to_read=-1):
         s=unpack(endChar+'l',f.read(4))[0]
         data[iVar] = np.array(unpack(endChar+'%id'%(nTotal),f.read(s)))
         data[iVar] = data[iVar].reshape( 
-            (data["nLons"],data["nLats"],data["nAlts"]),order='fortran')
+            (data["nLons"],data["nLats"],data["nAlts"]),order="F")
 
     f.close()
 
