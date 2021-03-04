@@ -1164,7 +1164,11 @@ subroutine set_inputs
               endif
            endif
 
+           if (LonStart < 0) LonStart = LonStart + 360.0
+           if (LonEnd < 0) LonEnd = LonEnd + 360.0
+
            if (nLats > 1 .and. LatEnd-LatStart < 1) iError=1
+           if (nLons > 1 .and. LonEnd-LonStart < 1) iError=1
 
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #GRID:'
@@ -1193,7 +1197,7 @@ subroutine set_inputs
                  LatStart = LatStart * pi / 180.0
                  LatEnd   = LatEnd * pi / 180.0
               endif
-
+              
               LonStart = LonStart * pi / 180.0
               LonEnd   = LonEnd * pi / 180.0
 
