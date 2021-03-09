@@ -13,6 +13,7 @@ from gitm_routines import *
 from aether_routines import *
 import re
 import sys
+import os
 
 rtod = 180.0/3.141592
 
@@ -34,6 +35,8 @@ def get_args(argv):
     winds = 0
     diff = 0
     IsGitm = 1
+    movie = 1
+    rate = 30
     
     for arg in argv:
 
@@ -51,6 +54,14 @@ def get_args(argv):
                 diff = 1
                 IsFound = 1
 
+            m = re.match(r'-movie',arg)
+            if m:
+                movie = 1
+                IsFound = 1
+                m = re.match(r'=(.*)',arg)
+                if m:
+                    rate = int(m.group(1))
+
             m = re.match(r'-tec',arg)
             if m:
                 var = 34
@@ -60,6 +71,11 @@ def get_args(argv):
             m = re.match(r'-alt=(.*)',arg)
             if m:
                 alt = int(m.group(1))
+                IsFound = 1
+
+            m = re.match(r'-rate=(.*)',arg)
+            if m:
+                rate = int(m.group(1))
                 IsFound = 1
 
             m = re.match(r'-lat=(.*)',arg)
@@ -94,7 +110,7 @@ def get_args(argv):
 
             if IsFound==0 and not(arg==argv[0]):
                 filelist.append(arg)
-                m = re.match(r'.bin',arg)
+                m = re.match(r'(.*)bin',arg)
                 if m:
                     IsGitm = 1
                 else:
@@ -106,6 +122,8 @@ def get_args(argv):
             'var':var,
             'cut':cut,
             'diff':diff,
+            'movie':movie,
+            'rate':rate,
             'tec':tec,
             'help':help,
             'winds':winds,
@@ -193,6 +211,7 @@ AllAlts = []
 AllTimes = []
 
 j = 0
+iCut = -1
 for file in filelist:
 
     if (IsGitm):
@@ -226,6 +245,7 @@ for file in filelist:
             else:
                 iAlt = 0
             Alt = Alts[iAlt]
+            iCut = iAlt
             
         if (cut == 'lat'):
             xPos = Lons
@@ -240,6 +260,7 @@ for file in filelist:
                     while (Lats[iLat] < args["lat"]):
                         iLat=iLat+1
             Lat = Lats[iLat]
+            iCut = iLat
             
         if (cut == 'lon'):
             xPos = Lats
@@ -254,6 +275,7 @@ for file in filelist:
                     while (Lons[iLon] < args["lon"]):
                         iLon=iLon+1
             Lon = Lons[iLon]
+            iCut = iLon
                         
     AllTimes.append(data["time"])
     
@@ -334,8 +356,19 @@ minY = (yPos[ 1] + yPos[ 2])/2
 maxY = (yPos[-2] + yPos[-3])/2
 
 file = "var%2.2d_" % args["var"]
-file = file+cut
+file = file+cut+"%3.3d" % iCut
 
+IsMovie = args["movie"]
+
+if (IsMovie):
+    command = "rm -rf "+file
+    print(command)
+    os.system(command)
+    command = "mkdir "+file
+    print(command)
+    os.system(command)
+
+iter = 1
 for time in AllTimes:
 
     ut = time.hour + time.minute/60.0 + time.second/3600.0
@@ -359,7 +392,10 @@ for time in AllTimes:
         Uy2d = np.transpose(AllWindsY[i])
 
     sTime = time.strftime('%y%m%d_%H%M%S')
-    outfile = file+'_'+sTime+'.png'
+    if (IsMovie):
+        outfile = file+"/image_%4.4d.png" % iter
+    else:
+        outfile = file+'_'+sTime+'.png'
 
     ax = fig.add_subplot(gs1[1, :2])
 
@@ -430,6 +466,17 @@ for time in AllTimes:
     fig.savefig(outfile)
     plt.close()
 
-    i=i+1
+    iter = iter + 1
 
+if (IsMovie):
 
+    rate = "%d" % args["rate"]
+
+    command = "/bin/rm -f " + file + ".mpg"
+    print(command)
+    os.system(command)
+    
+    command = "ffmpeg -r " + rate + \
+        " -i " + file + "/image_%04d.png " + file + ".mpg"
+    print(command)
+    os.system(command)
