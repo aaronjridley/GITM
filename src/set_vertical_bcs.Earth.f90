@@ -490,6 +490,12 @@ iAlt = -1
      enddo 
   endif 
 
+  ! For WP-GITM: add neutral atmospheric perturbations caused by tsunami
+  ! or earthquake
+  if(UseBcPerturbation) &
+       call user_bc_perturbation(LogRho(-1:0), LogNS(-1:0,:), &
+       Vel_GD(-1:0,iEast_:iUp_), Temp(-1:0))
+
   !-----------------------------------------------------------
   ! Top
   !-----------------------------------------------------------

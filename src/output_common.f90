@@ -419,7 +419,12 @@ subroutine output(dir, iBlock, iOutputType)
      call output_0dall(iiLon, iiLat, iiAlt, iBlock, rLon, rLat, rAlt, &
           iOutputUnit_)
 
-  !!! Xing
+  case('1DUSR')
+
+     if (iBlock == 1) call set_nVarsUser1d
+     nvars_to_write = nVarsUser1d
+     call output_1duser(iiLon, iiLat, iBlock, rLon, rLat, iOutputUnit_)
+
   case('0DUSR')
 
      if (iBlock == 1) call set_nVarsUser0d
@@ -953,7 +958,7 @@ contains
 
   subroutine write_head_blocks
 
-!!! Xing: for 0D do not write blocks either
+    ! for 1D and 0D do not write blocks
     if (cType(1:2) == "1D" .or. cType(1:2) == "0D") return
 
     write(iOutputUnit_,*) "BLOCKS"

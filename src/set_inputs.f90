@@ -23,6 +23,7 @@ subroutine set_inputs
   use ModPlanet
   use ModSatellites
   use ModRCMR
+  use ModIoUnit, only : UnitTmp_
 
   implicit none
 
@@ -31,12 +32,13 @@ subroutine set_inputs
 
   integer, dimension(7) :: iEndTime
 
-  logical :: IsDone
+  logical :: IsDone, IsStartFound
   integer :: iDebugProc=0
   character (len=iCharLen_) :: cLine
   integer :: iLine, iSpecies, iSat
-  integer :: i, iError, iOutputTypes
+  integer :: i, iError, iOutputTypes, iErrorFile, iFreq
   integer, dimension(7) :: iTimeEnd
+  integer :: iUnitFile = UnitTmp_
 
   character (len=iCharLen_)                 :: cTempLine
   character (len=iCharLen_)                 :: sIonChemistry, sNeutralChemistry
@@ -443,6 +445,91 @@ subroutine set_inputs
               write(*,*) '#USEPERTURBATION'
               write(*,*) 'UsePerturbation        (logical)'
               IsDone = .true.
+           endif
+
+        ! For WP-GITM
+        case ("#USEBCPERTURBATION")
+           call read_in_logical(UseBcPerturbation,iError)
+           if(UseBcPerturbation) then
+              call read_in_int(iTypeBcPerturb,iError)
+              call read_in_real(PerturbTimeDelay, iError)
+              call read_in_real(RefLon, iError)
+              call read_in_real(RefLat, iError)
+              call read_in_real(PerturbDuration, iError)
+              if (iTypeBcPerturb == 0) then
+                 ! single-frequency plane wave to represent a tsunami
+                 call read_in_real(PerturbWaveSpeed, iError)
+                 call read_in_real(PerturbWaveDirection, iError)
+                 call read_in_real(PerturbWaveHeight, iError)
+                 call read_in_real(PerturbWavePeriod, iError)
+              else if (iTypeBcPerturb == 1) then
+                 ! multi-frequency plane wave to represent a tsunami
+                 call read_in_real(PerturbWaveSpeed, iError)
+                 call read_in_real(PerturbWaveDirection, iError)
+                 call read_in_string(cSurfacePerturbFileName, iError)
+              else if (iTypeBcPerturb == 2) then
+                 ! multi-frequency and point-source spherical waves to 
+                 ! represent epicentral movement during an earthquake
+                 call read_in_real(EpicenterLon, iError)
+                 call read_in_real(EpicenterLat, iError)
+                 call read_in_real(SeisWaveTimeDelay, iError)
+                 call read_in_real(EpiDistance, iError)
+                 call read_in_string(cSurfacePerturbFileName, iError)
+              endif
+           endif
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #USEBCPERTURBATION":'
+              write(*,*) ''
+              write(*,*) ''
+              write(*,*) '#USEBCPERTURBATION'
+              write(*,*) 'UseBcPerturbation        (logical)'
+              write(*,*) 'If UseBcPerturbation = .true. then:'
+              write(*,*) 'iTypeBcPerturb         (int) '
+              write(*,*) 'perturbation characteristics ...'
+              IsDone = .true.
+           else if (iTypeBcPerturb == 0) then
+              nPerturbFreq = 1
+              PerturbWaveFreq(nPerturbFreq) = 2*pi/PerturbWavePeriod
+              FFTReal(nPerturbFreq) = 0.0
+              FFTImag(nPerturbFreq) = PerturbWaveHeight/2.
+           else if (iTypeBcPerturb == 1 .or. iTypeBcPerturb == 2) then
+              open(unit=iUnitFile,file=cSurfacePerturbFileName,status="old")
+              IsStartFound = .false.
+              do while (.not. IsStartFound)
+                 cLine = ""
+                 read(iUnitFile, *, iostat = iErrorFile) cLine
+                 if (iErrorFile /= 0) IsStartFound = .true.
+                 if (index(cline,"#START") > 0) IsStartFound = .true.
+              enddo
+              if (iErrorFile /= 0) then
+                 write(*,*) "Error finding #START in surface perturbation file: ",&
+                      cSurfacePerturbFileName
+                 close(iUnitFile)
+                 return
+              endif
+              iFreq = 0
+              do while (iErrorFile == 0)
+                 iFreq = iFreq + 1
+                 read(iUnitFile,*,iostat=iErrorFile), &
+                      PerturbWaveFreq(iFreq), FFTReal(iFreq), FFTImag(iFreq) 
+                 ! the frequencies are ordered from low to high in the file
+                 ! include frequencies up to 0.1Hz
+                 if (PerturbWaveFreq(iFreq) > 0.1) exit
+                 if (iFreq == nMaxPerturbFreq .and. iProc == 0) then
+                    write(*,*) "For WP: Number of frequencies reaching the limit: ", &
+                         nMaxPerturbFreq
+                    write(*,*) "Increase nMaxPerturbFreq in ModInputs.f90 !!!"
+                 endif
+              enddo              
+              close(iUnitFile)
+              ! the number of frequecies to use
+              nPerturbFreq = iFreq - 1
+              ! convert to angular frequency
+              PerturbWaveFreq(1:nPerturbFreq) = 2*pi*PerturbWaveFreq(1:nPerturbFreq)              
+              if (iDebugLevel > 0 .and. iProc == 0) &
+                   write(*,*) 'For WP: nPerturbFreq = ', &
+                   nPerturbFreq, 'PerturbWaveFreq(1:nPerturbFreq) = ', &
+                   PerturbWaveFreq(1:nPerturbFreq)                   
            endif
 
         case ("#DAMPING")
@@ -1374,7 +1461,10 @@ subroutine set_inputs
            else
               do iSat=1,nSats
                  call read_in_string(cSatFileName(iSat), iError)
-                 call read_in_string(SatOutputType(iSat), iError)       !!! Xing 
+                 ! Xing Meng 2021-03-09: SatOutputType only works for 0DUSR 
+                 ! and 1DUSR. Setting SatOutputType to other string would 
+                 ! just use the default: 0DALL for RCMR and 1DALL for the rest.
+                 call read_in_string(SatOutputType(iSat), iError) 
                  call read_in_real(SatDtPlot(iSat), iError)
                  iSatCurrentIndex(iSat) = 0
               enddo
@@ -1385,7 +1475,7 @@ subroutine set_inputs
               write(*,*) '#SATELLITES'
               write(*,*) 'nSats     (integer - max = ',nMaxSats,')'
               write(*,*) 'SatFile1  (string)'
-              write(*,*) 'SatOutputtype1  (string, 0DUSR or 1DUSR)'
+              write(*,*) 'SatOutputtype1  (string, 0DUSR or 1DUSR or other)'
               write(*,*) 'DtPlot1   (real, seconds)'
               write(*,*) 'etc...'
               IsDone = .true.
