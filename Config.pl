@@ -8,7 +8,7 @@ our $Code            = 'GITM2';
 our $MakefileDefOrig = 'srcMake/Makefile.def';
 our @Arguments       = @ARGV;
 
-my $config     = "share/Scripts/Config.pl";
+my $config     = "./share/Scripts/Config.pl";
 my $IsCompGitm = 0; # Is this code an SWMF component?
 if(-f "../../$config"){
     # This is an indication of component mode:
