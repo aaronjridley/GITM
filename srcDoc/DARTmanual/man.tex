@@ -1,0 +1,229 @@
+%  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
+%  For more information, see http://csem.engin.umich.edu/tools/swmf
+\documentclass[letterpaper, 11 pt]{article}
+
+\usepackage{amsmath}
+\usepackage[cm]{fullpage}
+\usepackage{cite}
+\usepackage{graphicx}
+\usepackage{verbatim}
+\usepackage{color} %is needed for listings
+\usepackage{hyperref}
+%\urlstyle{\underline}
+\hypersetup{
+  colorlinks,
+  citecolor=violet,
+  linkcolor=black,
+  urlcolor=blue}
+
+\usepackage{listings}
+\renewcommand{\lstlistingname}{Code}
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{d_gr}{rgb}{0,0.4,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\definecolor{p_gr}{rgb}{0.82,1,0.64}
+\definecolor{p_or}{rgb}{1,.5,0}
+\lstset{ %
+  backgroundcolor=\color{white},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
+  basicstyle=\ttfamily,        % the size of the fonts that are used for the code
+  breakatwhitespace=false,         % sets if automatic breaks should only happen at whitespace
+  breaklines=true,                 % sets automatic line breaking
+  captionpos=b,                    % sets the caption-position to bottom
+  commentstyle=\color{mygreen},    % comment style
+  deletekeywords={...},            % if you want to delete keywords from the given language
+%  escapeinside={\%*}{*},          % if you want to add LaTeX within your code
+  extendedchars=true,              % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+  frame=single,                    % adds a frame around the code
+  keywordstyle=\color{blue},       % keyword style
+  language=Octave,                 % the language of the code
+  morekeywords={*,...},            % if you want to add more keywords to the set
+  numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
+  numbersep=5pt,                   % how far the line-numbers are from the code
+  numberstyle=\color{mygray}, % the style that is used for the line-numbers
+  rulecolor=\color{black},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+  showspaces=false,                % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,          % underline spaces within strings only
+  showtabs=false,                  % show tabs within strings adding particular underscores
+  stepnumber=1,                    % the step between two line-numbers. If it's 1, each line will be numbered
+  stringstyle=\color{p_or},     % string literal style
+  tabsize=2,                       % sets default tabsize to 2 spaces
+  title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
+}
+
+
+\usepackage{alltt}
+%\usepackage[linewidth=0.5pt]{mdframed}
+
+\newenvironment{code} %
+ {\quote\small\begin{alltt}} 
+ {\end{alltt}\endquote} 
+
+\newcommand{\matl}{\left[ \begin{array}}
+\newcommand{\matr}{\end{array} \right]}
+
+\newcommand{\file}[1]{ {\tt \color{red} #1} } 
+\newcommand{\prog}[1]{ \emph{\color{d_gr}{#1}} }
+\newcommand{\user}[1]{ {\tt \color{mauve} #1} }
+\newcommand{\cmd}[1]{\begin{alltt}\colorbox{p_gr}{#1}\end{alltt} }
+
+
+
+
+\title{DART-GITM Interface Manual}
+\author{Alexey Morozov\footnote{alexeymor at gmail}}
+\date{April 12 2013}
+
+
+\begin{document}
+\maketitle
+
+\tableofcontents 
+
+\section{The conventions used in this document}
+
+We mostly stick to DART's tutorial conventions:
+\begin{itemize}
+\item \href{http://www.image.ucar.edu/DAReS/DART/DART_Starting.php}{external clickable links look like this -- (blue, no underline)} 
+\item \file{all filenames look like this -- (typewriter font, red)}
+
+\item \prog{program names look like this -- (italicized font, green)}
+
+\item \user{user input looks like this -- (typewriter font, magenta)}
+
+\item \cmd{command line commands look like this -- (light green box)}
+
+\item And the contents of a file are (sometimes) colorcoded and enclosed in a box:
+  \begin{lstlisting}[language=fortran, caption=Sample code from \file{GITM2/src/restart.f90}, label=sample_code]
+subroutine write_restart(dir)
+  use ModGITM
+  use ModInputs !alexey uses useDART and f107 variable from ModInputs as estimate updated by DART, f107a is assumed = f107
+  \end{lstlisting}
+\end{itemize}
+
+\section{Downloading and building DART}
+
+\begin{enumerate}
+\item Install all the prerequisites for DART as described \href{http://www.image.ucar.edu/DAReS/DART/DART_Starting.php}{here}. I recommend using University of Michigan \href{http://cac.engin.umich.edu/resources/systems/nyxV2}{NYX cluster} or your local cluster as it is likely to have all the required software installed. Installing NetCDF on Mac is a pain, so I would strongly advise you against it, but if you have to, see Tim Hoar's \href{http://www.image.ucar.edu/~thoar/BuildScripts/}{site}. 
+
+\item Download DART by using (I put it in home directory and all my pbs\_files use that fact)
+% \begin{lstlisting}[language=, backgroundcolor=\color{p_gr},rulecolor=\color{white},numbers=]
+\cmd{mkdir \textasciitilde/HEAD}
+\cmd{cd \textasciitilde/HEAD}
+\cmd{svn checkout https://proxy.subversion.ucar.edu/DAReS/DART/branches/gitm DART}
+Particularly note that the last line is different than what you get when you register at the DART's \href{http://www2.image.ucar.edu/forms/dart-software-download}{website} (please register!) because currently GITM is not part of main DART branch (link to the main branch is given at the registration).
+
+\item Download a GITM patchfile via \cmd{wget http://www-personal.umich.edu/{\textasciitilde}morozova/DART/GITMpatch1}
+\item Go into the DART directory \cmd{cd DART}
+\item Apply the patch via \cmd{patch -p0 < ../GITMpatch1} (note that the correct way to undo the patch is via \verb|patch -p0 -R < ../GITMpatch1|, which interestingly enough will not delete the files it created, but will just erase their contents. Also note that applying the patch multiple times will add the lines to the files multiple times, so if in doubt, start over.)
+
+
+\item Customize a couple of files (here is what we use at the University of Michigan on NYX cluster:
+
+\begin{enumerate}
+  \item on NYX create a file \file{\textasciitilde/privatemodules/default} containing the following lines\\ 
+(do \verb|emacs ~/privatemodules/default| if you don't know how to do this and google 'emacs tutorial').\\
+  this file is used to load the correct compilers and libraries at login, so you might need to re-login
+  \begin{code}
+module load intel-comp/12.1 
+module load openmpi/1.6.0/intel/12.1
+module load netcdf/4.2.0
+module load python
+module load matplotlib
+  \end{code}
+
+  \item modify part of \file{DART/mkmf/mkmf.template} as shown next. (this is already complete if you applied the patch above. The purple entries is what is different from the original mkmf.template and specific to UMichigan's setup - more detail on \href{http://www.image.ucar.edu/DAReS/DART/DART_Starting.php#customizations}{customizing it})
+  \begin{code}
+MPIFC = mpif90
+MPILD = mpif90
+FC = \user{ifort}
+LD = \user{ifort}
+NETCDF = \user{/home/software/rhel5/netcdf/4.0-intel}
+INCS = \user{-I$(NETCDF)/include}
+LIBS = -L$(NETCDF)/lib -lnetcdf
+FFLAGS  = \user{-O2 -ftz -vec-report0 $(INCS)}
+LDFLAGS = \user{$(FFLAGS) $(LIBS)}
+
+# for development or debugging, use this instead:
+# FFLAGS = -C -check noarg_temp_created -ftz -vec-report0 -fp-model precise -O0 -g 
+#        -warn argument_checking,declarations,uncalled,uninitialized,unused $(INCS)
+# FFLAGS = -ftz -vec-report0 -O3 -g $(INCS)
+# Some optimized (BLAS, LAPACK) libraries may be available with:
+# LIBS = -L$(NETCDF)/lib -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
+  \end{code}
+\end{enumerate}
+
+\item Build and run the Lorenz 63 model (see \href{http://www.image.ucar.edu/DAReS/DART/DART_Starting.php}{here} for detailed troubleshooting or \file{DART/README} for plain-text version of the quickstart) - this a good intro to building DART models.
+
+\item Now we can move on to building GITM:
+\cmd{cd \textasciitilde/HEAD/DART/models/gitm/GITM2} 
+\cmd{chmod -R 775 ../../}
+\cmd{svn rm --force src/ModSize.f90; svn rm --force src/ModKind.f90}
+\cmd{./Config.pl -install -compiler=ifortmpif90 -earth} 
+(which assumes you are using intel fortran compiler along with openMPI. For gfortran-openMPI combination use -compiler=gfortran, otherwise read Config.pl) 
+\cmd{make}
+
+\item If 'make' didn't return any errors, you can move on to building the DART side of the interface:
+\cmd{cd ../work}
+\cmd{./quickbuild.csh}
+
+\item If that also compiled without errors, you should be ready to run. Change the ACCOUNT, QUE, USERNAME and EXAMPLE in \file{work/pbs\_file.sh:lines 5-8, 14} to reflect the account and que you want to use (lines 5-7, for guidelines, see \href{http://cac.engin.umich.edu/resources/systems/nyxV2/pbs.html}{this}), email where you want to receive job start and finish notifications (lines 5-8) and your login name on NYX (line 14).
+
+\item Save the changes and exit back to the shell and you are almostready to submit your first job. So the last thing you need to do is get a binary file (the patchfile you downloaded doesn't contain any binary files for now):
+\cmd{wget http://www-personal.umich.edu/{\textasciitilde}morozova/DART/hwm071308e.dat}
+\cmd{mv hwm071308e.dat ../GITM2/srcData}
+and now you are ready to submit your first job:
+\cmd{qsub pbs\_file.sh}
+
+\item Job should finish without errors in about 13 minutes on 21 processors (it simulates only 30 virtual minutes) and should create a folder \file{/nobackup/<YOUR USERNAME>/dart\_test\_tec/gitm/work/advance\_temp\_e1} along with a bunch of other folders. If it takes the full requested 60 minutes, likely something went wrong (see the troubleshooting sections below).
+
+\item If it finished without errors, you can even go as far as to creating a couple cool plots. For that change the USERNAME and EXAMPLE in \file{../python/pbs\_py.sh:line5-8,13} to reflect the que you have access to, email where you want to receive job start and finish notifications and your account name on NYX (line 13).
+\cmd{qsub pbs\_py.sh}
+which will hopefully will produce \file{/nobackup/<YOUR USERNAME>/dart\_test\_tec/gitm/python/daa00.png} which you can \verb|scp| to your home computer and compare to the one shown in Figure \ref{tec_daa}.
+
+\begin{figure}
+  \includegraphics[width=.6\textwidth]{daa00.png}
+\caption{what \file{/nobackup/<YOUR USERNAME>/dart\_test\_tec/gitm/python/daa00.png} should look like. Nothing exciting, but you see that electron density above Ann Arbor, MI changed quite a bit during that half hour.} \label{tec_daa}
+\end{figure}
+
+
+
+\end{enumerate}
+
+
+
+\section{More detailed big picture of interface operation}
+
+\section{DART source code modifications}\label{s:dart}
+
+\begin{figure}
+  \includegraphics[width=.8\textwidth]{/Users/alex/python/gitm_map/dart.eps}
+\caption{hi}
+\end{figure}
+
+
+Accordingly, using 
+
+
+
+\begin{code}
+a=0.9965;
+b=0.0012;
+c=-0.0067; 
+G=tf(b,[1 -a],1); 
+h=impulse(G); %one way
+[A,B,C,D]=ssdata(G);
+H(1)=D; for i=2:10; H(i)=C*A^(i-2)*B; end %another way
+\end{code}
+would result in \verb|h(2) = 0.0012;| and \verb|H(2) = 0.0012|, which is also equal to \verb|b|, as we would expect. 
+Part of me wants to say just ignore the bias altogether as it is not strictly linear, so I would say use \verb|H(2) = 0.0012| as \verb|T| in RCAC and see if it works.
+
+\section{GITM source code modifications}\label{s:gitm}
+\begin{figure}
+  \includegraphics[width=.8\textwidth]{/Users/alex/python/gitm_map/gitm.eps}
+\end{figure}
+
+
+
+\end{document}
