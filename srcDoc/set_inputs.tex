@@ -1,0 +1,878 @@
+\section{Principle Input}
+\label{uam.sec}
+
+{\tt UAM.in} contains the majority of the variables that can be changed in a GITM run.  Very few of these input options are required as input, all other options will default to values specified by the ModInputs.f90 subroutine, which can be found in the {\tt src} directory.  Example {\tt UAM.in} files for various types of runs are made available in the {\tt srcData} directory.
+
+This input file can be altered at will without the need to recompile the code either ``by hand" or using a script such as {\tt makerun.pl}.  This script, which is located on {\tt harot.engin.umich.edu:/bigdisk1/bin}, takes command line input to create a UAM.in file and any desired auxiliary files, discussed in more detail in section~\ref{aux.sec}, using locally stored data.
+
+The following sections present the GITM input options grouped by type.  This is not the order you will find them in a typical {\tt UAM.in} file or the order you will find the input processed in {\tt ModInputs.f90}.  This reinforces the flexibility of the input file, which doesn't care what order the input options are specified with one exception.  The starting and ending times (discussed in section~\ref{required.sec}) \textit{must} be defined before any solar or geomagnetic indices (discussed in section~\ref{indices.sec}).  It is probably a good practice to begin any {\tt UAM.in} file either with the output options (discussed in section~\ref{def_out.sec}) or the starting and ending times.
+
+%%
+
+\subsection{Required Inputs}
+\label{required.sec}
+
+The only inputs that must be specified are the starting and ending times.  These times are specified using universal time blocks that specify the date (A.D.) and time of day.  Remember, these two blocks must be specified before any of the solar or geomagnetic index blocks, outlined in section~\ref{indices.sec}.
+
+\subsubsection{TIMESTART}
+\label{starttime.sec}
+
+This input block sets the starting time of the simulation.  Although the input time can be defined down to the second, construction scripts will ignore temporal units smaller than a day since a lead time of a day is typically desired for any model run.  Shorter runs should only used to test the model compilation.
+
+GITM can be set to restart after pausing.  This has no effect on TIMESTART, these values should always contain the real starting time, not the restart time.
+
+\begin{verbatim}
+#TIMESTART
+(integer) year   
+(integer) month 
+(integer) day    
+(integer) hour    
+(integer) minute 
+(integer) second
+\end{verbatim}
+
+\subsubsection{TIMEEND}
+\label{endtime.sec}
+
+This input block sets the ending time of the simulation.  As mentioned above, GITM runs typically last a minimum of two days (with one day as start-up to allow the processes to settle into equilibrium) and so the hour, minute, and second options are commonly ignored.
+
+\begin{verbatim}
+#TIMEEND
+(integer) year    
+(integer) month
+(integer) day     
+(integer) hour    
+(integer) minute  
+(integer) second  
+\end{verbatim}
+
+\subsubsection{END}
+\label{end.sec}
+ The inclusion of this keyword will cause GITM to stop reading the {\tt UAM.in} file.  This can allow one to save typical input options not used in one particular run for another run by moving them after this key.
+ 
+ \begin{verbatim}
+ #END
+ \end{verbatim}
+
+%%
+
+\subsection{Temporal Boundaries}
+\label{time.sec}
+
+The input options described here are optional and used to set the temporal boundaries in GITM, including the processing times.
+
+\subsubsection{PAUSETIME}
+\label{pausetime.sec}
+
+This input option sets a time for the code to pause.  There is no good reason to use this option.
+
+\begin{verbatim}
+#PAUSETIME
+(integer) year
+(integer) month 
+(integer) day 
+(integer) hour 
+(integer) minute 
+(integer) second
+\end{verbatim}
+
+\subsubsection{CPUTIMEMAX}
+\label{cputimemax.sec}
+
+This sets the maximum CPU time that the code should run before it starts to write a restart file and end the simulation.  It is very useful on systems that have a queueing system and has limited time runs.  Typically, set it for a couple of minutes short of the maximum wall clock, since it needs some time to write the restart files.
+
+\begin{verbatim}
+#CPUTIMEMAX
+(real) CPUTimeMax
+\end{verbatim}
+
+\subsubsection{CFL}
+\label{cfl.sec}
+
+The CFL option defines how large a time step GITM will take.  This is set as a fraction of the maximum time step, so 1.0 is the maximum value, while 0.75 is a typical value.  If instabilities form during a model run, lowering this option is a good first step to take.
+
+\begin{verbatim}
+#CFL
+(real) cfl
+\end{verbatim}
+
+\subsection{Defining Outputs}
+\label{def_out.sec}
+
+The input option blocks described here are used to specify the level and type of verboseness. 
+
+\subsubsection{LOGFILE}
+\label{logfile.sec}
+
+Log files are very important and the LOGFILE input option allows the user to control how much information the GITM logfile will contain.  This logfile is output into the {\tt UA/data/} directory in a file following a naming convention like {\tt log*.dat}.  Although you can output the log file at whatever frequency you would like, setting the time-step to some very small value will allow GITM to produce a log output every iteration, which is a good thing.  DtLogFile specifies this time-step in seconds.
+
+\begin{verbatim}
+#LOGFILE
+(real) DtLogFile
+\end{verbatim}
+
+\subsubsection{DEBUG}
+\label{debug.sec}
+
+This will set the level of GITM's verboseness.  Set the iDebugLevel to 0 for minimal output and to 10 to retrieve \textit{everything}.  You can also limit output to a specific processor using iDebugProc.  The processors are named PE x, where PE indicates that you are tagging a processor and x is the zero offset integer indicating the processor number.  So ``PE 0" would indicate that output from the first processor is desired.
+
+If you set the iDebugLevel to 0 (the default), you can set the debug report time step using DtReport.  This time step is given in seconds.  The final keyword in this input option, UseBarriers, forces the different nodes running the GITM code to sync up with each other frequently when employed.
+
+\begin{verbatim}
+#DEBUG
+(integer) iDebugLevel
+(integer) iDebugProc  
+(real) DtReport    
+(logical) UseBarriers 
+\end{verbatim}
+
+\subsubsection{SATELLITES}
+\label{satellites.sec}
+
+To improve model-data studies, GITM can output model results along the satellite paths.  Any number of satellites may be flown through a GITM simulation.  Output from the satellite paths is provided at the specified universal time, geographic latitude and longitude.  Instead of confining the model output to the satellite altitude, simulated output is provided over the entire GITM altitude range.  If RCMR is being run, the validity of the satellite index specified in that input block will be tested here.
+
+\begin{verbatim}
+#SATELLITES
+(integer) nSats
+(string) SatFile(n)
+(real) DtPlot(n)
+\end{verbatim}
+\vspace{-.1in}
+\hspace{.6in} $\vdots$
+\vspace{.1in}
+
+To fly several satellites through GITM, the user must set nSats, SatFile(n), and DtPlot(n) for each satellite.  nSats specifies the number of satellites, SatFile(n) gives the name of the satellite flight path file (discussed in more detail in section~\ref{sat_aux.sec}), and DtPlot(n) specifies the time-step for the GITM satellite output in seconds.  The following verbatim block shows the arrangement for two satellites.
+
+\begin{verbatim}
+#SATELLITES
+2 nSats
+grace.sat SatFile1
+1 DtPlot1
+champ.sat SatFile2
+1 DtPlot2
+\end{verbatim}
+
+\subsubsection{APPENDFILES}
+\label{appendfiles.sec}
+
+GITM defaults to creating many output files for satellite runs, but this option tells GITM to create just one single file per satellite.  This makes GITM output significantly less files.  In the future, this option may be available for other types of output as well.
+
+\begin{verbatim}
+#APPENDFILES
+(logical) DoAppendFiles
+\end{verbatim}
+
+\subsubsection{SAVEPLOT}
+\label{saveplot.sec}
+
+This input option specifies the types of files GITM will output.  The most common type is 3DALL, which outputs all primary state variables. Types (specified in OutputType) include : 3DALL, 3DMAG, 3DNEU, 3DION, 3DTHM, 3DCHM, 3DUSR, 3DGLO, 2DGEL, 2DMEL, 2DUSR, 2DTEC, 1DALL, 1DGLO, 1DTHM, 1DNEW, 1DCHM, 1DCMS, and 1DUSR.  These file types specify the number of dimensions (3D, 2D, 1D) in which GITM may be run and the different primary state variables that are included in the output (NEU stands for neutrals, ION stands for ionosphere, MAG stands for magnetic field, THM stands for thermosphere, CHM stands for chemistry, USR stands for BLAH, GLO stands for day glow, TEC stands for total electron content, GEL stands for global electric BLAH, and MEL stands for BLAH).  Any number of output files greater than zero may be produced, but nOutputTypes must be used to specify the number of types to be created and an OutputType and DtPlot must be provided for each output just as was done for multiple satellites.  DtRestart and DtPlot specify the time-step in seconds for producing restart and output files, respectively.  If no output files are specified, GITM will crash when attempting to finalize all procedures.
+
+\begin{verbatim}
+#SAVEPLOT
+(real) DtRestart
+(integer) nOutputTypes 
+(string) OutputType
+(real) DtPlot   
+\end{verbatim}
+\vspace{-.1in}
+\hspace{.6in} $\vdots$
+\vspace{.1in}
+
+\subsubsection{CCMCFILENAME}
+\label{ccmcfilename.sec}
+
+The Community Coordinated Modeling Center (CCMC), located at {\tt ccmc.gsfc.nasa.gov}, provides access to space research models to the scientific community.  GITM provides the option to have the GITM output files use the CCMC naming convention: TYPE\_GITM\_YYYY-MM-DDThh-mm-ss.bin, where TYPE is one of the GITM output types such as 3DALL described in the previous subsection.
+
+\begin{verbatim}
+#CCMCFILENAME
+(logical) Use CCMC naming convention
+\end{verbatim}
+
+\subsubsection{PLOTTIMECHANGE}
+\label{plottimechange.sec}
+
+This option allows you to change the output cadence of the files for a limited time.  If you have a short event, such as a solar flare or an eclipse, this options lets you output much more often during the event than during the quiet periods preceding and succeeding the event.
+
+\begin{verbatim}
+#PLOTTIMECHANGE
+(yyyy mm dd hh mm ss ms) PlotTimeChangeStart
+(yyyy mm dd hh mm ss ms) PlotTimeChangeEnd
+\end{verbatim}
+
+%%
+
+
+\subsection{Restart Input}
+
+This section deals with options typically only specified in a restart header.  These options can be used in the principle input file but have very little use if a run does not need to be restarted from a specified point in a previous run.  Apart from setting the flag in the {\tt UAM.in} file, several steps must be taken.  First, you need to put the restart files that GITM writes into the correct location.  These files are located in subdirectories (named {\tt restartIN} and {\tt restartOUT}) within the {\tt run/UA} directory.  To preserve the past GITM restart information and enable a new start from the end of the previous run, prepare these directories as directed below.  This code snippit can also be added to a PBS job file, but should only be performed after GITM has finished executing and if the {\tt GITM.DONE} file exists.
+
+\begin{verbatim}
+cd UA
+mv restartOUT restartOUT.runname.XX
+mkdir restartOUT
+./pGITM
+rm -f restartIN; ln -s restartOUT.runname.XX
+cd ..
+\end{verbatim}
+
+\subsubsection{RESTART}
+
+Setting this input option to T (true) allows the model to restart from a previous run.
+
+\begin{verbatim}
+#RESTART
+(logical) DoRestart
+\end{verbatim}
+
+\subsubsection{ISTEP}
+\label{istep.sec}
+
+This input should not be specified by the user, but is used by the computer to restart after a run has been interrupted.  It gives the iteration number that the model run stopped at.
+
+\begin{verbatim}
+#ISTEP
+(integer) iStep
+\end{verbatim}
+
+\subsubsection{TSIMULATION}
+
+This options sets the offset from the starting time (specified using TIMESTART) to the current simulation time in seconds.  Like ISTEP, this option should really only be used by the computer to restart after a run has been interrupted.
+
+\begin{verbatim}
+#TSIMULATION
+(real) tsimulation    
+\end{verbatim}
+
+%%
+
+\subsection{Numerical Options}
+\label{numerical.sec}
+
+The optional inputs in this section allow the user to modify how GITM handles computational scenarios.
+
+\subsubsection{LIMITER}
+\label{limiter.sec}
+
+The flux limiter specifies the balance between the model's ability to run robustly and provide realistic gradients.  A realistic atmosphere will occasionally experience sharp changes in characteristics such as electron density.  When GITM attempts to model these variations, the high resolution of the temporal and spatial grids allows the numerical schemes that solve the equations of state to oscillate about the actual value.  One solution to the problem is to err on the side of robustness and require more gradual changes.  This can be done by setting TypeLimiter to minmod or setting TypeLimiter to beta and BetaLimiter to 1.0 (both of these options are the same and the default).  The other solution is to allow sharp changes to occur, realizing that the model will likely overshoot and undershoot and that if an atmospheric characteristic shoots to an unrealistic value the model may crash.
+
+Although there are many different limiter types (see the wikipedia article for a decent introduction: {\tt \\http://en.wikipedia.org/wiki/Flux\_limiter}) GITM uses the Osher function~\citep{Chakravarthy:1983os}, given below in equation~\ref{os.eq}.
+
+\begin{equation}
+\label{os.eq}
+\phi_{os}(r) = max[0,min(r,\beta)], \;\;\;\; (1 \le \beta \le 2); \;\;\;\; \lim_{r\to\infty} \phi_{os}(r) = \beta
+\end{equation}
+
+In this function, $\beta$ is specified by BetaLimiter, and so defaults to the minmod flux limiter function when $\beta = 1$~\citep{roe:1986aa} and to the monotonized central (MC) flux limiter function when $\beta = 2$~\citep{valLeer:1977aa}.
+
+\begin{verbatim}
+#LIMITER
+(string) TypeLimiter
+(real) BetaLimiter
+\end{verbatim}
+
+\subsection{Data Assimilation}
+\label{assim.sec}
+
+This section contains the input options that allow GITM to perform data assimilation.
+
+\subsubsection{RCMR}
+\label{rcmr.sec}
+
+RCMR stands for Retrospective Cost Model Reference, and is a Retrospective Cost Adaptive Control (RCAC) method of data assimilation.  RCMR is useful when dealing with nonlinear systems~\citep{Ali:2012aa}.  To use this system, Markov parameters need to be set.  These parameters will vary based on the type and number of data sources being assimilated and the driver being estimated.  Markov parameters for the assimilation of a single satellite providing neutral density to drive the F$_{10.7}$ are currently available.  Other parameters are currently being developed.
+
+The use of RCMR changes how the possible driving parameters and satellite data are treated within GITM.  Because of this, the RCMR block should be included before the SATELLITE, F107, and PHOTOELECTRON block in the UAM.in file.  The initial guess of the parameter being driven should not be close to the final value, as a perturbed location allows the assimilation to better account for model error.  Choosing a value within realistic physical boundaries but away from an intuitive guess as to the actual value is the best way to chose the initial guess.
+
+\begin{verbatim}
+#RCMR
+(string) Input data type (RHO/VTEC)
+(string) Output variable to drive (F107/PHOTOELECTRON)
+(real) Initial output estimate
+(integer) Number of satellites to include in data assimilation
+(integer) Index number of satellite to assimilate
+\end{verbatim}
+
+\subsubsection{DART}
+\label{dart.sec}
+
+DART stands for Data Assimilation Research Testbed, and is a community facility that provides software tools for data assimilation~\citep{Anderson:2009fn}.  Within the space physics community, DART has been coupled with TIE-GCM and GITM.  More information about using DART with GITM is available in the DART manual in the {\tt GITM2/srcDoc} directory.
+
+\begin{verbatim}
+#DART
+(integer) Method to use DART
+\end{verbatim}
+
+\subsection{Solar and Geomagnetic Indices}
+\label{indices.sec}
+
+This section contains the input options that specifies the level of solar and geomagnetic activity.  Recall that these input options must be specified after the starting and ending times (refer to section~\ref{required.sec}) are defined.  Also, note that several of these indices may be specified in different ways.  If you use more than one method to define an index, the last definition will be used.  It is better to just use one method in your {\tt UAM.in} file to avoid confusion.
+
+\subsubsection{F107}
+\label{f107.sec}
+
+Sets the F$_{10.7}$ and 81 day average of F$_{10.7}$ (commonly denoted as F$_{10.7a}$ or $\overline{F_{10.7}}$).  This is used to set the range of the initial altitude grid and drive the lower boundary conditions.  It is also used as input into several of the models called by GITM.  If RCMR is being used to drive the F$_{10.7}$, then the values provided here are used to initialize MSIS and should be as close to the real F$_{10.7}$ as possible.
+
+The F$_{10.7}$ is a measure of the solar 10.7 cm flux~\citep{Covington:1948aa} and is measured in solar flux units (1 sfu = 10$^{-22}$ W m$^{-2}$ Hz$^{-1}$ = 10,000 jansky).  The F$_{10.7}$ is commonly used as a proxy for the solar EUV output.  
+
+\begin{verbatim}
+#F107
+(real) f107
+(real) f107a
+\end{verbatim}
+
+\subsubsection{NGDC\_INDICES}
+\label{ngdc_indices.sec}
+
+This input option allows GITM to use an appropriate F$_{10.7}$ for each day that the assimilation runs, instead of a fixed value.  This is accomplished by providing an input file that contains the F$_{10.7}$ values for the entire GITM simulation period and the preceding 81 days.  This allows GITM to compute the appropriate daily F$_{10.7a}$ as well.  Typically, users simply make a file including all F$_{10.7}$ values from 1980 onward, so they never have to worry about missing any preceding days.
+
+\begin{verbatim}
+#NGDC_INDICES
+(string) filename
+\end{verbatim}
+
+\subsubsection{SME\_INDICES}
+\label{sme_indices.sec}
+
+This option is not well described in set\_inputs.f90.
+
+\begin{verbatim}
+#SME_INDICES
+(string) Mystery input number one
+(string) Mystery input number two
+\end{verbatim}
+
+\subsubsection{ACE\_DATA}
+\label{ace_data.sec}
+
+This option is not well described in set\_inputs.f90.
+
+\begin{verbatim}
+#ACE_INDICES
+(string) Mystery input number one
+(string) Mystery input number two
+\end{verbatim}
+
+\subsubsection{SWPC\_DATA}
+\label{swpc_data.sec}
+
+This option is not well described in set\_inputs.f90.
+
+\begin{verbatim}
+#SWPC_INDICES
+(string) Mystery input number one
+(string) Mystery input number two
+\end{verbatim}
+
+\subsubsection{NOAAHPI\_INDICES}
+\label{noaahpi_indices.sec}
+
+\begin{verbatim}
+#NOAAHPI_INDICES
+(string) NOAA HPI filename
+\end{verbatim}
+
+\subsubsection{KP}
+\label{kp.sec}
+
+The Kp index is not used by GITM, but several models that GITM calls utilize it.  The Kp index is a measure of mid-latitude geomagnetic disturbance and can be obtained from:
+
+ {\tt ftp://ftp.ngdc.noaa.gov/STP/GEOMAGNETIC\_DATA/INDICES/KP\_AP/} 
+ 
+ \noindent while a description of the index can be found at:
+ 
+ {\tt http://www-app3.gfz-potsdam.de/kp\_index/description.html}
+
+\begin{verbatim}
+#KP
+(real) kp  
+\end{verbatim}
+
+\subsubsection{HEMISPHERICPOWER}
+\label{hemisphericpower.sec}
+
+This option sets the hemispheric power of the aurora.  Typical values range from 1$-$1000, with 20 being a nominal, quiet time value.
+
+\begin{verbatim}
+#HPI
+(real) HemisphericPower
+\end{verbatim}
+
+\subsubsection{SOLARWIND}
+\label{solarwind.sec}
+
+This option is one way to set the driving conditions for the high-latitude electric field models.  Because this option is static and will not change during the run, it is usually better to use the MHD\_INDICES option instead, as MHD\_INDICES provides a dynamic driving environment.
+
+\begin{verbatim}
+#SOLARWIND
+(real) bx  
+(real) by  
+(real) bz  
+(real) vx  
+\end{verbatim}
+
+\subsubsection{MHD\_INDICES}
+\label{mhdindices.sec}
+
+Use this option to provide GITM with dynamic IMF and solar wind conditions.  This option can either be omitted entirely; if it is desired a filename whose contents will be discussed in more detail in section~\ref{imf.sec} must be specified.  This file should be located in the same directory as the {\tt UAM.in} file.
+
+\begin{verbatim}
+#MHD_INDICES
+(string) filename
+\end{verbatim}
+
+\subsubsection{EUV\_DATA}
+\label{euv.sec}
+
+This input option allows the user to specify the extreme ultraviolet (EUV) flux using solar spectra from any model or data source.  A FISM file~\citep{fism:2007d, fism:2008f} is used as an example in section~\ref{solar_irradiance.sec}.
+
+\begin{verbatim}
+#EUV_DATA
+(logical) UseEUVData   
+(string) cEUVFile     
+\end{verbatim}
+
+%%
+
+\subsection{Physical Processes}
+\label{physics.sec}
+
+The following options let the user specify how GITM treats different physical boundaries and processes.
+
+\subsubsection{INITIAL}
+\label{initial.sec}
+
+This option specifies the initial conditions and the lower boundary conditions.  For Earth, we typically just use MSIS and IRI for initial conditions.  For other planets, the vertical temperature parameters can be set here.  TempMin and TempMax specify the initial temperatures at the bottom and top of the thermosphere in Kelvin, respectively.  TempHeight specifies the height (in kilometers from the surface of the planet) of the midpoint of the temperature gradient.  TempWidth specifies the vertical width (in kilometers) of the temperature gradient. 
+
+\begin{verbatim}
+#INITIAL
+(logical) UseMSIS
+(logical) UseIRI 
+If UseMSIS is false (F) then:
+(real) TempMin      
+(real) TempMax        
+(real) TempHeight     
+(real) TempWidth     
+\end{verbatim}
+
+\subsubsection{STATISTICALMODELSONLY}
+\label{statisticalmodelsonly.sec}
+
+There can be benefits to running a simpler ionosphere and thermosphere models.  GITM can be used as a shell to run MSIS and IRI without any coupling.  This input option bypasses GITM and only outputs results from MSIS and IRI.  This option allows the user who is familiar with GITM to get MSIS and IRI output without having to install or know how to run these models independently.  The UseStatisticalModelsOnly flag can be set to {\tt T} or {\tt F} (true or false) and the DtStatisticalModels options lets you specify the time-step (in seconds) used in MSIS and IRI.
+
+\begin{verbatim}
+#STATISTICALMODELSONLY
+(logical) UseStatisticalModelsOnly
+(real) DtStatisticalModels
+\end{verbatim}
+
+\subsubsection{TIDES}
+\label{tides}
+
+This option uses a series of logical flags to tell GITM how to use tides.   The first flag (UseMSISFlat) tells GITM to use MSIS without tides.  The second flag (UseMSISTides) is using MSIS with full up tides. One of these two flags should be true.  The remaining flags should only be true if UseMSISTides is false, and then only one should be true.  The third flag (UseGSWMTides) uses GSWM tides, while the forth flag (UseWACCMTides) sets GITM to use the WACCM tides.  Essentially, only one tidal model should be used per GITM run.  Information about GSWM can be found at: \\{\tt http://www.hao.ucar.edu/modeling/gswm/gswm.html} and information about WACCM can be found at: \\{\tt http://www.cesm.ucar.edu/working\_groups/WACCM/}.
+
+When running with the MSIS or WACCM tides, no additional input files are needed.  However, when using GSWM additional files must be made accessible to GITM in the {\tt run/UA/DataIn} directory.  These files are stored in the {\tt Tides} directory within GITM.  You can check these files out using CVS (as described in Chapter~\ref{cvs.sec}) and then create links or copy them into your run directory by using: {\tt ln -s ~/GITM/Tides/*bin ~/GITM/run/UA/DataIn/.}
+
+\begin{verbatim}
+#TIDES
+(logical) UseMSISFlat      
+(logical) UseMSISTides      
+(logical) UseGSWMTides     
+(logical) UseWACCMTides    
+\end{verbatim}
+
+\subsubsection{DUSTDATA}
+\label{dustdata.sec}
+
+\begin{verbatim}
+#DUSTDATA
+(logical) UseDustDistribution      
+(string) cDustFile      
+(string) cConrathFile  
+\end{verbatim}
+
+\subsubsection{DUST}
+\label{dust.sec}
+
+\begin{verbatim}
+#DUST
+(real) Total $\tau$      
+(real) Conrnu
+\end{verbatim}
+
+\subsubsection{GSWMCOMP}
+\label{gswmcomp.sec}
+
+If you decided to use GSWM tides by selecting UseGSWMTides in the TIDES option, you can specify which diurnal and semidiurnal tidal components to include.
+
+\begin{verbatim}
+#GSWMCOMP
+(logical) GSWMdiurnal(1)        
+(logical) GSWMdiurnal(2)       
+(logical) GSWMsemidiurnal(1)    
+(logical) GSWMsemidiurnal(2)    
+\end{verbatim}
+
+\subsubsection{USEPERTURBATION}
+\label{useperturbation.sec}
+
+\begin{verbatim}
+#USEPERTURBATION
+(logical) UsePerturbation
+\end{verbatim}
+
+\subsubsection{DAMPING}
+\label{damping.sec}
+
+This option specifies whether or not to allow damping of the vertical wind oscillations that can occur in the lower atmosphere.
+
+\begin{verbatim}
+#DAMPING
+(logical) UseDamping        
+\end{verbatim}
+
+\subsubsection{GRAVITYWAVE}
+\label{gravitywave.sec}
+A switch to add heating to the atmosphere.  This was primarily used to explore gravity waves on Titan and has little to no effect on the terrestrial atmosphere.  This options defaults to false.
+
+\begin{verbatim}
+#GRAVITYWAVE
+(logical) UseGravityWave
+\end{verbatim}
+
+\subsubsection{AURORAMODS}
+\label{auroramods.sec}
+
+\begin{verbatim}
+#AURORAMODS
+(logical) Normalize Aurora to Hemispheric Power
+(real) Auroral Height Factor
+\end{verbatim}
+
+\subsubsection{NEWELLAURORA}
+\label{newellaurora.sec}
+
+This input option provides several logical flags that allow GITM to use Pat Newell's aurora model, Ovation~\citep{Newell:2002ov}.
+
+\begin{verbatim}
+#NEWELLAURORA
+(logical) UseNewellAurora   
+(logical) UseNewellAveraged 
+(logical) UseNewellMono 
+(logical) UseNewellWave
+(logical) UseNewellRemoveSpikes 
+(logical) UseNewellAverage  
+\end{verbatim}
+
+\subsubsection{OVATION}
+\label{ovation.sec}
+
+This input option provides several logical flags that allow GITM to use the SME Ovation model.
+
+\begin{verbatim}
+#OVATION
+(logical) UseOvationSME   
+(logical) UseOvationSMEMono
+(logical) UseOvationSMEWave
+(logical) UseOvationSMEIon
+\end{verbatim}
+
+\subsubsection{AMIEFILES}
+\label{amiefiles.sec}
+
+This option allows the user to specify the electrodynamic state of the polar regions using the Assimilative Mapping of Ionospheric Electrodynamics (AMIE) model~\citep{ridley:2004aa}.  Input files separately specify the conditions at the northern and southern polar caps, and should be in the MIE binary format.  Contact Aaron Ridley for more information about using AMIE with GITM.
+
+\begin{verbatim}
+#AMIEFILES
+(string) cAMIEFileNorth 
+(string) cAMIEFileSouth
+\end{verbatim}
+
+\subsubsection{THERMO}
+\label{thermo.sec}
+
+This input option sets flags that allow the user to turn various thermospheric processes on and off.  For a realistic run, all three heating flags (for solar, Joule, and auroral heating) should be set to true, along with both cooling flags (for nitrous-oxide, NO, and oxygen, O).  UseConduction, UseUpdatedTurbulentCond, and UseTurbulentCond flag should also all be set to true.  UseDiffusion, however, defaults to false and should not be used for a realistic run.
+
+The only keyword that is not a flag is EddyScaling.  This allows the user to control the Eddy diffusion by applying a multiplicative to the model's Eddy diffusion value.
+
+\begin{verbatim}
+#THERMO
+(logical) UseSolarHeating   
+(logical) UseJouleHeating   
+(logical) UseAuroralHeating
+(logical) UseNOCooling    
+(logical) UseOCooling       
+(logical) UseConduction     
+(logical) UseTurbulentCond  
+(logical) UseUpdatedTurbulentCond
+(logical) UseDiffusions
+(real) EddyScaling  
+\end{verbatim}
+
+\subsubsection{THERMALDIFFUSION}
+\label{thermaldiffusion.sec}
+
+This keyword sets the thermal conductivity.  KappaTemp0 should be set to the desired value of the thermal conductivity in MKS units.
+
+\begin{verbatim}
+#THERMALDIFFUSION
+(real) KappaTemp0
+\end{verbatim}
+
+\subsubsection{VERTICALSOURCES}
+\label{verticalsources.sec}
+
+This input option provides flags and limits for the vertical thermospheric sources.  The UseEddyInSolver turns the Eddy diffusion on and off, the UseNeutralFrictionInSolver turns the vertical neutral friction on and off, and the MaximumVerticalVelocity sets the limit for vertical neutral winds in meters per second.
+
+\begin{verbatim}
+#VERTICALSOURCES
+(logical) UseEddyInSolver             
+(logical) UseNeutralFrictionInSolver  
+(real) MaximumVerticalVelocity    
+\end{verbatim}
+
+\subsubsection{EDDYVELOCITY}
+\label{eddyvelocity.sec}
+
+This input option further allows the user to specify how Eddy diffusion is treated by providing an flag to use the method presented by~\citet{Boqueho:2005aa}, which was developed for the Martian atmosphere.  The UseEddyCorrection flag is another option that is useful for certain extraterrestrial atmospheres.
+
+\begin{verbatim}
+#EDDYVELOCITY
+(logical) UseBoquehoAndBlelly 
+(logical) UseEddyCorrection
+\end{verbatim}
+
+\subsubsection{DIFFUSION}
+\label{diffusion.sec}
+
+If you use Eddy diffusion, as indicated by the UseDiffusion flag, you must specify two pressure levels in units of UNITS using EddyDiffusionPressure[0,1].  Below the first pressure level, the Eddy diffusion will be constant.  Between the first and the second pressure levels, the Eddy diffusion coefficient will drop-off linearly.  Thus, the first pressure must be larger than the second!  The Eddy diffusion coefficient may also be specified using EddyDiffusionCoef.
+
+\begin{verbatim}
+#DIFFUSION
+(logical) UseDiffusion
+(real) EddyDiffusionCoef
+(real) EddyDiffusionPressure0 
+(real) EddyDiffusionPressure1
+\end{verbatim}
+
+\subsubsection{WAVEDRAG}
+\label{wavedrag.sec}
+
+This input option allows stress heating to be applied in GITM, providing an additional source of drag in the thermosphere.
+
+\begin{verbatim}
+#WAVEDRAG
+(logical) UseStressHeating
+\end{verbatim}
+
+\subsubsection{FORCING}
+\label{forcing.sec}
+
+This input option provides flags for physical processes that drive the thermosphere.
+
+\begin{verbatim}
+#FORCING
+(logical) UsePressureGradient 
+(logical) UseIonDrag          
+(logical) UseNeutralFriction  
+(logical) UseViscosity        
+(logical) UseCoriolis         
+(logical) UseGravity        
+\end{verbatim}
+
+\subsubsection{IONFORCING}
+\label{ionforcing.sec}
+
+This input option turns several ionospheric transport processes on and off.  UseExB turns the {\bf E}$\times${\bf B} plasma drift on and off, UseIonGravity allows the user to determine whether or not to allow the ions to respond to gravity, UseNeutralDrag relegates the forcing from ion-neutral collisions on the ionosphere, and UseIonPressureGradient deals with the ion motions resulting from changes to the plasma pressure gradient.  All of these processes should be on for a realistic simulation.
+
+\begin{verbatim}
+#IONFORCING
+(logical) UseExB           
+(logical) UseIonPressureGradient
+(logical) UseIonGravity     
+(logical) UseNeutralDrag   
+\end{verbatim}
+
+\subsubsection{CHEMISTRY}
+
+Turn certain chemical processes on or off.  All processes are included by default.
+
+\begin{verbatim}
+#CHEMISTRY
+(logical) UseIonChemistry         
+(logical) UseIonAdvection
+(logical) UseNeutralChemistry
+\end{verbatim}
+
+\subsubsection{PHOTOELECTRON}
+\label{photoelectron.sec}
+
+The photoelectron heating efficiency describes the energy input to the electron gas per electron-ion pair formed by the photoionization of a neutral~\citep{Hanson:1968ue}.  GITM defines the photoelectron heating efficiency as a scalar that multiplies the sum of the photoionization rate and the neutral density for each neutral species.  The specified value should lie between 0.02 and 0.20, though the default value is zero.  If RCMR is being used to drive the photoelectron heating efficiency, this block is ignored.
+
+\begin{verbatim}
+#PHOTOELECTRON
+(real) Photoelectron heating efficiency
+\end{verbatim}
+
+\subsubsection{DYNAMO}
+\label{dynamo.sec}
+
+This input option provides flags for the ionospheric dynamo.  The UseDynamo flag turns on a model to calculate the ionospheric electric fields.  DynamoHighLatBoundary sets the polar latitude limit (65$^\circ$ or 70$^\circ$ is a realistic limit), nItersMax sets the maximum number of iterations for the Dynamo convergence (typically set at 500), and the MaxResidual sets the maximum difference, in Volts, to allow between iterations before the value is said to have converged (typically set to 1 V).  The Dynamo currently uses a static high-latitude boundary, though a dynamical one would be ideal.  To get around this, input from AMIE, run using the SuperMag data network, can be used instead of the UseDynamo process.  The use of AMIE input is discussed in section~\ref{amiefiles.sec}.
+
+\begin{verbatim}
+#DYNAMO
+(logical) UseDynamo   
+(real) DynamoHighLatBoundary 
+(integer) nItersMax        
+(real) MaxResidual     
+\end{verbatim}
+
+\subsubsection{ELECTRODYNAMICS}
+\label{electrodynamics.sec}
+
+Sets the time-step (in seconds) for updating the high-latitude (and low-latitude) electrodynamic drivers, such as the potential and the aurora.
+
+\begin{verbatim}
+#ELECTRODYNAMICS
+(real) DtPotential 
+(real) DtAurora  
+\end{verbatim}
+
+\subsubsection{IONPRECIPITATION}
+\label{ionprecipitation.sec}
+
+This is a highly specific input option for experienced users.  Most users should set this option to false.  This is only for people wishing to do very specific runs in high altitude regions.  IonIonizationFilename and IonHeatingRateFilename allow the advanced user to specify the ionization and ion heating rates due to precipitation using auxiliary input files.
+
+\begin{verbatim}
+#IONPRECIPITATION
+(logical) UseIonPrecipitation 
+(string) IonIonizationFilename
+(string) IonHeatingRateFilename
+\end{verbatim}
+
+\subsubsection{LTERADIATION}
+\label{lteradiation.sec}
+
+LTERadiation allows the user to specify the time-step for the local thermodynamic equilibrium radiation process in seconds.  This option is typically only used by the Mars GITM.  It may be set for other versions of GITM, but each planet treats this input option differently.  Versions not compiled for Mars will either modify or ignore input from LTERadiation.
+
+\begin{verbatim}
+#LTERadiation
+(real) DtLTERadiation
+\end{verbatim}
+
+\subsubsection{DIPOLE}
+\label{dipole.sec}
+
+This input option allows the user to specify the parameters the geomagnetic field within the limits of a dipole configuration so that any configuration (centered, tilted, or off-center and tilted) may be used.  x,y,zDipoleCenter specify the origin of the dipole field in ECI coordinates, MagneticPoleTilt gives the angle (in degrees) between the dipole axis and the terrestrial rotation axis, and MagneticPoleRotation gives the constant angular rate (in degrees) at which the geomagnetic dipole field rotates.
+
+\begin{verbatim}
+#DIPOLE
+(real) MagneticPoleRotation 
+(real) MagneticPoleTilt   
+(real) xDipoleCenter       
+(real) yDipoleCenter       
+(real) zDipoleCenter       
+\end{verbatim}
+
+\subsubsection{APEX}
+\label{apex.sec}
+
+This input option indicates whether or not GITM should use the more realistic Apex geomagnetic field~\citep{richards:1995aa}.  If this option is set to false, the dipole field specified in the previous subsection will be used.
+
+\begin{verbatim}
+#APEX
+(logical) UseApex
+\end{verbatim}
+
+%%
+
+\subsection{Geographic Boundaries}
+\label{geograph.sec}
+
+\subsubsection{TOPOGRAPHY}
+
+This input option, which is defaults to false, uses topography to provide a variable vertical grid in GITM.  You can also specify the minimum altitude at which the vertical grid for the thermosphere and ionosphere become consistent (AltMinUniform and AltMinIono, respectively).  As with all other inputs the altitudes should be given in kilometers from the surface of the planet.
+
+\begin{verbatim}
+#TOPOGRAPHY
+(logical) UseTopography
+(real) AltMinUniform
+(real) AltMinIono
+\end{verbatim}
+
+\subsubsection{ALTITUDE}
+\label{altitude.sec}
+
+The upper and lower altitude limits (in kilometers) may be specified here.  These values default to 500 km and 95 km, respectively.  Setting the altitude limits above or below these values may result in unstable model runs.
+
+UseStretchedAltitude may also be turned on and off here.  This flag defaults to true, as it allows the altitudes with rapidly changing pressure levels to be treated in more detail than those where the atmosphere changes slowly with altitude.
+
+\begin{verbatim}
+#ALTITUDE
+(real) AltMin            
+(real) AltMax             
+(logical) UseStretchedAltitude
+\end{verbatim}
+
+\subsubsection{GRID}
+\label{input_grid.sec}
+
+This input option sets the grid resolution in GITM.  Although this process is straightforward, it deserves some thought and discussion.  This is provided in section~\ref{grid.sec}.  For new GITM users, learning how to alter the grid is a good place to start moving beyond the test run shown in Chapter~\ref{intro.ch}.
+
+\begin{verbatim}
+#GRID
+(integer) nBlocksLon  
+(integer) nBlocksLat  
+(real) LatStart   
+(real) LatEnd     
+(real) LonStart   
+(real) LonEnd     
+\end{verbatim}
+
+\subsubsection{STRETCH}
+
+You can stretch the grid in GITM in the latitudinal direction.  It takes some practice to get the stretching just the way that you might like.  To do this, you need to specify the geographic latitude (in degrees) that the stretching will center at (ConcentrationLatitude), the fraction of stretch (StretchingPercentage) where 0 means that there will be no stretching and 1 means that the latitude will be stretched by 100\%, and a multiplicative factor (StretchingFactor) that helps scale the stretching.  The StretchingFactor should range between 0 and 1, erring closer to 1 to provide more control.
+
+\begin{verbatim}
+#STRETCH
+(real) ConcentrationLatitude 
+(real) StretchingPercentage 
+(real) StretchingFactor  
+\end{verbatim}
+
+Here is an example for stretching near the equator:
+
+\begin{verbatim}
+#STRETCH
+0.0            ! Equator
+0.7            ! Amount of stretching is great
+0.8            ! more control
+\end{verbatim}
+
+Here is another example for no stretching near the auroral oval:
+
+\begin{verbatim}
+#STRETCH
+65.0 ! Location of minimum grid spacing
+0.0	  ! There is no streching here
+1.0   ! For control
+\end{verbatim}
+
+\subsubsection{NEWSTRETCH}
+\label{newstretch.sec}
+
+An alternative way to stretch the grid.
+
+\begin{verbatim}
+#NEWSTRETCH
+(real) Poleward edge of the stretch region (degrees) 
+(real) Stretching width (degrees)
+(real) Stretching percentage  (0.0-1.0)
+\end{verbatim}
+
+Here is an example for stretching near the auroral zone:
+
+\begin{verbatim}
+#NEWSTRETCH
+65.0          ! Auroral oval
+5.0            ! Width of the stretched region
+0.6            ! Amount of stretch (0 = none, 1 = lots)
+\end{verbatim}

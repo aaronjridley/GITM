@@ -1,0 +1,87 @@
+%  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
+%  For more information, see http://csem.engin.umich.edu/tools/swmf
+\documentclass[twoside,10pt]{book}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{alltt}
+\usepackage{amsmath}
+\usepackage{epsfig}
+\usepackage{fancyhdr}
+\usepackage[square]{natbib}
+\usepackage{multicol}
+\usepackage{subfigure}
+\usepackage{fancyvrb}
+\usepackage{color}
+
+% use these lengths for a more uniform margin
+% this format is more pleasing for stapling
+\setlength{\oddsidemargin}{-.1 in}
+\setlength{\evensidemargin}{0.0 in}
+\setlength{\textwidth}{6.5 in}
+\setlength{\topmargin}{0 in}
+\setlength{\textheight}{8.5 in}
+
+\renewcommand{\deg}{^{\circ}}
+
+
+\title{GITM User Manual \\ \large Version 2.1}
+\author{A.J. Ridley, A.G. Burrell}
+
+\begin{document}
+
+\pagestyle{fancy}
+\lhead[\fancyplain{}{\bfseries\thepage}]{\fancyplain{}{\bfseries\rightmark}}
+\rhead[\fancyplain{}{\bfseries\leftmark}]{\fancyplain{}{\bfseries\thepage}}
+\cfoot{}
+
+%\pagestyle{headings}
+
+\maketitle
+
+\tableofcontents
+
+\clearpage
+
+%Chapter 1
+\chapter{Introduction to GITM}
+\input{intro}
+\label{intro.ch}
+
+\section{Code Outline}
+\label{outline.sec}
+
+This is an outline of GITM.  To produce this file, go into the {\tt src} directory, and type:
+
+\begin{verbatim}
+cd ../src
+./calling_sequence.pl > outline.tex
+mv outline.tex ../srcDoc
+cd ../srcDoc
+\end{verbatim}
+
+\input{outline.tex}
+
+%Chapter 2
+\chapter{Getting Started}
+\label{quickstart.ch}
+\input{quickstart}
+
+%Chapter 3
+\chapter{Inputs}
+\label{input.ch}
+\input{set_inputs}
+\input{grid}
+\input{more_inputs}
+
+%Chapter 4
+\chapter{Outputs}
+\label{outputs.ch}
+\input{outputs}
+
+%Bibliography
+\clearpage
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliographystyle{chicagoa}
+\bibliography{gitm}
+
+\end{document}

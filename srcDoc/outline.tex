@@ -1,0 +1,380 @@
+%  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
+%  For more information, see http://csem.engin.umich.edu/tools/swmf
+{\tt main program} in {\bf main.f90}
+
+\begin{itemize}
+
+
+
+\item {\tt init\_mpi}   in file {\bf init\_mpi.f90}
+  \begin{itemize}
+    \item {\tt MPI\_INIT}
+    \item {\tt MPI\_COMM\_RANK}
+    \item {\tt MPI\_COMM\_SIZE}
+  \end{itemize}
+
+
+\item {\tt start\_timing}   in file {\bf timing.f90}
+
+
+\item {\tt delete\_stop}   in file {\bf stop\_file.f90}
+  \begin{itemize}
+    \item {\tt report} in file library.f90
+  \end{itemize}
+
+
+\item {\tt init\_planet}   in file {\bf ModEarth.f90}
+  \begin{itemize}
+    \item {\tt time\_int\_to\_real} in file time\_routines.f90
+  \end{itemize}
+
+
+\item {\tt set\_defaults}   in file {\bf ModInputs.f90}
+  \begin{itemize}
+    \item {\tt set\_strings} in file ModInputs.f90
+    \item {\tt time\_int\_to\_real} in file time\_routines.f90
+    \item {\tt set\_planet\_defaults} in file Earth.f90
+  \end{itemize}
+
+
+\item {\tt read\_inputs}   in file {\bf read\_inputs.f90}
+  \begin{itemize}
+    \item {\tt report} in file library.f90
+    \item {\tt stop\_gitm} in file library.f90
+    \item {\tt stop\_gitm} in file library.f90
+    \item {\tt stop\_gitm} in file library.f90
+    \item {\tt MPI\_Bcast}
+    \item {\tt stop\_gitm} in file library.f90
+    \item {\tt MPI\_Bcast}
+    \item {\tt stop\_gitm} in file library.f90
+  \end{itemize}
+
+
+\item {\tt set\_inputs}   in file {\bf set\_inputs.f90}
+  \begin{itemize}
+    \item {\tt report} in file library.f90
+    \item {\tt read\_in\_int} in file set\_inputs.f90
+    \item {\tt time\_int\_to\_real} in file time\_routines.f90
+    \item {\tt time\_real\_to\_int} in file time\_routines.f90
+    \item {\tt fix\_vernal\_time} in file set\_inputs.f90
+    \item {\tt read\_in\_int} in file set\_inputs.f90
+    \item {\tt time\_int\_to\_real} in file time\_routines.f90
+    \item {\tt read\_in\_time} in file set\_inputs.f90
+    \item {\tt read\_in\_int} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt time\_real\_to\_int} in file time\_routines.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt IO\_set\_f107\_single}
+    \item {\tt IO\_set\_f107a\_single}
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt IO\_set\_hpi\_single}
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt IO\_set\_kp\_single}
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt IO\_set\_imf\_by\_single}
+    \item {\tt IO\_set\_imf\_bz\_single}
+    \item {\tt IO\_set\_sw\_v\_single}
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt IO\_set\_inputs}
+    \item {\tt read\_MHDIMF\_Indices}
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_int} in file set\_inputs.f90
+    \item {\tt read\_in\_int} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_int} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_int} in file set\_inputs.f90
+    \item {\tt read\_in\_int} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_time} in file set\_inputs.f90
+    \item {\tt read\_in\_time} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_int} in file set\_inputs.f90
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_int} in file set\_inputs.f90
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_satellites} in file satellites.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt Set\_Euv} in file calc\_euv.f90
+    \item {\tt read\_in\_logical} in file set\_inputs.f90
+    \item {\tt read\_in\_real} in file set\_inputs.f90
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt IO\_set\_inputs}
+    \item {\tt read\_NGDC\_Indices}
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt IO\_set\_inputs}
+    \item {\tt read\_SWPC\_Indices}
+    \item {\tt read\_in\_string} in file set\_inputs.f90
+    \item {\tt IO\_set\_inputs}
+    \item {\tt read\_NOAAHPI\_Indices}
+    \item {\tt stop\_gitm} in file library.f90
+    \item {\tt time\_int\_to\_real} in file time\_routines.f90
+  \end{itemize}
+
+
+\item {\tt initialize\_gitm}   in file {\bf initialize.f90}
+  \begin{itemize}
+    \item {\tt init\_radcooling} in file ModEarth.f90
+    \item {\tt start\_timing} in file timing.f90
+    \item {\tt report} in file library.f90
+    \item {\tt time\_real\_to\_int} in file time\_routines.f90
+    \item {\tt fix\_vernal\_time} in file set\_inputs.f90
+    \item {\tt get\_f107}
+    \item {\tt get\_f107a}
+    \item {\tt init\_grid} in file init\_grid.f90
+    \item {\tt read\_inputs} in file read\_inputs.f90
+    \item {\tt set\_inputs} in file set\_inputs.f90
+    \item {\tt read\_restart} in file restart.f90
+    \item {\tt init\_msis} in file init\_msis.Earth.f90
+    \item {\tt set\_RrTempInd} in file ModRates.Earth.f90
+    \item {\tt init\_euv} in file calc\_euv.f90
+    \item {\tt init\_altitude} in file init\_altitude.f90
+    \item {\tt UAM\_gradient}
+    \item {\tt init\_heating\_efficiency} in file Earth.f90
+    \item {\tt init\_magheat} in file ModEarth.f90
+    \item {\tt init\_isochem} in file Mars.f90
+    \item {\tt init\_aerosol} in file ModEarth.f90
+    \item {\tt init\_isochem} in file Mars.f90
+    \item {\tt init\_msis} in file init\_msis.Earth.f90
+    \item {\tt get\_temperature} in file init\_altitude.f90
+    \item {\tt init\_iri} in file init\_iri.Earth.f90
+    \item {\tt read\_waccm\_tides} in file tides.f90
+    \item {\tt update\_waccm\_tides} in file tides.f90
+    \item {\tt read\_tides} in file tides.f90
+    \item {\tt update\_tides} in file tides.f90
+    \item {\tt init\_b0} in file init\_b0.f90
+    \item {\tt init\_energy\_deposition} in file init\_energy\_deposition.f90
+    \item {\tt report} in file library.f90
+    \item {\tt SUBSOLR}
+    \item {\tt exchange\_messages\_sphere} in file exchange\_messages\_sphere.f90
+    \item {\tt calc\_pressure} in file calc\_pressure.f90
+    \item {\tt UA\_calc\_electrodynamics} in file calc\_electrodynamics.f90
+    \item {\tt calc\_eddy\_diffusion\_coefficient} in file Earth.f90
+    \item {\tt calc\_rates} in file calc\_rates.Earth.f90
+    \item {\tt calc\_viscosity} in file calc\_rates.Earth.f90
+    \item {\tt calc\_rates} in file calc\_rates.Earth.f90
+    \item {\tt end\_timing} in file timing.f90
+    \item {\tt calc\_vtec} in file calc\_tec.f90
+    \item {\tt calc\_single\_vtec} in file calc\_tec.f90
+  \end{itemize}
+
+
+\item {\tt write\_output}   in file {\bf write\_output.f90}
+  \begin{itemize}
+    \item {\tt output} in file output\_common.f90
+    \item {\tt move\_satellites} in file satellites.f90
+    \item {\tt write\_restart} in file restart.f90
+    \item {\tt logfile} in file logfile.f90
+  \end{itemize}
+
+
+\item {\tt report}   in file {\bf library.f90}
+
+
+\item Loop Start
+  \begin{itemize}
+
+
+  \item {\tt calc\_pressure}   in file {\bf calc\_pressure.f90}
+    \begin{itemize}
+      \item {\tt report} in file library.f90
+    \end{itemize}
+
+
+  \item {\tt calc\_timestep\_vertical}   in file {\bf calc\_timestep.f90}
+    \begin{itemize}
+      \item {\tt report} in file library.f90
+      \item {\tt MPI\_AllREDUCE}
+      \item {\tt stop\_gitm} in file library.f90
+    \end{itemize}
+
+
+  \item {\tt calc\_timestep\_horizontal}   in file {\bf calc\_timestep.f90}
+    \begin{itemize}
+      \item {\tt report} in file library.f90
+      \item {\tt MPI\_AllREDUCE}
+    \end{itemize}
+
+
+  \item {\tt advance}   in file {\bf advance.f90}
+    \begin{itemize}
+      \item {\tt report} in file library.f90
+      \item {\tt start\_timing} in file timing.f90
+      \item {\tt update\_tides} in file tides.f90
+      \item {\tt update\_waccm\_tides} in file tides.f90
+      \item {\tt advance\_vertical\_all} in file advance.f90
+      \item {\tt add\_sources} in file add\_sources.f90
+      \item {\tt advance\_horizontal\_all} in file advance.f90
+      \item {\tt time\_real\_to\_int} in file time\_routines.f90
+      \item {\tt get\_f107}
+      \item {\tt stop\_gitm} in file library.f90
+      \item {\tt get\_f107a}
+      \item {\tt stop\_gitm} in file library.f90
+      \item {\tt init\_msis} in file init\_msis.Earth.f90
+      \item {\tt init\_iri} in file init\_iri.Earth.f90
+      \item {\tt init\_b0} in file init\_b0.f90
+      \item {\tt end\_timing} in file timing.f90
+      \item {\tt report} in file library.f90
+      \item {\tt start\_timing} in file timing.f90
+      \item {\tt calc\_rates} in file calc\_rates.Earth.f90
+      \item {\tt calc\_viscosity} in file calc\_rates.Earth.f90
+      \item {\tt advance\_vertical} in file advance\_vertical.f90
+      \item {\tt end\_timing} in file timing.f90
+      \item {\tt report} in file library.f90
+      \item {\tt start\_timing} in file timing.f90
+      \item {\tt exchange\_messages\_sphere} in file exchange\_messages\_sphere.f90
+      \item {\tt calc\_rates} in file calc\_rates.Earth.f90
+      \item {\tt calc\_physics} in file calc\_physics.f90
+      \item {\tt advance\_horizontal} in file advance\_horizontal.f90
+      \item {\tt calc\_physics} in file calc\_physics.f90
+      \item {\tt calc\_rates} in file calc\_rates.Earth.f90
+      \item {\tt advance\_horizontal} in file advance\_horizontal.f90
+      \item {\tt exchange\_messages\_sphere} in file exchange\_messages\_sphere.f90
+      \item {\tt end\_timing} in file timing.f90
+    \end{itemize}
+
+
+  \item {\tt check\_stop}   in file {\bf stop\_file.f90}
+    \begin{itemize}
+      \item {\tt report} in file library.f90
+      \item {\tt start\_timing} in file timing.f90
+      \item {\tt MPI\_AllREDUCE}
+      \item {\tt check\_start} in file stop\_file.f90
+      \item {\tt end\_timing} in file timing.f90
+    \end{itemize}
+
+
+  \item {\tt write\_output}   in file {\bf write\_output.f90}
+    \begin{itemize}
+      \item {\tt output} in file output\_common.f90
+      \item {\tt move\_satellites} in file satellites.f90
+      \item {\tt write\_restart} in file restart.f90
+      \item {\tt logfile} in file logfile.f90
+    \end{itemize}
+
+
+  \end{itemize} %loop 
+
+
+ \item Loop End
+
+
+\item {\tt finalize\_gitm}   in file {\bf finalize.f90}
+  \begin{itemize}
+    \item {\tt UA\_calc\_electrodynamics} in file calc\_electrodynamics.f90
+    \item {\tt output} in file output\_common.f90
+    \item {\tt write\_restart} in file restart.f90
+    \item {\tt end\_timing} in file timing.f90
+    \item {\tt report\_timing} in file timing.f90
+    \item {\tt UAM\_XFER\_destroy} in file ModSphereInterface.f90
+    \item {\tt UAM\_write\_error} in file ModSphereInterface.f90
+    \item {\tt stop\_gitm} in file library.f90
+    \item {\tt MPI\_FINALIZE}
+  \end{itemize}
+
+
+\item {\tt stop\_gitm}   in file {\bf library.f90}
+  \begin{itemize}
+    \item {\tt CON\_stop} in file main.f90
+    \item {\tt MPI\_abort}
+  \end{itemize}
+\end{itemize}
