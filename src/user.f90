@@ -134,7 +134,10 @@ subroutine user_bc_perturbation(LogRhoBc, LogNSBc, VelBc_GD, TempBc)
   !
   ! AUTHOR: 
   !   Xing Meng (Xing.Meng@jpl.nasa.gov or xingm@umich.edu)
-  !  
+  !
+  ! REVISION HISTORY:
+  !   Initial version: March 19, 2021
+  !
   ! LICENSE:
   !   Copyright 2021 California Institute of Technology
   !   Licensed under the Apache License, Version 2.0 (the "License");
