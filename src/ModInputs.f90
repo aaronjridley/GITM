@@ -397,6 +397,25 @@ module ModInputs
   DATA Ls_tau / 2.2353, 2.7543, 1.1177, 15.7866, 2.1354, 2.4694, 32.8493 /
   DATA Ls_phi / 49.409, 168.173, 191.837, 21.736, 15.704, 95.528, 49.095 /
 
+  !\
+  ! Variables for Wave Perturbation (WP) model (in user.f90)
+  ! to characterize surface motions during tsunamis or earthquakes
+  !/ 
+  logical :: UseBcPerturbation = .false.
+  integer :: iTypeBcPerturb
+  real    :: RefLon, RefLat, EpicenterLon, EpicenterLat
+  real    :: PerturbTimeDelay, PerturbDuration, SeisWaveTimeDelay   ! in sec 
+  real    :: PerturbWaveDirection       ! in deg counter-clockwise to east
+  real    :: PerturbWaveSpeed           ! in m/sec
+  real    :: PerturbWaveHeight          ! in m
+  real    :: PerturbWavePeriod          ! in sec
+  real    :: EpiDistance                ! in m
+  character (len=iCharLen_) :: cSurfacePerturbFileName 
+  integer, parameter :: nMaxPerturbFreq = 100
+  real    :: FFTReal(nMaxPerturbFreq), FFTImag(nMaxPerturbFreq), &
+       PerturbWaveFreq(nMaxPerturbFreq)
+  integer :: nPerturbFreq 
+
 contains
 
   ! -------------------------------------------------------------
