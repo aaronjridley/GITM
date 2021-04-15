@@ -6,7 +6,7 @@ subroutine calc_ion_v(iBlock)
   use ModGITM
   use ModInputs
   use ModConstants
-
+  use ModTime
   implicit none
 
   integer, intent(in) :: iBlock
@@ -100,7 +100,7 @@ subroutine calc_ion_v(iBlock)
              IonCollisions(:,:,:,iIon,iSpecies)
      enddo
   enddo
-
+  
   nu_in = RhoNu / iRho
   
   if (UseNeutralDrag) then
@@ -136,7 +136,6 @@ subroutine calc_ion_v(iBlock)
      IVelocity(:,:,:,iNorth_,iBlock) = &
           LocalNeutralWinds(:,:,:,iNorth_) - &
           LocalPressureGradient(:,:,:,iNorth_) / RhoNu
-         
   else
 
      UDotB = sum(LocalNeutralWinds(:,:,:,:) * BLocal, dim=4)/ &

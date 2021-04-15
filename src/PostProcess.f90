@@ -173,6 +173,7 @@ program PostProcess
         endif
 
         if (.not. IsEnd .or. IsFirstTime) then
+           write(*,*) "Not Appending...."
            open(iOutputUnit_,file=FileName(1:iStart)//".bin",&
                 status="unknown",form="unformatted")
         else
@@ -184,7 +185,6 @@ program PostProcess
         nAltsTotal = 0
         nLatsTotal = 0
         nLonsTotal = 0
-        if (IsHIMEType) IsHIMEBlock = 0
 
         iBlock = 1
         do iBlockAlt = 1, nBlocksAlt
@@ -210,7 +210,10 @@ program PostProcess
                     endif
                  endif
 
+                 !write(*,*) "Reading File : ",FileName(1:iStart)//cBlock
+
                  if (IsFirstTime .or. .not.IsEnd .or. iBlock > 1) then
+                    !write(*,*) "Opening File!!!!"
                     open(iInputUnitD_, file=FileName(1:iStart)//cBlock, &
                          status="old", form="unformatted")
                     IsFirstTime = .false.

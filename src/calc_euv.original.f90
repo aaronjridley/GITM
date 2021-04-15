@@ -1,29 +1,3 @@
-!Just compute EUVAC fluxes (12/16/2020)
-subroutine bponder_euvac
-  use ModConstants
-  use ModInputs
-  use ModIoUnit, only : UnitTmp_
-  use ModEUV
-  implicit none
-  
-  real :: P 
-  real :: f107_bp !W/Hz/m2
-  real :: f107_ave_bp
-
-  logical :: exist
-
-  f107_bp = f107
-  f107_ave_bp = f107
- 
-  P = (f107_bp + f107_ave_bp)/2.0 
-  
-  photonFlux_bp = f74113_bp*(1.0 + afac_bp*(P - 80))
-
-  photonFlux_bp = photonFlux_bp/(SunPlanetDistance**2)
-  
-end subroutine bponder_euvac
-
-
 !  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 
@@ -52,9 +26,8 @@ subroutine euv_ionization_heat(iBlock)
   real :: ChapmanLittle(nLons, nLats, nSpecies)
   real :: EHeat(nLons, nLats)
   real :: nEuvHeating(nLons,nLats,nAlts), neEuvHeating(nLons,nLats,nAlts)
-  
-  real :: wavelength_ave
-  logical :: exist
+
+  real :: wavelength_ave = 0.0
 
   if (IsFirstTime(iBlock)) then
 
@@ -63,46 +36,25 @@ subroutine euv_ionization_heat(iBlock)
      ! This transfers the specific photo absorption and ionization cross
      ! sections into general variables, so we can use loops...
 
-     call read_euv_csv
-
      call fill_photo
-     
-     call init_energy_required_for_dissociation
-     !if (iProc .eq. 1) then
-     !  do iSpecies = 1,nSpeciesTotal
-     !     write(*,*) cSpecies(iSpecies)
-     !  enddo 
-     !  write(*,*) energyRequired/1.602e-19
-     !
-     !endif
+
   else
      if (floor((tSimulation - dT)/dTAurora) == &
           floor(tSimulation/dTAurora)) return
   endif
 
   call report("euv_ionization_heat",2)
-  
   call start_timing("euv_ionization_heat")
+  call chapman_integrals(iBlock)
 
-  ChapmanLittle = 0.0
   EuvIonRate = 0.0
   EuvHeating(:,:,:,iBlock)= 0.0
   PhotoElectronHeating(:,:,:,iBlock)= 0.0
   eEuvHeating(:,:,:,iBlock) = 0.0
-  EuvIonRateS(:,:,:,:,iBlock) = 0.0
+  EuvIonRateS(:,:,:,:,iBlock) = 0.0 
   EuvDissRateS(:,:,:,:,iBlock) = 0.0
   nEuvHeating(:,:,:) = 0.0
   neEuvHeating(:,:,:) = 0.0
-  DissociationHeatingRate(:,:,:,iBlock) = 0.0
-
-  if (useEUVAC) then
-     call bponder_euvac
-     Flux_of_EUV = photonFlux_bp
-  else
-     call calc_scaled_euv
-  endif
-     
-  call chapman_integrals(iBlock)
 
   do iAlt = 1, nAlts
 
@@ -110,19 +62,16 @@ subroutine euv_ionization_heat(iBlock)
      ChapmanLittle  = Chapman(:,:,iAlt,1:nSpecies,iBlock)
      EHeat = 0.0
 
-     do iWave = 1, size(shortWavelengths)
+     do iWave = 1, Num_WaveLengths_High
+
         Tau = 0.0
-       
         do iSpecies = 1, nSpecies
            Tau = Tau + &
-                PhotoabsorptionCrossSection(iWave, iSpecies) * &
-                ChapmanLittle(:,:,iSpecies)
+                photoabs(iWave, iSpecies) * ChapmanLittle(:,:,iSpecies)
         enddo
-  
-        Intensity = Flux_of_EUV(iWave) * exp(-1.0*Tau)
-        !Intensity = photonFlux_bp(iWave) * exp(-1.0*Tau)
 
-        
+        Intensity = Flux_of_EUV(iWave) * exp(-1.0*Tau)
+
         do iIon = 1, nIons-1
            iNeutral = PhotoIonFrom(iIon)
            EuvIonRateS(:,:,iAlt,iIon,iBlock) = &
@@ -132,31 +81,23 @@ subroutine euv_ionization_heat(iBlock)
                 (1.0 + PhotoElecIon(iWave,iIon))
         enddo
 
-        wavelength_ave = (shortWavelengths(iWave) + longWavelengths(iWave))/2.0
-        PhotonEnergy(iWave)= Planck_Constant*Speed_Light/wavelength_ave
-        
-        do iSpecies = 1, nSpecies !was nSpeciesTotal, but removing for photoDis
+        do iSpecies = 1, nSpeciesTotal
            EuvDissRateS(:,:,iAlt,iSpecies,iBlock) = &
                 EuvDissRateS(:,:,iAlt,iSpecies,iBlock) + &
-                Intensity*photoDissociationCrossSection(iWave,iSpecies) * &
+                Intensity*PhotoDis(iWave,iSpecies) * &
                 NeutralDensity(:,:,iSpecies) * &
                 (1.0 + PhotoElecDiss(iWave,iSpecies))
-
-           if (PhotonEnergy(iWave) - energyRequired(iSpecies) > 0.0) then
-              DissociationHeatingRate(1:nLons,1:nLats,iAlt,iBlock) = &
-                  DissociationHeatingRate(1:nLons,1:nLats,iAlt,iBlock) + &
-                  2.0/3.0 * &
-                  (PhotonEnergy(iWave) - energyRequired(iSpecies)) * &
-                  EuvDissRateS(1:nLons,1:nLats,iAlt,iSpecies,iBlock)
-           endif
         enddo
-
+        !BP
+        wavelength_ave = (WAVEL(iWave) + WAVES(iWave))/2.0
+        PhotonEnergy(iWave)= 6.626e-34*2.998e8/(wavelength_ave*1.0e-10)
         do iSpecies = 1, nSpecies
            EHeat = EHeat + &
                 Intensity*PhotonEnergy(iWave)* &
-                PhotoabsorptionCrossSection(iWave, iSpecies) * NeutralDensity(:,:,iSpecies)
-  
+                photoabs(iWave, iSpecies) * NeutralDensity(:,:,iSpecies)
+
         enddo
+
      enddo
      
      EuvHeating(:,:,iAlt,iBlock)  = EHeat*HeatingEfficiency_CB(:,:,iAlt,iBlock)
@@ -169,6 +110,7 @@ subroutine euv_ionization_heat(iBlock)
            endif
         enddo
      enddo
+     
   enddo
   
   if (IncludeEclipse) call calc_eclipse_effects
@@ -186,7 +128,6 @@ subroutine euv_ionization_heat(iBlock)
 
      EuvHeating2d = 0.0
 
-     !EuvHeating = EuvHeating_bp
      do iAlt = 1, nAlts
 
         EuvHeating2d(1:nLons,1:nLats) = &
@@ -194,17 +135,11 @@ subroutine euv_ionization_heat(iBlock)
              EuvHeating(:,:,iAlt,iBlock)  * &
              dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
 
-        EuvHeating(1:nLons,1:nLats,iAlt,iBlock) = EuvHeating(1:nLons,1:nLats,iAlt,iBlock) / &
+        EuvHeating(:,:,iAlt,iBlock) = EuvHeating(:,:,iAlt,iBlock) / &
              Rho(1:nLons,1:nLats,iAlt,iBlock) / &
              cp(1:nLons,1:nLats,iAlt,iBlock) / &
              TempUnit(1:nLons,1:nLats,iAlt)
 
-        DissociationHeatingRate(1:nLons,1:nLats,iAlt,iBlock) = &
-             DissociationHeatingRate(1:nLons,1:nLats,iAlt,iBlock) / &
-             Rho(1:nLons,1:nLats,iAlt,iBlock) / &
-             cp(1:nLons,1:nLats,iAlt,iBlock) / &
-             TempUnit(1:nLons,1:nLats,iAlt)
-        
         EuvTotal(:,:,iAlt,iBlock) = EuvHeating(:,:,iAlt,iBlock) * &
              TempUnit(1:nLons,1:nLats,iAlt) / &
              HeatingEfficiency_CB(:,:,iAlt,iBlock)
@@ -214,28 +149,6 @@ subroutine euv_ionization_heat(iBlock)
      EuvHeating = 0.0
   endif
 
-  do iLon = 1,nLons
-    do iLat = 1, nLats
-      do iAlt = 1,nAlts
-        if (DissociationHeatingRate(iLon,iLat,iAlt,iBlock) < -1.0) then
-          write(*,*) "euvDiss", EuvDissRateS(iLon,iLat,iAlt,:,iBlock)
-          write(*,*) "Dissociation value:", DissociationHeatingRate(iLon,iLat,iAlt,iBlock)
-          write(*,*) "iProc, iLon, iLat, iAlt", iProc, iLon,iLat,iAlt
-          DissociationHeatingRate(iLon,iLat,iAlt,iBlock) = 0.0
-        endif
-       
-      end do
-    enddo
-  enddo
-    
-  !EuvHeating(1:nLons,1:nLats,1:nAlts,iBlock) = 2000.0/TempUnit(1:nLons,1:nLats,1:nAlts)/86400.0
-
-  !write(*,*) "EHeat", EHeat
-  !write(*,*) "PhotoabsorptionCrossSection(iWave, iSpecies)", PhotoabsorptionCrossSection
-  !write(*,*) EuvHeating(1:5,1:5,nAlts-8,iBlock)*TempUnit(1:5,1:5,nAlts-8)*86400.0
-
-  !call stop_gitm("debugging euvheating in calc_euv.f90")
-  
   call end_timing("euv_ionization_heat")
 
 contains 
@@ -1046,3 +959,4 @@ subroutine read_euv_waves(iError)
   close(iInputUnit_)
   
 end subroutine read_euv_waves
+

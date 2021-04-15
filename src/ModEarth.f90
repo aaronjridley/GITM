@@ -278,7 +278,6 @@ contains
     Mass(iO2_)   = 2*Mass(iO_3P_)
     Mass(iNO_)   = Mass(iN_4S_)+Mass(iO_3P_)
     Mass(iCO2_)  = 12.0*AMU + 2*Mass(iO_3P_)
-    Mass(iO_1D_) = Mass(iO_3P_)
 
     cSpecies(iH_)    = "H"
     cSpecies(iHe_)   = "He"

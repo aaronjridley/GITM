@@ -27,7 +27,6 @@ subroutine chapman_integrals(iBlock)
 
   Chapman(:,:,:,:,iBlock) = 1.0e26
   Integrals = 0.0
-  ColumnIntegralRho = 0.0
 
   call report("chapman",2)
   call start_timing("chapman_integrals")
@@ -91,9 +90,6 @@ subroutine chapman_integrals(iBlock)
            enddo
         enddo
      enddo
-
-     ColumnIntegralRho = ColumnIntegralRho + &
-          Integrals(:,:,:,iSpecies) * Mass(iSpecies)
 
      do iLon = 1, nLons
         do iLat = 1, nLats

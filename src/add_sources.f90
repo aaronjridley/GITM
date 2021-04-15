@@ -37,6 +37,9 @@ subroutine add_sources
      ! does not change.
 
      call calc_GITM_sources(iBlock)
+     
+     ChemicalHeatingRate = ChemicalHeatingRate(1:nLons,1:nLats,1:nAlts) + &
+          DissociationHeatingRate(1:nLons,1:nLats,1:nAlts,iBlock)
 
      !! To turn off EuvHeating, turn UseSolarHeating=.false. in UAM.in
      !! To turn off JouleHeating, turn UseJouleHeating=.false. in UAM.in
@@ -46,6 +49,15 @@ subroutine add_sources
      ! JMB:  07/13/2017.
      ! 2nd order conduction update:  Separately add Conduction to this
      ! because Conduction now spans(0:nAlts+1)
+
+     !write(*,*) "LowAtmosRadRate", LowAtmosRadRate(:,:,nAlts-3,iBlock)
+     !write(*,*) "RadCooling", RadCooling(:,:,nAlts-3,iBlock)*TempUnit(:,:,nAlts-3)
+     !write(*,*) "EuvHeating in add_sources.f90", EuvHeating(:,:,nAlts-8,iBlock)*TempUnit(:,:,nAlts-8)*86400.0 
+     !write(*,*) "PhotoElectronHeating", PhotoElectronHeating(:,:,nAlts-3,iBlock)*TempUnit(:,:,nAlts-3)
+     !write(*,*) "AuroralHeating", AuroralHeating
+     !write(*,*) "JouleHeating", JouleHeating
+     !write(*,*) "ElectronHeating", ElectronHeating(:,:,nAlts-3)
+
      Temperature(1:nLons, 1:nLats, 1:nAlts, iBlock) = &
           Temperature(1:nLons, 1:nLats, 1:nAlts, iBlock) + Dt * ( &
           LowAtmosRadRate(1:nLons, 1:nLats, 1:nAlts, iBlock) &
@@ -58,12 +70,58 @@ subroutine add_sources
           + ElectronHeating &
           + QnirTOT(1:nLons, 1:nLats, 1:nAlts, iBlock) &
           ) &
-          + ChemicalHeatingRate &
+          !+ ChemicalHeatingRate &
           + UserHeatingRate(1:nLons, 1:nLats, 1:nAlts, iBlock)
-
+      
      Temperature(1:nLons, 1:nLats, 0:nAlts+1, iBlock) = &
           Temperature(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
           + Conduction(1:nLons,1:nLats,0:nAlts+1)
+
+     if (minval(temperature(1:nLons,1:nLats,1:nAlts,iBlock)*TempUnit(1:nLons,1:nLats,1:nAlts)) &
+         < 100.0) then
+       !write(*,*) "2: Low Temperature : ",iBlock, &                                           
+       !            minval(temperature(1:nLons,1:nLats,1:nAlts,iBlock)*&                       
+       !            TempUnit(1:nLons,1:nLats,1:nAlts))     
+       do iLon = 1, nLons
+         do iLat = 1, nLats
+           do iAlt = 1, nAlts
+              if (temperature(iLon,iLat,iAlt,iBlock)*tempunit(iLon,iLat,iAlt) < 100.0) then
+                temperature(iLon,iLat,iAlt,iBlock) = 100.0/tempunit(iLon,iLat,iAlt)
+             endif
+           enddo
+         enddo
+       enddo
+     endif
+
+     !do while (minval(temperature(1:nLons, 1:nLats, 1:nAlts, iBlock)) < 0.0)
+     !   write(*,*) "Negative Temperature Found!!!  Correcting!!!"
+     !   do iLon = 1, nLons
+     !      do iLat = 1, nLats
+     !         iAlt = 1
+     !         if (temperature(iLon, iLat, iAlt, iBlock) < 0.0) &
+      !             temperature(iLon, iLat, iAlt, iBlock) = &
+      !             temperature(iLon, iLat, iAlt-1, iBlock)
+      !        do iAlt = 2, nAlts
+      !           if (temperature(iLon, iLat, iAlt, iBlock) < 0.0) then
+      !              temperature(iLon, iLat, iAlt, iBlock) = &
+      !                   (temperature(iLon, iLat, iAlt-1, iBlock) +  &
+      !                   temperature(iLon, iLat, iAlt+1, iBlock))/2.0
+      !
+      !              write(*,*) "Sources : ", &
+      !                   temperature(iLon, iLat, iAlt, iBlock), &
+      !                   EuvHeating(iLon, iLat, iAlt, iBlock) * dt, &
+      !                   RadCooling(iLon, iLat, iAlt, iBlock) * dt, &
+      !                   AuroralHeating(iLon, iLat, iAlt) * dt, &
+      !                   JouleHeating(iLon, iLat, iAlt) * dt, &
+      !                   Conduction(iLon, iLat, iAlt), &
+      !                   ChemicalHeatingRate(iLon, iLat, iAlt)
+      !              call stop_gitm('Negative Temperature Found')
+      !
+      !           endif
+      !        enddo
+      !     enddo
+      !  enddo
+     !enddo
 
      !-------------------------------------------
      ! This is an example of a user output:
@@ -71,6 +129,9 @@ subroutine add_sources
  
      UserData3D(:,:,:,1,iBlock) = 0.0
      UserData3D(1:nLons, 1:nLats, 1:nAlts, 1, iBlock) = JouleHeating
+
+     !-------------------------------------------
+     !-------------------------------------------
 
      !! To turn off IonDrag, turn UseIonDrag=.false. in UAM.in
      do iDir = 1, 3
@@ -83,6 +144,7 @@ subroutine add_sources
             Viscosity(1:nLons,1:nLats, 0:nAlts+1,iDir)
      enddo 
 
+     !! To turn off IonDrag, turn UseIonDrag=.false. in UAM.in
      !! To turn off NeutralFriction, turn UseNeutralFriction=.false. in UAM.in
 
      do iSpecies = 1, nSpecies
@@ -128,6 +190,7 @@ subroutine add_sources
 
      endif
 
+     !! To turn off Diffusion, turn UseDiffusion=.false. in UAM.in
      do iLon = 1, nLons
         do iLat = 1, nLats
            do iAlt = 1, nAlts
@@ -151,11 +214,5 @@ subroutine add_sources
      enddo
 
   enddo
-
-  if (DoCheckForNans) then
-     call check_for_nans_ions("After Sources")
-     call check_for_nans_neutrals("After Sources")
-     call check_for_nans_temps("After Sources")
-  endif
 
 end subroutine add_sources

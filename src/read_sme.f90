@@ -176,20 +176,6 @@ subroutine read_sme(iOutputError, StartTime, EndTime)
 
   open(LunIndices_, file=NameOfSMEFile, status="old", iostat = ierror)
 
-  ! Test the type of file
-  read(LunIndices_,*,iostat=iError) line
-  if (line(1:4) == "File") then
-     IsDone = .false.
-     do while (.not.IsDone)
-        read(LunIndices_,*,iostat=iError) line
-        if (iError /= 0) IsDone = .true.
-        if (line(1:6) == "<year>") IsDone = .true.
-     enddo
-     IsDone = .false.
-  else
-     rewind(LunIndices_)
-  endif
-  
   if (ierror.ne.0) then
      iOutputError = 1
      return

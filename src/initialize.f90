@@ -64,9 +64,9 @@ subroutine initialize_gitm(TimeIn)
   call init_grid
 
   if (DoRestart) then
-     call read_inputs(trim(restartInDir)//"/header.rst")
+     call read_inputs("UA/restartIN/header.rst")
      call set_inputs
-     call read_restart(restartInDir)
+     call read_restart("UA/restartIN")
      call init_msis
 !     if (UsePerturbation) call user_create_perturbation
   endif
@@ -84,7 +84,7 @@ subroutine initialize_gitm(TimeIn)
   !/
 
   call init_euv
-
+  
   Gravity_GB = 0.0
 
   if (.not. DoRestart) then
@@ -403,7 +403,7 @@ subroutine initialize_gitm(TimeIn)
      if (UseIRI .and. IsEarth) then
         call init_iri
      else
-        if (IsEarth) then
+        if (IsEarth .or. IsVenus) then
            do iBlock = 1, nBlocks
               IDensityS(:,:,:,:,iBlock)    = 1.00e8
               IDensityS(:,:,:,ie_,iBlock)  = 1.00e8*(nIons-1)
@@ -424,6 +424,7 @@ subroutine initialize_gitm(TimeIn)
   endif
 
   call init_b0
+
   if (IsEarth) call init_energy_deposition
 
   if (UseApex .and. IsEarth) then

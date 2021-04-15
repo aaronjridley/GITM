@@ -290,7 +290,7 @@ subroutine advance_horizontal(iBlock)
 
      HorizontalTempSource(1:nLons,1:nLats,iAlt)           = &
           NewTemp_C-Temperature(1:nLons,1:nLats,iAlt,iBlock)
-
+     
      Temperature(1:nLons,1:nLats,iAlt,iBlock)             = NewTemp_C
      VerticalVelocity(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock)         = &
          NewVertVel_CV

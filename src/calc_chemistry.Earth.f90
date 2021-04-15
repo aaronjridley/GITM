@@ -2310,13 +2310,11 @@ subroutine calc_chemistry(iBlock)
 
               ChemicalHeatingRate(iLon,iLat,iAlt) = &
                    ChemicalHeatingRate(iLon,iLat,iAlt) + &
-                   ChemicalHeatingSub * DtSub + &
-                   ChemicalHeatingSubI * DtSub
+                   ChemicalHeatingSub * DtSub
 				   
               ChemicalHeatingRateIon(iLon,iLat,iAlt) = &
-                   0.0
-!                   ChemicalHeatingRateIon(iLon,iLat,iAlt) + &
-!                   ChemicalHeatingSubI * DtSub
+                   ChemicalHeatingRateIon(iLon,iLat,iAlt) + &
+                   ChemicalHeatingSubI * DtSub
 
               ChemicalHeatingRateEle(iLon,iLat,iAlt) = &
                    ChemicalHeatingRateEle(iLon,iLat,iAlt) + &

@@ -1,13 +1,58 @@
 !  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 module ModEUV
-
   use ModGITM, only: nLats, nLons, nAlts,nBlocksMax,nBlocks
   use ModInputs, only:iCharLen_
   use ModPlanet
 
   implicit none
 
+  real, allocatable :: shortWavelengths(:)
+  real, allocatable :: longWavelengths(:)
+  real, allocatable :: photonFlux_bp(:)
+  real, allocatable :: f74113_bp(:)
+  real, allocatable :: afac_bp(:)
+
+  real, allocatable :: photoAbsCrossSection_N2(:), photoAbsCrossSection_O2(:), &
+                       photoAbsCrossSection_N(:), photoAbsCrossSection_O(:), &
+                       photoAbsCrossSection_He(:), photoAbsCrossSection_CO2(:), &
+                       photoAbsCrossSection_CO(:), photoAbsCrossSection_Ar(:)
+
+  !First species is reactant, second is product.
+  !i.e. photoIonCrossSection_N2_N2P is: N2 + hv -> N2^+ + e
+  real, allocatable :: photoIonCrossSection_N2_N2P(:), &
+                       photoIonCrossSection_O2_O2P(:), &
+                       photoIonCrossSection_O_OP(:), &
+                       photoIonCrossSection_N_NP(:), &
+                       photoIonCrossSection_He_HeP(:), &
+                       photoIonCrossSection_CO2_CO2P(:), &
+                       photoIonCrossSection_CO_COP(:)
+
+  TYPE :: wavelengthRow
+    character(len = 6) :: waveType
+    character(len = 1) :: blank
+    character(len = 4) :: waveStr
+    real :: multiplicationFactor
+    character(len = 9) :: unitStr
+    real, dimension(59) :: data
+ END TYPE wavelengthRow
+
+ TYPE :: crossSectionRow
+    character(len = 5) :: reactant
+    character(len = 5) :: product
+    character(len = 3) :: reactionType
+    real :: multiplicationFactor
+    character(len = 2) :: unitStr
+    real, dimension(59) :: crossSection
+  END TYPE crossSectionRow
+
+  TYPE(wavelengthRow) :: firstLine
+  TYPE(wavelengthRow)  :: secondLine
+  TYPE(wavelengthRow) :: thirdLine
+  TYPE(wavelengthRow) :: fourthLine
+
+  TYPE(crossSectionRow), dimension(14) :: theRestOfTheLines
+  
   real, dimension(nLons, nLats, nAlts) :: xSolar, ySolar
 
   real, allocatable :: HeatingEfficiency_CB(:,:,:,:)
@@ -24,6 +69,10 @@ module ModEUV
        Sza, cosSza, sinSza, AveCosSza
 
   real :: SunPlanetDistance
+
+  real, dimension(nSpeciesTotal) :: energyRequired
+
+  integer :: nWavelengths = 0
 
   !-------------------------------------------------------------------
   ! The following section is devoted to setting up all of
@@ -44,6 +93,11 @@ module ModEUV
   real :: PhotoElecIon(Num_WaveLengths_High, nIons-1)
   integer :: PhotoIonFrom(nIons-1)
   real :: photoabs(Num_WaveLengths_High, nSpeciesTotal)
+  !BP
+  real :: photoAbsorptionCrossSection(37,nSpeciesTotal)
+  real :: photoIonizationCrossSection(37,nSpeciesTotal)
+  real :: photoDissociationCrossSection(37,nSpeciesTotal)
+  
   real :: photodis(Num_WaveLengths_High, nSpeciesTotal)
   real :: PhotoElecDiss(Num_WaveLengths_High, nSpecies)
 
@@ -95,7 +149,10 @@ module ModEUV
        F74113, AFAC,                                                &
        EUV_Flux
 
-  real, dimension(1:Num_WaveLengths_High) :: RLMEUV, Flux_of_EUV,   &
+  real, dimension(1:Num_Wavelengths_Low) :: Flux_of_EUV
+  real, dimension(1:Num_wavelengths_low) :: PhotonEnergy
+  
+  real, dimension(1:Num_WaveLengths_High) :: RLMEUV,   &
        BranchingRatio_N2, BranchingRatio_O2,                        &
        PhotoAbs_O2, PhotoAbs_O, PhotoAbs_N2,                        &
        PhotoIon_O2, PhotoIon_OPLus4S, PhotoIon_N2, PhotoIon_N,      &
@@ -106,7 +163,7 @@ module ModEUV
        PhotoIon_OPlus2D, PhotoIon_OPLus2P,                          &
        WAVEL, WAVES, RFLUX, XFLUX, SCALE1, SCALE2,                  &
        TCHR0, TCHR1, TCHR2, TCOR0, TCOR1, TCOR2, WAR1, WAR2,        &
-       Solar_Flux, PhotonEnergy, &
+       Solar_Flux, &
        PhotoAbs_CO2, PhotoAbs_CO2_295, PhotoAbs_CO2_195, &
        PhotoAbs_CO, PhotoIon_CO2, PhotoIon_CO,        &
        PhotoAbs_CH4, PhotoAbs_H2, PhotoAbs_HCN,                     &
@@ -766,7 +823,7 @@ module ModEUV
        18.24e-18, 14.2e-18, 15.1e-18, 50.31e-18, 42.87e-18, 52.08e-18, 44.67e-18, &
        13.98e-18, 39.83e-18, 26.49e-18, 61.94e-18, 93.84e-18, 32.83e-18, 23.52e-18, &
        33.70e-18, 34.45e-18, 34.3e-18, 35.30e-18, 34.91e-18, 34.2e-18, 33.20e-18, 31.49e-18, &
-       30.25e-18, 292.52e-18, 28.27e-18, 24.87e-18, 25.27e-18, 23.57e-18, 21.59e-18, 21.49e-18, &
+       30.25e-18, 29.52e-18, 28.27e-18, 24.87e-18, 25.27e-18, 23.57e-18, 21.59e-18, 21.49e-18, &
        17.52e-18, 19.02e-18, 16.50e-18, 14.36e-18, 9.09e-18, 4.61e-18, 1.55e-18/
 !
 
@@ -1536,11 +1593,31 @@ data PhotoAbs_CO2 /                                  &
        1.70000E-01, 1.63000E-01, 1.60000E-01, 1.85000E-01, 2.43000E-01, &
        2.75000E-01, 3.45000E-01, 3.70000E-01, 4.00000E-01, 4.00000E-01 /
 
+  
 contains
   !=========================================================================
   subroutine init_mod_euv
+    use ModIoUnit, only : UnitTmp_
 
+    integer :: io = 0
+    character(len = 12) :: firstLineString
+    logical :: exist
 
+    !This small bit grabs the number of wavelengths to be used
+    if (nWavelengths .eq. 0) then
+      inquire(file="euv.csv", exist=exist)
+      if (exist) then
+        open(UnitTmp_, file="euv.csv", status="old", action="read")
+    else
+        call stop_gitm("Cannot find file. Please look at code in read_euv_csv in calc_euv.f90")
+      end if  
+  
+      read(UnitTmp_,*) firstLineString, nWavelengths
+      close(UnitTmp_)
+    endif
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    
     if(allocated(HeatingEfficiency_CB)) RETURN
     allocate(HeatingEfficiency_CB(nLons, nLats, nAlts, nBlocks))
     allocate(eHeatingEfficiency_CB(nLons, nLats, nAlts, nBlocks))
@@ -1556,6 +1633,28 @@ contains
     allocate(N2PERateS(nLons,nLats,nAlts,3, nBlocks))
     allocate(O2PERateS(nLons,nLats,nAlts,3, nBlocks))
     allocate(OPERateS(nLons,nLats,nAlts,3, nBlocks))
+    allocate(shortWavelengths(nWavelengths))
+    allocate(longWavelengths(nWavelengths))
+    allocate(photonFlux_bp(nWavelengths))
+    allocate(f74113_bp(nWavelengths))
+    allocate(afac_bp(nWavelengths))
+
+    allocate(photoAbsCrossSection_N2(nWavelengths))
+    allocate(photoAbsCrossSection_O2(nWavelengths))
+    allocate(photoAbsCrossSection_N(nWavelengths))
+    allocate(photoAbsCrossSection_O(nWavelengths))
+    allocate(photoAbsCrossSection_He(nWavelengths))
+    allocate(photoAbsCrossSection_CO2(nWavelengths))
+    allocate(photoAbsCrossSection_CO(nWavelengths))
+    allocate(photoAbsCrossSection_Ar(nWavelengths))
+    allocate(photoIonCrossSection_N2_N2P(nWavelengths))
+    allocate(photoIonCrossSection_O2_O2P(nWavelengths))
+    allocate(photoIonCrossSection_O_OP(nWavelengths))
+    allocate(photoIonCrossSection_N_NP(nWavelengths))
+    allocate(photoIonCrossSection_He_HeP(nWavelengths))
+    allocate(photoIonCrossSection_CO2_CO2P(nWavelengths))
+    allocate(photoIonCrossSection_CO_COP(nWavelengths))
+
   end subroutine init_mod_euv
   !=========================================================================
   subroutine clean_mod_euv
@@ -1576,6 +1675,263 @@ contains
     deallocate(N2PERateS)
     deallocate(O2PERateS)
     deallocate(OPERateS)
+    deallocate(shortWavelengths)
+    deallocate(longWavelengths)
+    deallocate(photonFlux_bp)
+    deallocate(f74113_bp)
+    deallocate(afac_bp)
+
+    deallocate(photoAbsCrossSection_N2)
+    deallocate(photoAbsCrossSection_O)
+    deallocate(photoAbsCrossSection_N)
+    deallocate(photoAbsCrossSection_O)
+    deallocate(photoAbsCrossSection_He)
+    deallocate(photoAbsCrossSection_CO2)
+    deallocate(photoAbsCrossSection_CO)
+    deallocate(photoAbsCrossSection_Ar)
+    deallocate(photoIonCrossSection_N2_N2P)
+    deallocate(photoIonCrossSection_O2_O2P)
+    deallocate(photoIonCrossSection_O_OP)
+    deallocate(photoIonCrossSection_N_NP)
+    deallocate(photoIonCrossSection_He_HeP)
+    deallocate(photoIonCrossSection_CO2_CO2P)
+    deallocate(photoIonCrossSection_CO_COP)
+
   end subroutine clean_mod_euv
   !=========================================================================
+
+  !Ran once to fill the energyRequired(iSpecies) variable
+  !needed to compute the excess energy from a photodissociation
+  subroutine init_energy_required_for_dissociation
+    use ModConstants
+    
+    real :: effectivelyZero = 10**-21
+    integer :: iWave, iSpecies
+    logical :: useFirstWavelengthBin = .False.
+    
+    !if energy required to dissociate non-dissociatable things
+    !like O or N were 0 then excess energy would be put into those
+    !and that doesn't make sense
+    energyRequired(:) = 10**40
+    
+    do iSpecies = 1, nSpecies
+       !loop through all the species that photodissociate
+       if (iSpecies .eq. iCO2_ .or. &
+           iSpecies .eq. iCO_ .or. &
+           iSpecies .eq. iN2_ .or. &
+           iSpecies .eq. iO2_) then
+          useFirstWavelengthBin = &
+               (photoDissociationCrossSection(size(shortWavelengths),iSpecies) &
+               > effectivelyZero)
+          
+         !find the last zero indexing in reverse order
+          do iWave = size(shortWavelengths),1,-1
+             if (iWave - 1 .eq. 1) then
+                exit
+                
+            !Find the last zero in table. This wavelength helps
+             !us find the minimum energy required for dissociation
+             else if (useFirstWavelengthBin) then
+               energyRequired(iSpecies) = 2.0*Planck_Constant*Speed_Light/&
+                    (shortWavelengths(iWave) + longWavelengths(iWave))
+               exit
+             else if (PhotoDissociationCrossSection(iWave,iSpecies) &
+                      <= effectivelyZero .and. &
+                      PhotoDissociationCrossSection(iWave-1, iSpecies) &
+                      > effectivelyZero) then
+               
+               energyRequired(iSpecies) = 2.0*Planck_Constant*Speed_Light/&
+                    (shortWavelengths(iWave - 1) + longWavelengths(iWave - 1))
+               exit
+            endif   
+         enddo
+       endif 
+    enddo
+
+  end subroutine init_energy_required_for_dissociation
+
+  !Read in the euv.csv file from Aaron and assign the wavelengths & cross sections
+subroutine read_euv_csv
+  use ModIoUnit, only : UnitTmp_
+  use ModGITM
+  use ModPlanet
+  use ModSources
+
+  implicit none
+
+  TYPE :: ignoreRow
+     character(len = 12) :: cWavelength
+     real :: nWavelengthsToRead
+  END TYPE ignoreRow
+
+  TYPE(ignoreRow) :: zeroLine
+  
+  character(len = 19) :: fileName 
+  logical :: exist
+  integer :: iLine
+  
+  fileName = "euv.csv"
+    
+  photoAbsCrossSection_N2 = 0.0
+  photoAbsCrossSection_O2 = 0.0
+  photoAbsCrossSection_N  = 0.0
+  photoAbsCrossSection_O  = 0.0
+  photoAbsCrossSection_He = 0.0
+  photoAbsCrossSection_CO2 = 0.0
+  photoAbsCrossSection_CO = 0.0
+  photoAbsCrossSection_Ar = 0.0
+
+  photoIonCrossSection_N2_N2P = 0.0
+  photoIonCrossSection_O2_O2P = 0.0
+  photoIonCrossSection_O_OP   = 0.0
+  photoIonCrossSection_N_NP   = 0.0
+  photoIonCrossSection_He_HeP = 0.0
+  photoIonCrossSection_CO2_CO2P = 0.0
+  photoIonCrossSection_CO_COP = 0.0
+  
+  inquire(file=fileName, exist=exist)
+  if (exist) then
+    open(UnitTmp_, file=fileName, status="old", action="read")
+  else
+    call stop_gitm("Cannot find file. Please look at code in read_euv_csv in calc_euv.f90")
+  end if  
+
+  read(UnitTmp_,*) zeroLine
+  read(UnitTmp_,*) firstLine
+  read(UnitTmp_,*) secondLine
+  read(UnitTmp_,*) thirdLine
+  read(UnitTmp_,*) fourthLine
+  do iLine = 1,size(theRestOfTheLines)
+    read(UnitTmp_,*) theRestOfTheLines(iLine)
+
+    if (theRestOfTheLines(iLine)%reactionType == "abs") then
+      select case (theRestOfTheLines(iLine)%product)
+   
+        case ('N2') 
+           photoAbsCrossSection_N2 = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+
+        case ('O2')
+           photoAbsCrossSection_O2 = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+      
+        case ('O') 
+           photoAbsCrossSection_O = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+
+        case ('N')
+           photoAbsCrossSection_N = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+
+        case ('He')
+           photoAbsCrossSection_He = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+
+        case('CO2')
+           photoAbsCrossSection_CO2 = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+
+        case('CO')
+           photoAbsCrossSection_CO = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+
+        case default
+           write(*,*) "Invalid absorption of species ", theRestOfTheLines%reactant 
+        end select
+     elseif (theRestOfTheLines(iLine)%reactionType == "ion") then
+        
+        select case (theRestOfTheLines(iLine)%reactant)
+   
+        case ('N2')
+           photoIonCrossSection_N2_N2P = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+          
+        case ('O2')
+           photoIonCrossSection_O2_O2P = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+           
+        case ('O')
+           photoIonCrossSection_O_OP = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+
+
+        case ('N')
+           photoIonCrossSection_N_NP = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+           
+        case ('He')
+           photoIonCrossSection_He_HeP = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+
+        case('CO2')
+           photoIonCrossSection_CO2_CO2P = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+
+        case('CO')
+           photoIonCrossSection_CO_COP = theRestOfTheLines(iLine)%crossSection * &
+                theRestOfTheLines(iLine)%multiplicationFactor
+           
+        case default
+           write(*,*) "Invalid ionization of species ", theRestOfTheLines%reactant 
+        end select
+    endif 
+  enddo
+
+  !All the data is read now. Start filling in the correct variables
+  shortWavelengths = firstLine%data * 1E-10 !meters
+  longWavelengths  = secondLine%data * 1E-10 !meters
+
+  !Gets read, but only used if using EUVAC
+  f74113_bp        = thirdLine%data * thirdLine%multiplicationFactor !modified reference flux
+     
+  !this f74113 is in 1/cm2/sec...converting to SI
+  f74113_bp = f74113_bp*1E4
+
+  !Gets read, but only used if using EUVAC
+  afac_bp          = fourthLine%data !scaling factor for each interval
+  
+  photoAbsorptionCrossSection = 0.0
+  photoDissociationCrossSection = 0.0
+  
+  photoAbsorptionCrossSection(:,1) = photoAbsCrossSection_CO2
+  photoAbsorptionCrossSection(:,2) = photoAbsCrossSection_CO
+  photoAbsorptionCrossSection(:,3) = photoAbsCrossSection_O
+  photoAbsorptionCrossSection(:,4) = photoAbsCrossSection_N2
+  photoAbsorptionCrossSection(:,5) = photoAbsCrossSection_O2
+  photoAbsorptionCrossSection(:,6) = photoAbsCrossSection_Ar
+  photoAbsorptionCrossSection(:,7) = photoAbsCrossSection_He
+  photoAbsorptionCrossSection(:,8) = photoAbsCrossSection_N
+
+  !photoAbsorptionCrossSection = photoAbsorptionCrossSection*1.0E-22
+
+  !These should get updated as iSpecies instead of magic numbers
+  photoIonizationCrossSection = 0.0
+  photoIonizationCrossSection(:,1) = photoIonCrossSection_CO2_CO2P
+  photoIonizationCrossSection(:,2) = photoIonCrossSection_CO_COP
+  photoIonizationCrossSection(:,3) = photoIonCrossSection_O_OP
+  photoIonizationCrossSection(:,4) = photoIonCrossSection_N2_N2P
+  photoIonizationCrossSection(:,5) = photoIonCrossSection_O2_O2P
+  photoIonizationCrossSection(:,6) = 0.0 !Argon
+  photoIonizationCrossSection(:,7) = photoIonCrossSection_He_HeP
+  photoIonizationCrossSection(:,8) = photoIonCrossSection_N_NP
+
+  photoDissociationCrossSection = photoAbsorptionCrossSection - &
+                                  photoIonizationCrossSection
+  close(UnitTmp_)
+
+  !Write fluxes to a file and stop code
+  !fileName = 'photonEnergy_bp.txt'
+  !inquire(file=fileName, exist=exist)
+  !if (exist) then
+  !  call stop_gitm("photonEnergy_bp.txt already exists. Delete it and try again.")
+  !else
+  !  open(UnitTmp_, file=fileName, status="new", action="write")
+  !  do iWave = 1, 37 
+  !    write(UnitTmp_, *) longWavelengths(iWave), photonEnergy_bp(iWave)
+  !  enddo
+  !  close(UnitTmp_)
+  !end if
+  
+end subroutine read_euv_csv
+
 end module ModEUV

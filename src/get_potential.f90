@@ -295,17 +295,16 @@ subroutine get_potential(iBlock)
 
   integer, intent(in) :: iBlock
 
-  integer :: iError, iLat, iLon, iAlt, iPot, nPot, iDir, nDir=1
+  integer :: iError, iLat, iLon, iAlt, iPot, nPot, iDir, nDir
   logical :: IsFirstTime = .true.
   logical :: IsFirstPotential(nBlocksMax) = .true.
   logical :: IsFirstAurora(nBlocksMax) = .true.
   real    :: mP, dis, TempWeight
   real    ::  LocalSumDiffPot, MeanDiffPot
 
-  real, dimension(-1:nLons+2, -1:nLats+2) :: TempPotential2d
-  real, dimension(-1:nLons+2, -1:nLats+2, 2) :: TempPotential, AMIEPotential
-  real, dimension(-1:nLons+2, -1:nLats+2) :: Grid, dynamo, SubMLats, SubMLons
-  real, dimension(-1:nLons+2, -1:nLats+2) :: lats, mlts, EFlux
+  real, dimension(-1:nLons+2,-1:nLats+2,1:2) :: TempPotential, AMIEPotential
+  real, dimension(-1:nLons+2,-1:nLats+2) :: Grid, dynamo, SubMLats, SubMLons
+  real, dimension(-1:nLons+2,-1:nLats+2) :: lats, mlts, EFlux
   real :: by, bz, CuspLat, CuspMlt
 
   call start_timing("get_potential")
@@ -356,10 +355,8 @@ subroutine get_potential(iBlock)
              write(*,*) "==> Getting IE potential"
 
         TempPotential = 0.0
-        TempPotential2d = 0.0
 
-        call UA_GetPotential(TempPotential2d, iError)
-        TempPotential(:,:,1) = TempPotential2d
+        call UA_GetPotential(TempPotential(:,:,1), iError)
 
         if (iError /= 0) then
            write(*,*) "Error in get_potential (UA_GetPotential):"
@@ -368,7 +365,6 @@ subroutine get_potential(iBlock)
 !           call stop_gitm("Stopping in get_potential")
         endif
 
-        nDir = 1
         if (UseRegionalAMIE .and. &
              CurrentTime >= AMIETimeStart .and. CurrentTime <= AMIETimeEnd) then
 
@@ -509,7 +505,9 @@ subroutine get_potential(iBlock)
 
            do iDir = 1, nDir
               do iLon = -1,nLons+2
-                 do iLat = -1,nLats+2
+                 do iLat = -1,nLats+2 
+!!                 if (abs(MLatitude(iLon, iLat, iAlt, iBlock)) < DynamoHighLatBoundary) then
+!!                    TempPotential(iLon,iLat) = TempPotential(iLon,iLat) + dynamo(iLon,iLat)
                     if (abs(MLatitude(iLon, iLat, iAlt, iBlock)) < DynamoHighLatBoundary) then
                        dis= (DynamoHighLatBoundary - &
                             abs(MLatitude(iLon, iLat, iAlt, iBlock)))/20.0
@@ -549,12 +547,6 @@ subroutine get_potential(iBlock)
 
   endif
 
-  ! -----------------------------------------------------
-  ! Now get the aurora.
-  ! This assumes that the field lines are basically
-  ! vertical starting at the top of the model.
-  ! -----------------------------------------------------
-  
   if (floor((tSimulation-dt)/DtAurora) /= &
        floor((tsimulation)/DtAurora) .or. IsFirstAurora(iBlock)) then
 
@@ -584,12 +576,10 @@ subroutine get_potential(iBlock)
         if (iError /= 0) then
            write(*,*) "Error in get_potential (UA_GetAveE):"
            write(*,*) iError
+!           call stop_gitm("Stopping in get_potential")
            ElectronAverageEnergy = 1.0
         endif
 
-        ! Sometimes, in AMIE, things get messed up in the
-        ! Average energy, so go through and fix some of these.
-        
         do iLat=-1,nLats+2
            do iLon=-1,nLons+2
               if (ElectronAverageEnergy(iLon,iLat) < 0.0) then
@@ -610,30 +600,9 @@ subroutine get_potential(iBlock)
            write(*,*) "Error in get_potential (UA_GetEFlux):"
            write(*,*) iError
            ElectronEnergyFlux = 0.1
+!           call stop_gitm("Stopping in get_potential")
         endif
 
-        ! -----------------------------------------------------
-        ! Get Ion Precipitation if desired
-        ! -----------------------------------------------------
-
-        if (UseIonPrecipitation) then
-
-           call UA_GetIonAveE(IonAverageEnergy, iError)
-           if (iError /= 0) then
-              write(*,*) "Error in get_potential (UA_GetAveE):"
-              write(*,*) iError
-              IonAverageEnergy = 1.0
-           endif
-
-           call UA_GetIonEFlux(IonEnergyFlux, iError)
-           if (iError /= 0) then
-              write(*,*) "Error in get_potential (UA_GetEFlux):"
-              write(*,*) iError
-              IonEnergyFlux = 0.1
-           endif
-
-        endif
-        
      endif
 
     if (UseCusp) then

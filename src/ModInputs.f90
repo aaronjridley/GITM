@@ -21,11 +21,6 @@ module ModInputs
 
   integer, parameter        :: iCharLen_     = 400
 
-  character (len=iCharLen_) :: outputDir = "UA/data"
-  character (len=iCharLen_) :: logDir = "UA/data"
-  character (len=iCharLen_) :: restartOutDir = "UA/restartOUT"
-  character (len=iCharLen_) :: restartInDir = "UA/restartIN"
-  
   integer                   :: iOutputUnit_  = UnitTmp_
   integer                   :: iInputUnit_   = UnitTmp_
   integer                   :: iRestartUnit_ = UnitTmp_
@@ -55,7 +50,8 @@ module ModInputs
   logical :: UseHpi = .true.
 
   logical :: UseIRHeating      = .false.
-  
+  logical :: UseRadCooling     = .false.
+ 
   !!! Xing Meng Nov 2018 to use ISR E field in a local region + Weimer elsewhere
   logical :: UseRegionalAMIE = .false.
   logical :: UseTwoAMIEPotentials = .false.
@@ -80,17 +76,6 @@ module ModInputs
   
   logical :: UseAeModel        = .false.
 
-  logical :: UseFangEnergyDeposition = .false.
-  
-  logical :: IsKappaAurora = .false.
-  real :: AuroraKappa = 3
-  real :: AveEFactor = 1.0
-  ! This is true because FR&E is default.
-  logical :: NormalizeAuroraToHP = .true.
-
-  logical :: xxx
-
-  
   logical :: UseCusp = .false.
   real :: CuspAveE = 0.1
   real :: CuspEFlux = 2.0
@@ -101,6 +86,9 @@ module ModInputs
   logical :: DoOverwriteWithIRI    = .true.
   logical :: DoOverwriteWithSami   = .false.
   character (len=iCharLen_) :: SamiInFile
+
+  real :: AuroralHeightFactor = 1.0
+  logical :: NormalizeAuroraToHP = .false.
 
   character (len=iCharLen_) :: TypeLimiter = "minmod"
 
@@ -215,10 +203,12 @@ module ModInputs
   logical :: IsFixedTilt = .false.
 
   !\
-  ! These are things for the ion precipitation
+  ! These are things for the ion precipitation for the April 2002 storm:
   !/
 
   logical :: UseIonPrecipitation = .false.
+  character (len=iCharLen_) :: IonIonizationFilename
+  character (len=iCharLen_) :: IonHeatingRateFilename
 
   logical :: UseDamping = .false.
 
@@ -294,9 +284,13 @@ module ModInputs
   real :: NeutralHeatingEfficiency = 0.05
 
   real :: KappaTemp0 = 5.6e-4
-  real :: ThermalConduction_AO2 = 3.6e-4
-  real :: ThermalConduction_AO  = 5.6e-4
-  real :: ThermalConduction_s   = 0.726
+  real :: ThermalConduction_ACO2 = 0.82e-5
+  real :: ThermalConduction_AO   = 5.4e-4
+  real :: ThermalConduction_AN2  = 3.6e-4
+  real :: ThermalConduction_sCO2 = 1.28 
+  real :: ThermalConduction_s    = 0.75
+  real :: ThermalConduction_AO2  = 3.6e-4
+  
   !! Pawlowski says AO2 = 3.6e-4 - 5.6e-4
   !!                AO  = 5.6e-4 - 7.6e-4
   !!                s   = 0.69 - 0.75
@@ -396,25 +390,6 @@ module ModInputs
   DATA Ls_a / 0.007, 0.006, 0.004, 0.004, 0.002, 0.002, 0.002 /
   DATA Ls_tau / 2.2353, 2.7543, 1.1177, 15.7866, 2.1354, 2.4694, 32.8493 /
   DATA Ls_phi / 49.409, 168.173, 191.837, 21.736, 15.704, 95.528, 49.095 /
-
-  !\
-  ! Variables for Wave Perturbation (WP) model (in user.f90)
-  ! to characterize surface motions during tsunamis or earthquakes
-  !/ 
-  logical :: UseBcPerturbation = .false.
-  integer :: iTypeBcPerturb
-  real    :: RefLon, RefLat, EpicenterLon, EpicenterLat
-  real    :: PerturbTimeDelay, PerturbDuration, SeisWaveTimeDelay   ! in sec 
-  real    :: PerturbWaveDirection       ! in deg counter-clockwise to east
-  real    :: PerturbWaveSpeed           ! in m/sec
-  real    :: PerturbWaveHeight          ! in m
-  real    :: PerturbWavePeriod          ! in sec
-  real    :: EpiDistance                ! in m
-  character (len=iCharLen_) :: cSurfacePerturbFileName 
-  integer, parameter :: nMaxPerturbFreq = 100
-  real    :: FFTReal(nMaxPerturbFreq), FFTImag(nMaxPerturbFreq), &
-       PerturbWaveFreq(nMaxPerturbFreq)
-  integer :: nPerturbFreq 
 
 contains
 

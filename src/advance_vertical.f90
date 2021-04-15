@@ -161,6 +161,8 @@ subroutine advance_vertical(iLon,iLat,iBlock)
            enddo
         else
            IDensityS(iLon,iLat,:,iIon,iBlock) = exp(LogINS(:,iIon))
+           ! Put in a floor on ion densities....
+           IDensityS(iLon,iLat,nAlts+2,iO2P_,iBlock) = 1.0
         endif
      enddo
 

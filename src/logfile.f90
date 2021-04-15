@@ -122,7 +122,7 @@ subroutine logfile(dir)
      write(cIter,"(i8.8)") iStep
 
      open(unit=iLogFileUnit_, &
-          file=trim(dir)//"/log"//cIter//".dat",status="replace")
+          file=dir//"/log"//cIter//".dat",status="replace")
 
      write(iLogFileUnit_,'(a)') "GITM2 log file"
      write(iLogFileUnit_,'(a,L2)') "## Inputs from UAM.in" 
@@ -257,7 +257,7 @@ subroutine write_code_information(dir)
      call CON_io_unit_new(iCodeInfoFileUnit_)
 
      open(unit=iCodeInfoFileUnit_, &
-          file=trim(dir)//"/run_information.txt",status="replace")
+          file=dir//"/run_information.txt",status="replace")
 
      write(iCodeInfoFileUnit_,*) "GITM2 Run Information"
      write(iCodeInfoFileUnit_,*) "---------------------"
@@ -416,9 +416,7 @@ subroutine write_code_information(dir)
 
      write(iCodeInfoFileUnit_,*) "#AURORAMODS"
      write(iCodeInfoFileUnit_,*) NormalizeAuroraToHP
-     write(iCodeInfoFileUnit_,*) AveEFactor
-     write(iCodeInfoFileUnit_,*) IsKappaAurora
-     write(iCodeInfoFileUnit_,*) AuroraKappa
+     write(iCodeInfoFileUnit_,*) AuroralHeightFactor
      write(iCodeInfoFileUnit_,*) ""
 
      write(iCodeInfoFileUnit_,*) "#NEWELLAURORA"

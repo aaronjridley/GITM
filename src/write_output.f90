@@ -49,7 +49,7 @@ subroutine write_output
      if (floor((tSimulation-dt)/DtPlot(i)) /= &
           floor((tsimulation)/DtPlot(i)) .or. tSimulation == 0.0) then
         do iBlock = 1, nBlocks
-           call output(outputDir,iBlock, i)
+           call output("UA/data/",iBlock, i)
         enddo
      endif
   enddo
@@ -58,12 +58,12 @@ subroutine write_output
 
   if (floor((tSimulation-dt)/DtRestart) /= &
        floor((tsimulation)/DtRestart)) then
-     call write_restart(restartOutDir)
+     call write_restart("UA/restartOUT/")
   endif
 
   if (floor((tSimulation-dt)/DtLogfile) /= &
        floor((tsimulation)/DtLogfile)) then
-     call logfile(logDir)
+     call logfile("UA/data/")
   endif
 
 end subroutine write_output

@@ -299,7 +299,7 @@ trouble = .false.
 
   if (iDebugLevel > 4) write(*,*) "=====> Before cp and kappatemp", iblock
 
-  do iAlt = 0, nAlts+2
+  do iAlt = 0, nAlts+1
 
 ! -------------------------------------------------------------------------------
 !
@@ -393,26 +393,20 @@ subroutine calc_collisions(iBlock)
 
   integer, intent(in) :: iBlock
 
-  real, dimension(nLons, nLats, nAlts) :: e2
+  real, dimension(nLons, nLats, nAlts) :: Tn, Ti, e2
 
   integer :: iError
 
   real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2) :: &
-       Ne, mnd, Te, Tr, Tn, Ti
+       Ne, mnd, Te
 
   !\
   ! Need to get the neutral, ion, and electron temperature
   !/
 
-
-  
-  Tn = Temperature(:,:,:,iBlock)*TempUnit(:,:,:)
-  Ti = ITemperature(:,:,:,iBlock)
-
-  Tr = (Tn+Ti)/2
-  
-  ! Set a floor on Tr:
-  where (Tr < 200) Tr = 200.0
+  Tn = Temperature(1:nLons,1:nLats,1:nAlts,iBlock)*&
+       TempUnit(1:nLons,1:nLats,1:nAlts)
+  Ti = ITemperature(1:nLons,1:nLats,1:nAlts,iBlock)
 
   mnd = NDensity(:,:,:,iBlock)+1.0
   Ne  = IDensityS(:,:,:,ie_,iBlock)
@@ -437,90 +431,6 @@ subroutine calc_collisions(iBlock)
 
   Collisions(:,:,:,iVIN_) = 2.6e-15 * (mnd + Ne)/sqrt(MeanMajorMass/AMU)
 
-  !BP (3/31/2021) Adding in IonCollision rates. These aren't computed at all
-  ! and make ion velocities infinity without them. Wonder what's going on
-  ! at Mars...
-  IonCollisions = 0.0
-
-  !Copied some straight from Earth code. Added CO2 specific collisions
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  
-  ! From Schunk and Nagy table 4.4 & 4.5
-  !
-  ! O+ (with O, O2, N2, CO2, CO)
-  if (iDebugLevel > 5) write(*,*) "======> o+ ",iblock
-  
-  where (tr > 235) IonCollisions(:,:,:,iOP_,iO_) = &
-       3.67e-17 * NDensityS(:,:,:,iO_,iBlock) * tr**0.5 * &
-       (1 - 0.064 * log10(tr))**2
-
-  where (tr <= 235) IonCollisions(:,:,:,iOP_,iO_) = &
-       8.2e-16 * NDensityS(:,:,:,iO_,iBlock)
-
-  IonCollisions(:,:,:,iOP_,iO2_) = 6.64e-16 * NDensityS(:,:,:,iO2_,iBlock)
-  IonCollisions(:,:,:,iOP_,iN2_) = 6.82e-16 * NDensityS(:,:,:,iN2_,iBlock)
-  IonCollisions(:,:,:,iOP_,iCO2_) = 8.95e-16 * NDensityS(:,:,:,iCO2_,iBlock)
-  IonCollisions(:,:,:,iOP_,iCO_) = 7.22e-16 * NDensityS(:,:,:,iCO_,iBlock)
-  
-  ! O2+ (with O2, O, N2, CO2)
-
-  if (iDebugLevel > 5) write(*,*) "======> o2+ ",iblock
-
-  where (tr > 800.) IonCollisions(:,:,:,iO2P_,iO2_) = &
-      2.59e-17 * NDensityS(:,:,:,iO2_,iBlock) * tr**0.5 * (1 - 0.073*log10(tr))**2
-  where (tr <= 800) IonCollisions(:,:,:,iO2P_,iO2_) = 8.2e-16 * NDensityS(:,:,:,iO2_,iBlock)
-
-  IonCollisions(:,:,:,iO2P_,iO_) = 2.31e-16 * NDensityS(:,:,:,iO_,iBlock)
-  IonCollisions(:,:,:,iO2P_,iN2_)   = 4.13e-16 * NDensityS(:,:,:,iN2_,iBlock)
-  IonCollisions(:,:,:,iO2P_,iCO2_)   = 5.63e-16 * NDensityS(:,:,:,iCO2_,iBlock)
-  IonCollisions(:,:,:,iO2P_,iCO_)   = 4.37e-16 * NDensityS(:,:,:,iCO_,iBlock)
-  
-  ! N2+ (with N2, O2, O, NO, CO2)
-
-  if (iDebugLevel > 5) write(*,*) "======> n2+ ",iblock
-  
-  IonCollisions(:,:,:,iN2P_,iN2_) = &
-       5.14e-17 * NDensityS(:,:,:,iN2_,iBlock) * &
-       tr**0.5 * (1 - 0.069*log10(tr))**2
-
-  IonCollisions(:,:,:,iN2P_,iO2_)   = 4.49e-16 * NDensityS(:,:,:,iO2_,iBlock)
-  IonCollisions(:,:,:,iN2P_,iO_) = 2.58e-16 * NDensityS(:,:,:,iO_,iBlock)
-  IonCollisions(:,:,:,iN2P_,iCO2_) = 6.18e-16 * NDensityS(:,:,:,iCO2_,iBlock)
-  IonCollisions(:,:,:,iO2P_,iCO_)   = 4.84e-16 * NDensityS(:,:,:,iCO_,iBlock)
-  
-  ! CO2+ (with N2, O2, O, CO2, CO)
-  IonCollisions(:,:,:,iCO2P_,iN2_) = &
-       3.22e-16 * NDensityS(:,:,:,iN2_,iBlock)
-  IonCollisions(:,:,:,iCO2P_,iO2_) = &
-       3.18e-16 * NDensityS(:,:,:,iO2_,iBlock)
-  IonCollisions(:,:,:,iCO2P_,iO_) = &
-       1.76e-16 * NDensityS(:,:,:,iO_,iBlock)
-  IonCollisions(:,:,:,iCO2P_,iCO_) = &
-       3.4e-16 * NDensityS(:,:,:,iCO_,iBlock)
-  
-  where(tr > 850.0) IonCollisions(:,:,:,iCO2P_,iCO2_) = &
-       2.85e-17*NDensityS(:,:,:,iCO2_,iBlock)*(tr**0.5)* &
-       (1 - 0.083 * log10(tr))**2
-
-  where (tr .le. 850.0) IonCollisions(:,:,:,iCO2P_,iCO2_) = 8.2e-16 * NDensityS(:,:,:,iCO2_,iBlock)
-
-  !CO+ (with N2, O2, O, CO2, CO)
-  !IonCollisions(:,:,:,iCOP_,iN2_) = &
-  !     4.24e-16 * NDensityS(:,:,:,iN2_,iBlock)
-  !IonCollisions(:,:,:,iCOP_,iO2_) = &
-  !     4.49e-16 * NDensityS(:,:,:,iO2_,iBlock)
-  !IonCollisions(:,:,:,iCOP_,iO_) = &
-  !     2.58e-16 * NDensityS(:,:,:,iO_,iBlock)
-  !IonCollisions(:,:,:,iCOP_,iCO2_) = &
-  !     6.18e-16 * NDensityS(:,:,:,iCO2_,iBlock)
-
-  !where (tr > 525.0) IonCollisions(:,:,:,iCOP_,iCO_) = &
-  !     3.42e-17 * NDensityS(:,:,:,iCO_,iBlock) * tr**0.5 * &
-  !     (1 - 0.085 * log10(tr))**2
-    
-  !where (tr .le. 525.0) IonCollisions(:,:,:,iCOP_,iCO_) = &
-  !     8.2e-16 * NDensityS(:,:,:,iCO_,iBlock)
-  
 !
 ! Electron Neutral Collision Frequency
 !
@@ -547,6 +457,7 @@ subroutine calc_collisions(iBlock)
 !  
 
   i_gyro = Element_Charge * B0(:,:,:,iMag_,iBlock) / MeanIonMass
+
 
 end subroutine calc_collisions
 

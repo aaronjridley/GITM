@@ -26,6 +26,7 @@ module ModSources
        JouleHeating2d, EuvHeating2d, HeatTransfer2d, RadiativeCooling2d
        
   real, allocatable :: EuvHeating(:,:,:,:)
+  real, allocatable :: EuvHeating_bp(:,:,:,:)
   real, allocatable :: eEuvHeating(:,:,:,:)
   real, allocatable :: PhotoElectronHeating(:,:,:,:)
   real, allocatable :: RadCooling(:,:,:,:)
@@ -34,6 +35,7 @@ module ModSources
   real, allocatable :: EuvHeatingErgs(:,:,:,:)
   real, allocatable :: LowAtmosRadRate(:,:,:,:)
   real, allocatable :: UserHeatingRate(:,:,:,:)
+  real, allocatable :: DissociationHeatingRate(:,:,:,:)
 
   real, allocatable :: QnirTOT(:,:,:,:)
   real, allocatable :: QnirLTE(:,:,:,:)
@@ -46,6 +48,8 @@ module ModSources
   real(kind=8), allocatable :: iHeating(:,:,:)
   real(kind=8), allocatable :: lame(:,:,:)
   real(kind=8), allocatable :: lami(:,:,:)
+
+  
 
   real, dimension(nLons,nLats,nAlts,3) :: GWAccel = 0.0
 
@@ -102,9 +106,7 @@ module ModSources
   !/
 
   real, dimension(:), allocatable :: &
-       ED_grid, ED_Energies, ED_Flux, ED_Ion, ED_Heating, &
-       ED_energy_edges, ED_delta_energy, ED_EnergyFlux, &
-       ED_Ion_EnergyFlux, ED_Ion_Flux
+       ED_grid, ED_Energies, ED_Flux, ED_Ion, ED_Heating
   integer :: ED_N_Energies, ED_N_Alts
   real, dimension(nAlts) :: ED_Interpolation_Weight
   integer, dimension(nAlts) :: ED_Interpolation_Index
@@ -117,21 +119,7 @@ module ModSources
   real :: ChemicalHeatingRateIon(nLons, nLats, nAlts)
   real :: ChemicalHeatingRateEle(nLons, nLats, nAlts)
 
-  !\
-  ! Needed for Fang et al, 2010:
-  !/
-  real, allocatable :: Fang_Ci(:,:)  ! nEnergies, 8
-  real, allocatable :: Fang_y(:,:)   ! nEnergies, nAlts
-  real, allocatable :: Fang_f(:,:)   ! nEnergies, nAlts
-  
-  !\
-  ! Needed for Fang et al, 2013:
-  !/
-  real, allocatable :: Fang_Ion_Ci(:,:)  ! nEnergies, 8
-  real, allocatable :: Fang_Ion_y(:,:)   ! nEnergies, nAlts
-  real, allocatable :: Fang_Ion_f(:,:)   ! nEnergies, nAlts
-  
-  !BP
+  !BP                                                                                         
   real, dimension(40,11) :: qIR_NLTE_table
   real, dimension(19,16) :: diurnalHeating, semiDiurnalHeating  
 
@@ -150,6 +138,7 @@ contains
 
     if(allocated(EuvHeating)) RETURN
     allocate(EuvHeating(nLons, nLats, nAlts,nBlocks))
+    allocate(EuvHeating_bp(nLons,nLats,nAlts,nBlocks))
     allocate(eEuvHeating(nLons, nLats, nAlts,nBlocks))
     allocate(PhotoElectronHeating(nLons, nLats, nAlts,nBlocks))
     allocate(RadCooling(nLons, nLats, nAlts,nBlocks))
@@ -168,6 +157,7 @@ contains
     allocate(IonPrecipIonRateS(nLons,nLats,nAlts,nSpecies,nBlocks))
     allocate(IonPrecipHeatingRate(nLons,nLats,nAlts,nBlocks))
     allocate(KappaEddyDiffusion(nLons,nLats,-1:nAlts+2,nBlocks))
+    allocate(DissociationHeatingRate(nLons, nLats, nAlts,nBlocks))
 
     allocate(eHeatingp(0:nLons+1,0:nLats+1,0:nAlts+1))
     allocate(iHeatingp(0:nLons+1,0:nLats+1,0:nAlts+1))
@@ -202,6 +192,7 @@ contains
     deallocate(IonPrecipIonRateS)
     deallocate(IonPrecipHeatingRate)
     deallocate(KappaEddyDiffusion)
+    deallocate(DissociationHeatingRate)
   end subroutine clean_mod_sources
   !=========================================================================
 end module ModSources

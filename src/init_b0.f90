@@ -93,8 +93,6 @@ subroutine init_b0
               
                  DipAngle(iLon,iLat,iAlt, iBlock) = &
                       atan (abs(zmag)/sqrt(xmag**2+ymag**2) )
-                 sinDipAngle(iLon,iLat,iAlt, iBlock) = &
-                      sin(DipAngle(iLon,iLat,iAlt, iBlock))
                  DecAngle(iLon,iLat,iAlt, iBlock) = atan2(ymag,xmag) * 180.0/pi
 
               endif

@@ -23,7 +23,6 @@ subroutine set_inputs
   use ModPlanet
   use ModSatellites
   use ModRCMR
-  use ModIoUnit, only : UnitTmp_
 
   implicit none
 
@@ -32,13 +31,12 @@ subroutine set_inputs
 
   integer, dimension(7) :: iEndTime
 
-  logical :: IsDone, IsStartFound
+  logical :: IsDone
   integer :: iDebugProc=0
   character (len=iCharLen_) :: cLine
   integer :: iLine, iSpecies, iSat
-  integer :: i, iError, iOutputTypes, iErrorFile, iFreq
+  integer :: i, iError, iOutputTypes
   integer, dimension(7) :: iTimeEnd
-  integer :: iUnitFile = UnitTmp_
 
   character (len=iCharLen_)                 :: cTempLine
   character (len=iCharLen_)                 :: sIonChemistry, sNeutralChemistry
@@ -47,7 +45,6 @@ subroutine set_inputs
   real :: Vx, Bx, Bz, By, Kp, HemisphericPower, tsim_temp
   real :: EDC_est_tmp
   real*8 :: DTime
-  logical :: HasSetAuroraMods = .false.
 
   call report("set_inputs",1)
 
@@ -395,12 +392,6 @@ subroutine set_inputs
               write(*,*) 'SamiInFile'
            endif
 
-        case ("#DIRECTORIES")
-           call read_in_string(outputDir,iError)
-           call read_in_string(logDir,iError)
-           call read_in_string(restartOutDir,iError)
-           call read_in_string(restartInDir,iError)
-
         case ("#GITMBCS")
            call read_in_logical(UseGitmBCs,iError)
            call read_in_string(GitmBCsDir,iError)
@@ -445,91 +436,6 @@ subroutine set_inputs
               write(*,*) '#USEPERTURBATION'
               write(*,*) 'UsePerturbation        (logical)'
               IsDone = .true.
-           endif
-
-        ! For WP-GITM
-        case ("#USEBCPERTURBATION")
-           call read_in_logical(UseBcPerturbation,iError)
-           if(UseBcPerturbation) then
-              call read_in_int(iTypeBcPerturb,iError)
-              call read_in_real(PerturbTimeDelay, iError)
-              call read_in_real(RefLon, iError)
-              call read_in_real(RefLat, iError)
-              call read_in_real(PerturbDuration, iError)
-              if (iTypeBcPerturb == 0) then
-                 ! single-frequency plane wave to represent a tsunami
-                 call read_in_real(PerturbWaveSpeed, iError)
-                 call read_in_real(PerturbWaveDirection, iError)
-                 call read_in_real(PerturbWaveHeight, iError)
-                 call read_in_real(PerturbWavePeriod, iError)
-              else if (iTypeBcPerturb == 1) then
-                 ! multi-frequency plane wave to represent a tsunami
-                 call read_in_real(PerturbWaveSpeed, iError)
-                 call read_in_real(PerturbWaveDirection, iError)
-                 call read_in_string(cSurfacePerturbFileName, iError)
-              else if (iTypeBcPerturb == 2) then
-                 ! multi-frequency and point-source spherical waves to 
-                 ! represent epicentral movement during an earthquake
-                 call read_in_real(EpicenterLon, iError)
-                 call read_in_real(EpicenterLat, iError)
-                 call read_in_real(SeisWaveTimeDelay, iError)
-                 call read_in_real(EpiDistance, iError)
-                 call read_in_string(cSurfacePerturbFileName, iError)
-              endif
-           endif
-           if (iError /= 0) then
-              write(*,*) 'Incorrect format for #USEBCPERTURBATION":'
-              write(*,*) ''
-              write(*,*) ''
-              write(*,*) '#USEBCPERTURBATION'
-              write(*,*) 'UseBcPerturbation        (logical)'
-              write(*,*) 'If UseBcPerturbation = .true. then:'
-              write(*,*) 'iTypeBcPerturb         (int) '
-              write(*,*) 'perturbation characteristics ...'
-              IsDone = .true.
-           else if (iTypeBcPerturb == 0) then
-              nPerturbFreq = 1
-              PerturbWaveFreq(nPerturbFreq) = 2*pi/PerturbWavePeriod
-              FFTReal(nPerturbFreq) = 0.0
-              FFTImag(nPerturbFreq) = PerturbWaveHeight/2.
-           else if (iTypeBcPerturb == 1 .or. iTypeBcPerturb == 2) then
-              open(unit=iUnitFile,file=cSurfacePerturbFileName,status="old")
-              IsStartFound = .false.
-              do while (.not. IsStartFound)
-                 cLine = ""
-                 read(iUnitFile, *, iostat = iErrorFile) cLine
-                 if (iErrorFile /= 0) IsStartFound = .true.
-                 if (index(cline,"#START") > 0) IsStartFound = .true.
-              enddo
-              if (iErrorFile /= 0) then
-                 write(*,*) "Error finding #START in surface perturbation file: ",&
-                      cSurfacePerturbFileName
-                 close(iUnitFile)
-                 return
-              endif
-              iFreq = 0
-              do while (iErrorFile == 0)
-                 iFreq = iFreq + 1
-                 read(iUnitFile,*,iostat=iErrorFile), &
-                      PerturbWaveFreq(iFreq), FFTReal(iFreq), FFTImag(iFreq) 
-                 ! the frequencies are ordered from low to high in the file
-                 ! include frequencies up to 0.1Hz
-                 if (PerturbWaveFreq(iFreq) > 0.1) exit
-                 if (iFreq == nMaxPerturbFreq .and. iProc == 0) then
-                    write(*,*) "For WP: Number of frequencies reaching the limit: ", &
-                         nMaxPerturbFreq
-                    write(*,*) "Increase nMaxPerturbFreq in ModInputs.f90 !!!"
-                 endif
-              enddo              
-              close(iUnitFile)
-              ! the number of frequecies to use
-              nPerturbFreq = iFreq - 1
-              ! convert to angular frequency
-              PerturbWaveFreq(1:nPerturbFreq) = 2*pi*PerturbWaveFreq(1:nPerturbFreq)              
-              if (iDebugLevel > 0 .and. iProc == 0) &
-                   write(*,*) 'For WP: nPerturbFreq = ', &
-                   nPerturbFreq, 'PerturbWaveFreq(1:nPerturbFreq) = ', &
-                   PerturbWaveFreq(1:nPerturbFreq)                   
            endif
 
         case ("#DAMPING")
@@ -662,26 +568,23 @@ subroutine set_inputs
            endif
 
         case ("#AURORAMODS")
-           HasSetAuroraMods = .true.
            call read_in_logical(NormalizeAuroraToHP, iError)
-           call read_in_real(AveEFactor, iError)
-           call read_in_logical(IsKappaAurora, iError)
-           call read_in_real(AuroraKappa, iError)
+           call read_in_real(AuroralHeightFactor, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #AURORAMODS'
               write(*,*) 'This is for modifying the aurora a bit.  The'
               write(*,*) 'NormalizeAuroraToHP variable calculates the '
               write(*,*) 'modeled hemispheric power and then normalizes it'
-              write(*,*) 'the hemispheric power read in. '
-              write(*,*) 'AveEFactor - changes the aveE of the aurora by factor'
-              write(*,*) 'IsKappaAurora - use a kappa instead of Maxwellian'
-              write(*,*) 'AuroraKappa - kappa to use in the distribution'
+              write(*,*) 'the hemispheric power read in.  AuroralHeightFactor'
+              write(*,*) 'adjusts the pressure to that the ionization height'
+              write(*,*) 'can be at the right height.  A value of 1 is the'
+              write(*,*) 'default height.  Lowering it to 0.4 changes the'
+              write(*,*) 'height to be consistent with FLIP (but that was a'
+              write(*,*) 'while ago that I checked this.'
               write(*,*) ''
               write(*,*) '#AURORAMODS'
               write(*,*) 'NormalizeAuroraToHP     (logical)'
-              write(*,*) 'AveEFactor    (real)'
-              write(*,*) 'IsKappaAurora     (logical)'
-              write(*,*) 'AuroraKappa    (real)'
+              write(*,*) 'AuroralHeightFactor     (real)'
            endif
 
         case ("#NEWELLAURORA")
@@ -703,9 +606,6 @@ subroutine set_inputs
               write(*,*) 'UseNewellRemoveSpikes (logical)'
               write(*,*) 'UseNewellAverage      (logical)'
               IsDone = .true.
-           else
-              if (UseNewellAurora .and. .not. HasSetAuroraMods) &
-                   NormalizeAuroraToHP = .false.
            endif
 
         case ("#OVATIONSME")
@@ -723,9 +623,6 @@ subroutine set_inputs
               write(*,*) 'UseOvationSMEWave (logical)'
               write(*,*) 'UseOvationSMEIon  (logical)'
               IsDone = .true.
-           else
-              if (UseOvationSME .and. .not. HasSetAuroraMods) &
-                   NormalizeAuroraToHP = .false.
            endif
 
         case ("#AEMODEL")
@@ -736,20 +633,6 @@ subroutine set_inputs
               write(*,*) ''
               write(*,*) '#AEMODEL'
               write(*,*) 'UseAeModel        (logical)'
-              IsDone = .true.
-           else
-              if (UseAeModel .and. .not. HasSetAuroraMods) &
-                   NormalizeAuroraToHP = .false.
-           endif
-
-        case ("#FANGENERGY")
-           call read_in_logical(UseFangEnergyDeposition, iError)
-           if (iError /= 0) then
-              write(*,*) 'Incorrect format for #FANGENERGY'
-              write(*,*) 'This is for using Dongjies aurora.'
-              write(*,*) ''
-              write(*,*) '#FANGENERGY'
-              write(*,*) 'UseFangEnergyDeposition        (logical)'
               IsDone = .true.
            endif
 
@@ -778,10 +661,6 @@ subroutine set_inputs
               write(*,*) 'cAMIEFileNorth  (string)'
               write(*,*) 'cAMIEFileSouth  (string)'
               IsDone = .true.
-           else
-              if (index(cAMIEFileNorth,"none") == 0 .and. &
-                   .not. HasSetAuroraMods) &
-                   NormalizeAuroraToHP = .false.
            endif
 
         case ("#USEREGIONALAMIE")
@@ -924,6 +803,7 @@ subroutine set_inputs
            call read_in_logical(UseConduction, iError)
            call read_in_logical(UseTurbulentCond, iError)
            call read_in_logical(UseIRHeating, iError)
+           call read_in_logical(UseRadCooling, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #THERMO:'
               write(*,*) ''
@@ -935,6 +815,8 @@ subroutine set_inputs
               write(*,*) "UseOCooling       (logical)"
               write(*,*) "UseConduction     (logical)"
               write(*,*) "UseTurbulentCond  (logical)"
+              write(*,*) "UseIRHeating	    (logical)"
+              write(*,*) "UseRadCooling     (logical)"
               IsDone = .true.
            endif
 
@@ -1024,7 +906,7 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
-        case ("#MODIFIYPLANET")
+        case ("#MODIFYPLANET")
            call read_in_real(RotationPeriodInput, iError)
            call read_in_real(DaysPerYearInput, iError)
            call read_in_real(PlanetTiltInput, iError)
@@ -1058,6 +940,7 @@ subroutine set_inputs
               write(*,*) '#USEIMPROVEDIONADVECTION'
               write(*,*) "UseImprovedIonAdvection      (logical)"
               write(*,*) "UseNighttimeIonBCs           (logical)"
+              write(*,*) "MinTEC                       (real)"
            endif
 
         case ("#USETESTVISCOSITY")
@@ -1251,11 +1134,7 @@ subroutine set_inputs
               endif
            endif
 
-           if (LonStart < 0) LonStart = LonStart + 360.0
-           if (LonEnd <= 0) LonEnd = LonEnd + 360.0
-
-           if (nLats > 1 .and. LatEnd-LatStart < 0) iError=1
-           if (nLons > 1 .and. LonEnd-LonStart < 0) iError=1
+           if (nLats > 1 .and. LatEnd-LatStart < 1) iError=1
 
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #GRID:'
@@ -1284,7 +1163,7 @@ subroutine set_inputs
                  LatStart = LatStart * pi / 180.0
                  LatEnd   = LatEnd * pi / 180.0
               endif
-              
+
               LonStart = LonStart * pi / 180.0
               LonEnd   = LonEnd * pi / 180.0
 
@@ -1461,10 +1340,7 @@ subroutine set_inputs
            else
               do iSat=1,nSats
                  call read_in_string(cSatFileName(iSat), iError)
-                 ! Xing Meng 2021-03-09: SatOutputType only works for 0DUSR 
-                 ! and 1DUSR. Setting SatOutputType to other string would 
-                 ! just use the default: 0DALL for RCMR and 1DALL for the rest.
-                 call read_in_string(SatOutputType(iSat), iError) 
+                 call read_in_string(SatOutputType(iSat), iError)       !!! Xing 
                  call read_in_real(SatDtPlot(iSat), iError)
                  iSatCurrentIndex(iSat) = 0
               enddo
@@ -1475,7 +1351,7 @@ subroutine set_inputs
               write(*,*) '#SATELLITES'
               write(*,*) 'nSats     (integer - max = ',nMaxSats,')'
               write(*,*) 'SatFile1  (string)'
-              write(*,*) 'SatOutputtype1  (string, 0DUSR or 1DUSR or other)'
+              write(*,*) 'SatOutputtype1  (string, 0DUSR or 1DUSR)'
               write(*,*) 'DtPlot1   (real, seconds)'
               write(*,*) 'etc...'
               IsDone = .true.
@@ -1633,12 +1509,15 @@ subroutine set_inputs
 
         case ("#IONPRECIPITATION")
            call read_in_logical(UseIonPrecipitation, iError)
+           call read_in_string(IonIonizationFilename, iError)
+           call read_in_string(IonHeatingRateFilename, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #IONPRECIPITATION'
-              write(*,*) 'You can only have an AMIE input file for this now.'
-              write(*,*) 'Make sure you put the ions in the AMIE file!!!'
+              write(*,*) 'This is really highly specific.  You dont want this.'
               write(*,*) '#IONPRECIPITATION'
               write(*,*) 'UseIonPrecipitation     (logical)'
+              write(*,*) 'IonIonizationFilename   (string)'
+              write(*,*) 'IonHeatingRateFilename  (string)'
               IsDone = .true.
            endif
 
@@ -1771,10 +1650,8 @@ subroutine set_inputs
            cTempLines(1) = cLine
            call read_in_string(cTempLine, iError)
            cTempLines(2) = cTempLine
-           ! put "none" to ignore onset file
            call read_in_string(cTempLine, iError)
            cTempLines(3) = cTempLine
-
            cTempLines(4) = " "
            cTempLines(5) = "#END"
 
@@ -1786,7 +1663,6 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
-           ! If the onset file is called "none", then it will automatically ignore this:
            call read_al_onset_list(iError,CurrentTime+TimeDelayHighLat,EndTime+TimeDelayHighLat)
 
            if (iError /= 0) then
