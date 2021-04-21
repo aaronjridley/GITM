@@ -12,6 +12,8 @@ module ModEUV
   real, allocatable :: photonFlux_bp(:)
   real, allocatable :: f74113_bp(:)
   real, allocatable :: afac_bp(:)
+  real, allocatable :: Flux_of_EUV(:)
+  real, allocatable :: PhotonEnergy(:)
 
   real, allocatable :: photoAbsCrossSection_N2(:), photoAbsCrossSection_O2(:), &
                        photoAbsCrossSection_N(:), photoAbsCrossSection_O(:), &
@@ -94,9 +96,10 @@ module ModEUV
   integer :: PhotoIonFrom(nIons-1)
   real :: photoabs(Num_WaveLengths_High, nSpeciesTotal)
   !BP
-  real :: photoAbsorptionCrossSection(37,nSpeciesTotal)
-  real :: photoIonizationCrossSection(37,nSpeciesTotal)
-  real :: photoDissociationCrossSection(37,nSpeciesTotal)
+  real :: photoAbsorptionCrossSection(59,nSpeciesTotal)
+  real :: photoIonizationCrossSection(59,nIons-1)
+  real :: photoDissociationCrossSection(59,nSpeciesTotal)
+
   
   real :: photodis(Num_WaveLengths_High, nSpeciesTotal)
   real :: PhotoElecDiss(Num_WaveLengths_High, nSpecies)
@@ -148,9 +151,6 @@ module ModEUV
        PhotoAbsorption_CO, &
        F74113, AFAC,                                                &
        EUV_Flux
-
-  real, dimension(1:Num_Wavelengths_Low) :: Flux_of_EUV
-  real, dimension(1:Num_wavelengths_low) :: PhotonEnergy
   
   real, dimension(1:Num_WaveLengths_High) :: RLMEUV,   &
        BranchingRatio_N2, BranchingRatio_O2,                        &
@@ -1638,6 +1638,8 @@ contains
     allocate(photonFlux_bp(nWavelengths))
     allocate(f74113_bp(nWavelengths))
     allocate(afac_bp(nWavelengths))
+    allocate(Flux_of_EUV(nWavelengths))
+    allocate(PhotonEnergy(nWavelengths))
 
     allocate(photoAbsCrossSection_N2(nWavelengths))
     allocate(photoAbsCrossSection_O2(nWavelengths))
@@ -1654,7 +1656,7 @@ contains
     allocate(photoIonCrossSection_He_HeP(nWavelengths))
     allocate(photoIonCrossSection_CO2_CO2P(nWavelengths))
     allocate(photoIonCrossSection_CO_COP(nWavelengths))
-
+    
   end subroutine init_mod_euv
   !=========================================================================
   subroutine clean_mod_euv
@@ -1680,6 +1682,8 @@ contains
     deallocate(photonFlux_bp)
     deallocate(f74113_bp)
     deallocate(afac_bp)
+    deallocate(Flux_of_EUV)
+    deallocate(PhotonEnergy)
 
     deallocate(photoAbsCrossSection_N2)
     deallocate(photoAbsCrossSection_O)
@@ -1893,30 +1897,54 @@ subroutine read_euv_csv
   photoAbsorptionCrossSection = 0.0
   photoDissociationCrossSection = 0.0
   
-  photoAbsorptionCrossSection(:,1) = photoAbsCrossSection_CO2
-  photoAbsorptionCrossSection(:,2) = photoAbsCrossSection_CO
-  photoAbsorptionCrossSection(:,3) = photoAbsCrossSection_O
-  photoAbsorptionCrossSection(:,4) = photoAbsCrossSection_N2
-  photoAbsorptionCrossSection(:,5) = photoAbsCrossSection_O2
-  photoAbsorptionCrossSection(:,6) = photoAbsCrossSection_Ar
-  photoAbsorptionCrossSection(:,7) = photoAbsCrossSection_He
-  photoAbsorptionCrossSection(:,8) = photoAbsCrossSection_N
+  photoAbsorptionCrossSection(:,iCO2_) = photoAbsCrossSection_CO2
+  photoAbsorptionCrossSection(:,iCO_) = photoAbsCrossSection_CO
+  photoAbsorptionCrossSection(:,iO_) = photoAbsCrossSection_O
+  photoAbsorptionCrossSection(:,iN2_) = photoAbsCrossSection_N2
+  photoAbsorptionCrossSection(:,iO2_) = photoAbsCrossSection_O2
+  photoAbsorptionCrossSection(:,iAr_) = photoAbsCrossSection_Ar
+  photoAbsorptionCrossSection(:,iHe_) = photoAbsCrossSection_He
+  photoAbsorptionCrossSection(:,iN4S_) = photoAbsCrossSection_N
 
   !photoAbsorptionCrossSection = photoAbsorptionCrossSection*1.0E-22
 
   !These should get updated as iSpecies instead of magic numbers
   photoIonizationCrossSection = 0.0
-  photoIonizationCrossSection(:,1) = photoIonCrossSection_CO2_CO2P
-  photoIonizationCrossSection(:,2) = photoIonCrossSection_CO_COP
-  photoIonizationCrossSection(:,3) = photoIonCrossSection_O_OP
-  photoIonizationCrossSection(:,4) = photoIonCrossSection_N2_N2P
-  photoIonizationCrossSection(:,5) = photoIonCrossSection_O2_O2P
-  photoIonizationCrossSection(:,6) = 0.0 !Argon
-  photoIonizationCrossSection(:,7) = photoIonCrossSection_He_HeP
-  photoIonizationCrossSection(:,8) = photoIonCrossSection_N_NP
+  photoIonizationCrossSection(:,iCO2P_) = photoIonCrossSection_CO2_CO2P
 
-  photoDissociationCrossSection = photoAbsorptionCrossSection - &
-                                  photoIonizationCrossSection
+  !no iCOP_ ion for now. Uncomment var if we add it. 
+  !photoIonizationCrossSection(:,iCOP_) = photoIonCrossSection_CO_COP
+  
+  photoIonizationCrossSection(:,iOP_) = photoIonCrossSection_O_OP
+  photoIonizationCrossSection(:,iN2P_) = photoIonCrossSection_N2_N2P
+  photoIonizationCrossSection(:,iO2P_) = photoIonCrossSection_O2_O2P
+
+  !no iNP_ ion for now.
+  !photoIonizationCrossSection(:,iNP_) = photoIonCrossSection_N_NP
+  
+  photoDissociationCrossSection(:,iCO2_) = &
+       photoAbsorptionCrossSection(:,iCO2_)  - &
+       photoIonizationCrossSection(:,iCO2P_)
+
+  photoDissociationCrossSection(:,iCO_) = &
+       photoAbsorptionCrossSection(:,iCO_)  - &
+       photoIonCrossSection_CO_COP
+       !photoIonizationCrossSection(:,iCOP_)
+
+  photoDissociationCrossSection(:,iN2_) = &
+       photoAbsorptionCrossSection(:,iN2_)  - &
+       photoIonizationCrossSection(:,iN2P_)
+
+  photoDissociationCrossSection(:,iO2_) = &
+       photoAbsorptionCrossSection(:,iO2_) - &
+       photoIonizationCrossSection(:,iO2P_)
+
+  !Adjust for non-dissociatable species
+  photoDissociationCrossSection(:,iO_) = 0.0
+  photoDissociationCrossSection(:,iHe_) = 0.0
+  photoDissociationCrossSection(:,iAr_) = 0.0
+  photoDissociationCrossSection(:,iN4S_) = 0.0
+  
   close(UnitTmp_)
 
   !Write fluxes to a file and stop code

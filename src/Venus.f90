@@ -242,7 +242,7 @@ subroutine fill_photo
   photodis(1:NWH,iN2_)   = PhotoAbs_N2(1:NWH)-PhotoIon_N2(1:NWH)
   photodis(1:NWH,iO2_)   = PhotoAbs_O2(1:NWH)-PhotoIon_O2(1:NWH)
 
-  do iWave = 1, NWH
+  do iWave = 1, nWavelengths
     if (photodis(iWave,iCO2_) < 0.0) then
        photodis(iWave,iCO2_) = 0.0
     else if (photodis(iWave,iN2_) < 0.0) then
@@ -259,11 +259,11 @@ subroutine fill_photo
   !Write out the cross-sections
   open(unit=61, file='gitm_cross_sections.txt', action='write', status="unknown")
 
-  do i = 1,size(shortWavelengths)
+  do i = 1,nWavelengths
      write(61,*) (shortWavelengths(i) + longWavelengths(i))/2, &
-                 photoabsorptioncrosssection(i, iCO2_), &
-                 photodissociationcrosssection(i,iCO2_), &
-                 photoionizationcrosssection(i,iCO2_)
+                 photoabsorptioncrosssection(i, iN4S_), &
+                 photodissociationcrosssection(i,iN4S_), &
+                 photoionizationcrosssection(i,iN4S_) !use ion index
   end do
   
   close(61)

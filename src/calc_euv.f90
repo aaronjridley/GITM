@@ -110,7 +110,7 @@ subroutine euv_ionization_heat(iBlock)
      ChapmanLittle  = Chapman(:,:,iAlt,1:nSpecies,iBlock)
      EHeat = 0.0
 
-     do iWave = 1, size(shortWavelengths)
+     do iWave = 1, nWavelengths
         Tau = 0.0
        
         do iSpecies = 1, nSpecies
@@ -122,12 +122,11 @@ subroutine euv_ionization_heat(iBlock)
         Intensity = Flux_of_EUV(iWave) * exp(-1.0*Tau)
         !Intensity = photonFlux_bp(iWave) * exp(-1.0*Tau)
 
-        
         do iIon = 1, nIons-1
            iNeutral = PhotoIonFrom(iIon)
            EuvIonRateS(:,:,iAlt,iIon,iBlock) = &
                 EuvIonRateS(:,:,iAlt,iIon,iBlock) + &
-                Intensity * PhotoIon(iWave,iIon) * &
+                Intensity * photoionizationCrossSection(iWave,iIon) * &
                 NeutralDensity(:,:,iNeutral) * &
                 (1.0 + PhotoElecIon(iWave,iIon))
         enddo
@@ -170,6 +169,13 @@ subroutine euv_ionization_heat(iBlock)
         enddo
      enddo
   enddo
+
+  !write(*,*) "Intensity", Intensity(1,1)
+  !write(*,*) "PhotoElecIon", PhotoElecIon(:,iOP_)
+  !write(*,*) "photoioncrosssection", photoionizationcrosssection(:,iOP_)
+  !write(*,*) "EuvIonRateS",EuvIonRateS(1,1,1,iOP_,iBlock)
+
+  !all stop_gitm("calc_euv.f90")
   
   if (IncludeEclipse) call calc_eclipse_effects
   if (IsEarth) call night_euv_ionization

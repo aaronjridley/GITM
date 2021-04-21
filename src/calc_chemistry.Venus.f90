@@ -58,14 +58,9 @@ subroutine calc_chemistry(iBlock)
      do iLat = 1, nLats
 
         iMinIono = max(iAltMinIono(iLon,iLat,iBlock),1.0)
-        call check_for_nans_ions('Reason 1')
         do ialt = iminiono, nAlts
-           write(*,*) "iminiono", iminiono
-           write(*,*) "nAlts",nAlts
            DtSub = Dt
-           write(*,*) "DtSub", DtSub
-           write(*,*) "IDensityS(1,1,1,2,1)", IDensityS(1,1,1,2,1)
-           call check_for_nans_ions('Reason: 2')
+           
            Ions = IDensityS(iLon,iLat,iAlt,1:nIons,iBlock)
            Neutrals = NDensityS(iLon,iLat,iAlt,:,iBlock)
            
@@ -110,7 +105,7 @@ subroutine calc_chemistry(iBlock)
               ! sum for e-
               Ions(ie_) = Ions(ie_) + Ions(iIon)
            enddo
-
+           
            
            do iNeutral = 1, nSpeciesTotal
 
