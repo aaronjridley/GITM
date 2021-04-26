@@ -40,6 +40,16 @@ Module ModChemistry
   logical :: useNeutralConstituent(nSpeciesTotal),useIonConstituent(nIons)
   integer :: nittot = 0
   real :: reactionrate(23)
+  real, dimension(1,3) :: Vibrational_Population
+  real, dimension(3,4) :: Branching_Per_Vibration = &
+       transpose(reshape((/ 0.265, 0.473, 0.204, 0.058, &
+                            0.073, 0.278, 0.51, 0.139,  &
+                            0.02, 0.764, 0.025, 0.211 /), &
+                            (/4,3/)))
+  real, dimension(4,1) :: Exotherm_O2_DR
+  real, dimension(1,1) :: avgHeatMatrix
+  real :: avgHeat
+  
 
 contains
 !-----------------------------------
@@ -321,15 +331,36 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
            IonLosses(iO2P_) = IonLosses(iO2P_) + Reaction
            NeutralSources(iO_) = NeutralSources(iO_) + 2.*Reaction
 
+           Exotherm_O2_DR(:,1) = (/6.99, 5.02, 3.06, 0.83/) !eV
+
+           !Find the correct fractional population of the vibration states
+           !based on altitude
+           if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 .le. 130.0) then
+              !All in the nu = 0 state (see Fig. 1 of Fox 1985, THE 02+ VIB-
+              !RATIONAL DISTRIBUTION IN THE VENUSIAN IONOSPHERE)
+             Vibrational_Population(1,:) = (/1, 0, 0/)
+           else
+              !Linearly decreasing system from 130km - 170 km
+              !just y = mx + b from Figure 1 for nu = 0, 1 and 2
+              Vibrational_Population(1,1) = &
+                   -0.27/(40*10**3) * (Altitude_GB(iLon,iLat,iAlt,iBlock) - 130*10**3) + 1.0
+              Vibrational_Population(1,2) = &
+                   0.07/(40*10**3) * (Altitude_GB(iLon,iLat,iAlt,iBlock) - 130*10**3)
+              Vibrational_Population(1,3) = &
+                   0.06/(40*10**3) * (Altitude_GB(iLon,iLat,iAlt,iBlock) - 130*10**3)
+           endif 
            !See Gu et al., 2020 paper &
            !Fox and Hac, 2009 (Figure 6) for some really
-           !good info on the branching ratios. 
+           !good info on the branching ratios.
+           avgHeatMatrix = MATMUL(MATMUL(Vibrational_Population, &
+                Branching_Per_Vibration), Exotherm_O2_DR)
+           avgHeat = avgHeatMatrix(1,1)
+           
            ChemicalHeatingSub = &
-                      ChemicalHeatingSub + &
-                      Reaction * 6.99 * 0.265 + &
-                      Reaction * 5.02 * 0.473 + &
-                      Reaction * 3.06 * 0.204 + &
-                      Reaction * 0.83 * 0.058
+               ChemicalHeatingSub + &
+               Reaction * avgHeat
+
+           !nu = 3-10 is a large fractional population ~0.2. How to handle heating?
 
 
            ! ----------------------------------------------------------
@@ -351,7 +382,7 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
               ! CO2+ + e- ==> CO(d^3 \Delta) + O(3P) + 0.49 eV     (d)
            !
            !According to Gu et al., 2020, originally (Rosati et al., 2003)
-           !the appropriate branchging ratios are
+           !the appropriate branching ratios are
            !(a,b,c,d) = (0.24, 0.38, 0.18, 0.20)
            ! -----------------------------------------------------------
            

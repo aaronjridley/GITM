@@ -97,9 +97,6 @@ subroutine init_msis
      enddo
   enddo
 
-  if (useDustDistribution) call read_dust
-
-
   if (DoRestart) return
 
   do iBlock = 1, nBlocks
@@ -294,21 +291,9 @@ subroutine init_msis
         enddo! end iLon loop
      enddo ! end iLat loop
 
-!  Initialization of Major Ions for Ion Calculation
-     IDensityS(:,:,:,iO2P_,iBlock) = 0.9* IDensityS(:,:,:,iE_,iBlock)
-     IDensityS(:,:,:,iCO2P_,iBlock) = 0.1* IDensityS(:,:,:,iE_,iBlock)
-!  LBC for all  Ions for Ion Calculation
-!    IDensityS(:,:,:,iO2P_,iBlock) = 1.0e0
-!    IDensityS(:,:,:,iCO2P_,iBlock) = 1.0e0
-     IDensityS(:,:,:,iOP_,iBlock) = 1.0e0
-     IDensityS(:,:,:,iN2P_,iBlock) = 1.0e0
-     IDensityS(:,:,:,iNOP_,iBlock) = 1.0e0
-
      !BP (initialize all to 1)
      IDensityS(:,:,:,:,:) = 1.0e0
 
-     !write(*,*) '============> init_msis.Mars.f90 Major Diagnostics:  Begin'
-!     Temperature(:,:,:,iBlock) = 175.
      !\
      ! Altitude Ghost Cells
 
@@ -317,6 +302,8 @@ subroutine init_msis
 
      Temperature(:,:,nAlts+1,iBlock) = Temperature(:,:,nAlts,iBlock)
      Temperature(:,:,nAlts+2,iBlock) = Temperature(:,:,nAlts,iBlock)
+     eTemperature(:,:,nAlts+1,iBlock) = eTemperature(:,:,nAlts,iBlock)
+     eTemperature(:,:,nAlts+2,iBlock) = eTemperature(:,:,nAlts,iBlock)
 
      !\
      ! Longitude Ghost Cells
@@ -335,8 +322,6 @@ subroutine init_msis
 
      Temperature(:,nLats+1,:,iBlock) = Temperature(:,nLats,:,iBlock)
      Temperature(:,nLats+2,:,iBlock) = Temperature(:,nLats,:,iBlock)
-
-
 
     !\
      ! Calculating MeanMajorMass -----------------------------
@@ -389,14 +374,6 @@ subroutine init_msis
           MeanMajorMass(-1:nLons+2,-1:nLats+2,-1:nAlts+2)/&
           Boltzmanns_Constant
 
-! More recent data
-
-     NDensityS(-1:nLons+2,-1:nLats+2,-1:nAlts+2,iHe_,iBlock) = &
-        (2.0e-06)*NDensity(-1:nLons+2,-1:nLats+2,-1:nAlts+2,iBlock)
-
-! Previous EUV He observations
-!     NDensityS(-1:nLons+2,-1:nLats+2,-1:nAlts+2,iHe_,iBlock) = &
-!        (0.7e-06)*NDensity(-1:nLons+2,-1:nLats+2,-1:nAlts+2,iBlock)
      !\
      ! Initialize Rho to 0.0
      !/
@@ -414,11 +391,7 @@ subroutine init_msis
 
      !write(*,*) '==> Now Completing Mars Background Composition: END', iBlock
      !BP: checking out the initialization of the ions
-     call calc_electron_temperature(iBlock)
-     !if (iProc == 0) then
-     !  write(*,*) "Ion Densities in init_msis.Venus.f90:"
-     !  write(*,*) IDensityS(:,:,:,ie_,iBlock)
-     !endif     
+     call calc_electron_temperature(iBlock)  
 
   enddo
 

@@ -261,9 +261,9 @@ subroutine fill_photo
 
   do i = 1,nWavelengths
      write(61,*) (shortWavelengths(i) + longWavelengths(i))/2, &
-                 photoabsorptioncrosssection(i, iN4S_), &
-                 photodissociationcrosssection(i,iN4S_), &
-                 photoionizationcrosssection(i,iN4S_) !use ion index
+                 photoabsorptioncrosssection(i, iCO2_), &
+                 photodissociationcrosssection(i,iCO2_), &
+                 photoionizationcrosssection(i,iCO2P_) !use ion index
   end do
   
   close(61)

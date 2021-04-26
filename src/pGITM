@@ -11,7 +11,7 @@ foreach file (*.header)
 
     if (-e ${base}.bin) rm -f ${base}.b[0-9][0-9][0-9][0-9] 
     if (-e ${base}.bin) rm -f ${file}
-    if (-e ${base}.bin) rm -f ${base}.sat
+    #if (-e ${base}.bin) rm -f ${base}.sat
 
 end
 

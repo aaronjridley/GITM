@@ -38,8 +38,8 @@ subroutine add_sources
 
      call calc_GITM_sources(iBlock)
      
-     ChemicalHeatingRate = ChemicalHeatingRate(1:nLons,1:nLats,1:nAlts) + &
-          DissociationHeatingRate(1:nLons,1:nLats,1:nAlts,iBlock)
+     !ChemicalHeatingRate = ChemicalHeatingRate(1:nLons,1:nLats,1:nAlts) + &
+     !     DissociationHeatingRate(1:nLons,1:nLats,1:nAlts,iBlock)
 
      !! To turn off EuvHeating, turn UseSolarHeating=.false. in UAM.in
      !! To turn off JouleHeating, turn UseJouleHeating=.false. in UAM.in

@@ -17,9 +17,9 @@ F
 
 #DIFFUSION
 T
-100.0		Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
-0.010		Total Eddy Diffusion applied at alts below this pressures level
-0.005		No Eddy Diffusion at altitudes above this pressure level
+900.0		Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
+0.0058		Total Eddy Diffusion applied at alts below this pressures level (bigger number)
+0.0025		No Eddy Diffusion at altitudes above this pressure level
 
 #THERMALDIFFUSION
 2.22e-4		Thermal conductivity (code use kappa = number * T**0.75)
