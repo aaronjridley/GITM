@@ -1252,8 +1252,9 @@ subroutine set_inputs
            endif
 
            if (LonStart < 0) LonStart = LonStart + 360.0
-           if (LonEnd <= 0) LonEnd = LonEnd + 360.0
-
+           if (LonEnd < 0) LonEnd = LonEnd + 360.0
+           if (LonEnd == 360) LonEnd = 0.0
+           
            if (nLats > 1 .and. LatEnd-LatStart < 0) iError=1
            if (nLons > 1 .and. LonEnd-LonStart < 0) iError=1
 
