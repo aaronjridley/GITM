@@ -108,7 +108,7 @@ rundir:
 		if [ ! -e "EIE/README" ]; then \
 			ln -s ${EMPIRICALIEDIR}/data EIE;\
 		fi;
-	cd ${RUNDIR}; rm -f ./PostGITM.exe ; ln -s ${UADIR}/src/PostProcess.exe ./PostGITM.exe
+	cd ${RUNDIR}; rm -f ./PostGITM.exe ; ln -s ${UADIR}/src/PostProcessNetCDF.exe ./PostGITM.exe
 	cd ${RUNDIR}/UA; \
 		mkdir restartOUT data DataIn; \
 		ln -s restartOUT restartIN; \

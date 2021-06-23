@@ -2,6 +2,7 @@ ABDIR   = ${UADIR}/srcSphereAB
 IODIR   = ${DATAREADINDICESDIR}
 GLDIR   = ${UADIR}/srcGlow
 SAMIDIR = ${UADIR}/srcSAMI
+NCDIR   = ${NETCDF_ROOT}/lib/
 
 SEARCH_EXTRA =  -I${ABDIR} \
 	 	-I${IODIR} \
@@ -138,6 +139,7 @@ SAMIEXE = ${BINDIR}/GITMSAMI.exe
 GITM:	DEPEND
 	@make ${EXE}
 	@make POST
+	@make POSTNC
 	@echo "${EXE} has been created"
 
 SAMI:	DEPENDSAMI
@@ -177,6 +179,11 @@ GITM_for_Darwin:
 
 POST:	PostProcess.o
 	${LINK.f90} ${Lflag2} -o PostProcess.exe PostProcess.o
+
+POSTNC:	PostProcessNetCDF.o
+	${LINK.f90} ${Lflag2} \
+	-L${NCDIR} -lnetcdf -lnetcdff \
+	-o PostProcessNetCDF.exe PostProcessNetCDF.o
 
 MY_LIB = libGITM.a
 
