@@ -1,0 +1,21 @@
+#%Module 1.0
+
+module-whatis "Sets the environment for running GITM"
+
+set gitmhome /scratch/n23/gwb112/swm_project/GITM_180314/GITM/
+setenv GITM_HOME $gitmhome
+append-path PATH $gitmhome
+append-path PATH $gitmhome/src
+setenv GITM_DOC $gitmhome/srcDoc
+setenv MYRUN_DIR $::env(PWD)
+setenv EMPIRICALIEDIR $gitmhome/util/EMPIRICAL/srcIE
+setenv EMPIRICALUADIR $gitmhome/util/EMPIRICAL/srcUA
+setenv BINDIR $gitmhome/src
+setenv RUNDIR $::env(PWD)
+
+# You can add any required modules here
+# module load (your compiler) -or-
+# module prereq  (your compiler)
+# module load openmpi/3.0.4 hdf5 intel-compiler
+# This should work if you save the module file as us3d/version
+

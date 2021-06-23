@@ -1,0 +1,22 @@
+#!/bin/bash
+#PBS -P n23
+#PBS -q normal
+#PBS -l walltime=1:00:00
+#PBS -l ncpus=4
+#PBS -l mem=8GB
+#PBS -l wd
+#PBS -m ae
+#PBS -M g.bowden@adfa.edu.au
+#PBS -j oe
+module remove openmpi
+module load use.own
+module load GITM/210623_Gadi # load ~/privatemodules/GITM/210623_Gadi
+module load openmpi hdf5 intel-compiler
+module load netcdf
+date
+# Run GITM
+mpirun  -np $PBS_NCPUS ./GITM.exe  > gitm.log.$PBS_NCPUS.$PBS_JOBID 2>&1
+date
+# Postprocess
+./pGITM  > pgitm.log.$PBS_NCPUS.$PBS_JOBID 2>&1 
+
