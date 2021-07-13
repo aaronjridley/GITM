@@ -319,7 +319,7 @@ subroutine output(dir, iBlock, iOutputType)
 
   case ('3DTHM')
 
-     nvars_to_write = 14
+     nvars_to_write = 14+4
      call output_3dthm(iBlock)
 
   case ('1DCHM')
@@ -660,6 +660,11 @@ contains
                   "Loss Rate ",cSpecies(iSpecies)
              
           enddo
+       else
+          write(iOutputUnit_,"(I7,A1,a)")  15, " ", "Cp"
+          write(iOutputUnit_,"(I7,A1,a)")  16, " ", "Rho"
+          write(iOutputUnit_,"(I7,A1,a)")  17, " ", "E-Field Mag"
+          write(iOutputUnit_,"(I7,A1,a)")  18, " ", "Sigma Ped"
        endif
        
     endif
@@ -1317,6 +1322,7 @@ subroutine output_3dthm(iBlock)
   use ModGITM
   use ModInputs
   use ModSources
+  use ModElectrodynamics
   use ModEuv, only : EuvTotal
   implicit none
 
@@ -1345,7 +1351,11 @@ subroutine output_3dthm(iBlock)
                 JouleHeating(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt),         &
                 -NOCooling(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt),           &
                 -OCooling(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt),            &
-                EuvTotal(iiLon,iiLat,iiAlt,iBlock) * dt
+                EuvTotal(iiLon,iiLat,iiAlt,iBlock) * dt, &
+                cp(iiLon, iiLat, iiAlt, iBlock),  &
+                rho(iiLon, iiLat, iiAlt, iBlock),  &
+                sqrt(sum(EField(iLon,iLat,iAlt,:)**2)), & ! magnitude of E.F.
+                Sigma_Pedersen(iLon,iLat,iAlt)
            
         enddo
      enddo
