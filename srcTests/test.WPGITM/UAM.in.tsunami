@@ -1,0 +1,149 @@
+
+#DEBUG
+0	debug level
+0	cpu to watch
+60.0	dt between normal code output to stdout
+F	usebarriers - forces the code to stop and wait more often
+
+#RESTART
+F
+
+#GRID
+8	    lons
+8	    lats
+32.0	    minimum latitude to model
+48.0	    maximum latitude to model
+228.0       start longitude to model
+244.0	    end longitude to model
+
+#DIFFUSION
+T
+2250.0	   Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
+0.00010	   Total Eddy Diffusion applied at alts below this pressures level
+0.00000	   No Eddy Diffusion at altitudes above this pressure level
+
+#PHOTOELECTRON
+0.06	   Efficiency of photoelectron heating
+
+#THERMALDIFFUSION
+5.6e-4	   Thermal conductivity (code use kappa = number * T**0.75)
+
+#CPUTIMEMAX
+86000.0	   Maximum amount of cputime to use before stopping the code
+
+#TIMESTART
+2011        year
+03        month
+11        day
+14        hour
+45        minute
+00        second
+
+#TIMEEND
+2011      year
+03        month
+11        day
+15        hour
+15        minute
+00        second
+
+#CFL
+0.75	 percentage of maximum allowable time-step to take
+
+#LIMITER
+mc	 only limiter available
+1.6      
+
+#STATISTICALMODELSONLY
+F	 if you want to run with msis and iri only (i.e. not GITM)
+1800.0	 time step to take if you run with msis and iri
+
+#LOGFILE
+60.0		dt for output to a log file
+
+#SAVEPLOTS
+7200.0		dt for writing restart files
+2		how many output files do you want
+2DTEC		output style
+1800.0		dt for output
+3DNEU		output style
+1800.0		dt for output
+
+#ELECTRODYNAMICS
+60.0		how often to update potential
+60.0		how often to update aurora and euv
+
+#ALTITUDE
+100.0		minimum altitude to use
+600.0		maximum altitude to use (ignored unless the following is F)
+T		use stretched grid
+
+#INITIAL
+T		initialize thermosphere using MSIS
+T		initialize ionosphere using IRI
+100.0		if msis is false, then this is the temperature at the base
+1000.0		if msis is false, then this is the temperature at the top
+5.0e17		if msis is false, then this is the N(species1) at the base
+7.0e18		if msis is false, then this is the N(species2) at the base
+3.0e19		if msis is false, then this is the N(species3) at the base
+
+#APEX
+T		Use apex magnetic coordinate system
+
+#TIDES
+F               UseMSISFlat
+T               UseMSISTides
+F               UseGSWMTides
+F               UseWACCMTides
+
+#F107
+123.2		f10.7
+123.2		f10.7 averaged over 81 days
+
+#HPI
+10.0
+
+#KP
+1.0
+
+#MHD_INDICES
+imf20110311.dat
+
+#THERMO
+T		 UseSolarHeating
+T		 UseJouleHeating
+T		 UseAuroralHeating
+T		 UseNOCooling
+T		 UseOCooling
+T		 UseConduction
+T		 UseTurbulentConduction
+T		 UseUpdatedTurbulentConduction
+1.0		 EddyScalingFactor
+
+#FORCING
+T		UsePressureGradient
+T		UseIonDrag
+T		UseNeutralDrag
+T		UseViscosity
+T		UseCoriolis
+T		UseGravity
+
+#CHEMISTRY
+T		UseIonChemistry
+T		UseIonAdvection
+T		UseNeutralChemistry
+
+#USEBCPERTURBATION
+T             UseBcPerturbation
+0	      iTypeBcPerturb
+0.0	      PerturbTimeDelay
+233.0         RefLon
+36.0          RefLat
+1200.	      PerturbDuration
+125.          PerturbWaveSpeed
+-9.0          PerturbWaveDirection
+0.1           PerturbWaveHeight
+1200.         PerturbWavePeriod
+
+#END
+
