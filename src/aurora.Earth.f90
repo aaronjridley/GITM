@@ -186,7 +186,8 @@ subroutine aurora(iBlock)
      call get_hpi(CurrentTime,Hpi,iError)
      ratio = Hpi/avepower
 
-     write(*,*) 'Auroral normalizing ratio : ', Hpi, avepower, ratio
+     if (iDebugLevel >= 0) &
+          write(*,*) 'Auroral normalizing ratio : ', Hpi, avepower, ratio
      
      do i=1,nLats
         do j=1,nLons
