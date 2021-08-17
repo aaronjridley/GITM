@@ -35,7 +35,7 @@ def get_args(argv):
     winds = 0
     diff = 0
     IsGitm = 1
-    movie = 1
+    movie = 0
     rate = 30
     
     for arg in argv:
