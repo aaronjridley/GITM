@@ -5,7 +5,7 @@ module ModNewell
 
   implicit none
 
-  integer, parameter        :: iCharLenNewell_     = 100
+  integer, parameter        :: iCharLenNewell_     = 400
 
   character (len=iCharLenNewell_) :: dir="UA/DataIn/Aurora/"
 
