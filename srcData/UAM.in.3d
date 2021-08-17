@@ -18,20 +18,20 @@ F
 
 #DIFFUSION
 T
-300.0		Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
-0.0050		Total Eddy Diffusion applied at alts below this pressures level
-0.0005		No Eddy Diffusion at altitudes above this pressure level
+50.0		Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
+0.010		Total Eddy Diffusion applied at alts below this pressures level
+0.005		No Eddy Diffusion at altitudes above this pressure level
 
 #PHOTOELECTRON
 0.00       Efficiency of photoelectron heating
 
 #NEUTRALHEATING
-0.02       Efficiency of photoelectron heating
+0.05       Efficiency of photoelectron heating
 
 #THERMALCONDUCTION
-5.6e-4     Thermal conductivity (o2)
-7.6e-4     Thermal conductivity (o)
-0.72       Thermal conductivity (^s)
+3.6e-4     Thermal conductivity (o2)
+5.6e-4     Thermal conductivity (o)
+0.69       Thermal conductivity (^s)
 
 #CPUTIMEMAX
 86000.0		Maximum amount of cputime to use before stopping the code
@@ -164,6 +164,37 @@ solar wind file
 
 MHD_INDICES
 imf/solarwind file
+
+-----------------------------------------------------------------
+Some new features:
+
+#MSISOBC
+T		Shift the [O] density at the lower boundary by 6 months 
+
+These are to play with the aurora:
+
+#AEMODEL
+F		Use New AE Model of the aurora developed at UM
+
+#AURORAMODS
+F		normalize to hemispheric power
+1.0		avee factor (1 is no mod)
+F		iskappa
+4.0		kappa (3 min; higher is maxwellian)
+
+#FANGENERGY
+F		Use Fang 2010 and 2013 energy deposition
+
+#IONPRECIPITATION
+F		If ions are included in the AMIE file, use them. FangEnergy=T!
+
+#USECUSP
+F		Add a cusp to the electron precipitation
+0.2             Average Energy
+2.0             Energy Flux
+
+-----------------------------------------------------------------
+
 
 #AMIEFILES
 none		northern hemisphere amie file
