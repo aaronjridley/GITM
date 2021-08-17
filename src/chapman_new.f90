@@ -92,8 +92,9 @@ subroutine chapman_integrals(iBlock)
         enddo
      enddo
 
-     ColumnIntegralRho = ColumnIntegralRho + &
-          Integrals(:,:,:,iSpecies) * Mass(iSpecies)
+     ColumnIntegralRho(1:nLons, 1:nLats, 1:nAlts) = &
+          ColumnIntegralRho(1:nLons, 1:nLats, 1:nAlts) + &
+          Integrals(1:nLons, 1:nLats, 1:nAlts, iSpecies) * Mass(iSpecies)
 
      do iLon = 1, nLons
         do iLat = 1, nLats
