@@ -24,37 +24,40 @@ subroutine fill_photo
   PhotoElecIon = 0.0
   PhotoElecDiss = 0.0
 
-  photoabs(:,iO_3P_)  = PhotoAbs_O
-  photoabs(:,iO2_)    = PhotoAbs_O2
-  photoabs(:,iN2_)    = PhotoAbs_N2
+  night_photoion = 0.0
+  night_photoabs = 0.0
+
+  photoabs(:, iO_3P_) = PhotoAbs_O
+  photoabs(:, iO2_) = PhotoAbs_O2
+  photoabs(:, iN2_) = PhotoAbs_N2
 
   if (nSpecies > 3) then
      iSpecies = iN_4S_
-     photoabs(:,min(iSpecies,nSpecies))    = PhotoIon_N
+     photoabs(:,min(iSpecies,nSpecies)) = PhotoIon_N
   endif
 
   ! JMB:  06/25/2016
   if (nSpecies > 5) then
      iSpecies = iHe_
-     photoabs(:,min(iSpecies,nSpecies))    = PhotoAbs_He
+     photoabs(:,min(iSpecies,nSpecies)) = PhotoAbs_He
   endif
 
   ! This may need to be as defined below....
-  photoion(:,iN2P_)   = PhotoIon_N2
-  photoion(:,iO2P_)   = PhotoIon_O2
-  photoion(:,iNP_)    = PhotoIon_N
+  photoion(:,iN2P_) = PhotoIon_N2
+  photoion(:,iO2P_) = PhotoIon_O2
+  photoion(:,iNP_) = PhotoIon_N
   photoion(:,iO_4SP_) = PhotoIon_OPlus4S
   photoion(:,iO_2DP_) = PhotoIon_OPlus2D
   photoion(:,iO_2PP_) = PhotoIon_OPlus2P
-  photoion(:,iHeP_)   = PhotoAbs_He
+  photoion(:,iHeP_) = PhotoAbs_He
 
-  PhotoIonFrom(iN2P_)   = iN2_
-  PhotoIonFrom(iO2P_)   = iO2_
-  PhotoIonFrom(iNP_)    = iN_4S_
+  PhotoIonFrom(iN2P_) = iN2_
+  PhotoIonFrom(iO2P_) = iO2_
+  PhotoIonFrom(iNP_) = iN_4S_
   PhotoIonFrom(iO_4SP_) = iO_3P_
   PhotoIonFrom(iO_2DP_) = iO_3P_ 
   PhotoIonFrom(iO_2PP_) = iO_3P_ 
-  PhotoIonFrom(iHeP_)   = iHe_
+  PhotoIonFrom(iHeP_) = iHe_
 
   ! Photoelectrons:
   ! N2:
@@ -96,29 +99,27 @@ subroutine fill_photo
         PhotoDis(iWave, iO2_) = &
              photoabs(iWave,iO2_) - PhotoIon(iWave, iO2P_)
      endif
-
      if (waves(iWave) >= 800.0 .and. wavel(iWave) <= 1250.0) then
         PhotoDis(iWave, iN2_) = &
              photoabs(iWave,iN2_) - PhotoIon(iWave, iN2P_)
      endif
-
   enddo
 
   ! Night time ionization:
-  
-  night_photoion(:,iN2P_)    = Night_PhotoIon_N2 *1.e-4
-  night_photoion(:,iO2P_)    = Night_PhotoIon_O2 *1.e-4
-  night_photoion(:,iNOP_)    = Night_PhotoIon_NO *1.e-4
-  night_photoion(:,iO_4SP_)  = Night_PhotoIon_OPlus4S *1.e-4
-  night_photoion(:,iO_2DP_)  = Night_PhotoIon_OPlus2D *1.e-4
-  night_photoion(:,iO_2PP_)  = Night_PhotoIon_OPlus2P *1.e-4
-  night_photoion(:,iNP_)     = Night_PhotoIon_N *1.e-4
 
-  night_photoabs(:,iN2_)    = Night_PhotoAbs_N2 *1.e-4
-  night_photoabs(:,iO2_)    = Night_PhotoAbs_O2 *1.e-4
-  night_photoabs(:,iNO_)    = Night_PhotoAbs_NO *1.e-4
-  night_photoabs(:,iO_3P_)  = Night_PhotoAbs_O *1.e-4
-  night_photoabs(:,iN_4S_)  = Night_PhotoAbs_N *1.e-4
+  night_photoion(:,iN2P_) = Night_PhotoIon_N2 *1.e-4
+  night_photoion(:,iO2P_) = Night_PhotoIon_O2 *1.e-4
+  night_photoion(:,iNOP_) = Night_PhotoIon_NO *1.e-4
+  night_photoion(:,iO_4SP_) = Night_PhotoIon_OPlus4S *1.e-4
+  night_photoion(:,iO_2DP_) = Night_PhotoIon_OPlus2D *1.e-4
+  night_photoion(:,iO_2PP_) = Night_PhotoIon_OPlus2P *1.e-4
+  night_photoion(:,iNP_) = Night_PhotoIon_N *1.e-4
+
+  night_photoabs(:,iN2_) = Night_PhotoAbs_N2 *1.e-4
+  night_photoabs(:,iO2_) = Night_PhotoAbs_O2 *1.e-4
+  night_photoabs(:,iNO_) = Night_PhotoAbs_NO *1.e-4
+  night_photoabs(:,iO_3P_) = Night_PhotoAbs_O *1.e-4
+  night_photoabs(:,iN_4S_) = Night_PhotoAbs_N *1.e-4
   
 end subroutine fill_photo
 

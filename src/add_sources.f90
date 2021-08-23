@@ -65,6 +65,8 @@ subroutine add_sources
           Temperature(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
           + Conduction(1:nLons,1:nLats,0:nAlts+1)
 
+     call report("done with temperature (add_sources)", 5)
+
      !-------------------------------------------
      ! This is an example of a user output:
      !-------------------------------------------
@@ -97,24 +99,19 @@ subroutine add_sources
 
      enddo
 
+     call report("done with IonDrag (add_sources)", 5)
      if (DoCheckForNans) call check_for_nans_ions('before e-temp')
 
      call calc_electron_temperature(iBlock)
      
-     !call calc_electron_ion_sources(iBlock)
-     !call calc_electron_temperature(iBlock)
-          
      ! New Source Term for the ion density:
 
      if (UseImprovedIonAdvection) then
      
         do iIon = 1, nIonsAdvect
-
            change = dt * DivIVelocity(:,:,:,iBlock)
-
            IDensityS(1:nLons,1:nLats,1:nAlts,iIon,iBlock) = &
                 IDensityS(1:nLons,1:nLats,1:nAlts,iIon,iBlock) / (1 + change)
-
         enddo
         
         IDensityS(:,:,:,ie_,iBlock) = 0.0

@@ -45,7 +45,7 @@ module ModEUV
   integer :: PhotoIonFrom(nIons-1)
   real :: photoabs(Num_WaveLengths_High, nSpeciesTotal)
   real :: photodis(Num_WaveLengths_High, nSpeciesTotal)
-  real :: PhotoElecDiss(Num_WaveLengths_High, nSpecies)
+  real :: PhotoElecDiss(Num_WaveLengths_High, nSpeciesTotal)
 
 !  integer, parameter :: nEUVMax = 25
 !  integer :: nEUVion, nEUVdis, nPhotoEion, nPhotoEdis
