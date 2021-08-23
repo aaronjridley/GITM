@@ -4,7 +4,7 @@
 subroutine write_restart(dir)
 
   use ModGITM
-  use ModInputs !alexey uses useDART and f107 variable from ModInputs as estimate updated by DART, f107a is assumed = f107
+  use ModInputs 
   use ModTime
   use ModSphereInterface, only: iStartBLK
 
@@ -19,24 +19,39 @@ subroutine write_restart(dir)
 
   integer :: iBlock, iSpecies, i
 
-!alexey added from here
-  integer :: iError !error for mpibcast statements
-  integer :: ens_t, ens_c  !number of ensemble memebers total, ens. counter
-  character :: ens_cs*5  !ensemble counter string (5 digits, so hopefully you don't do more than 10^5 ensembles :)
-  real :: sigma_i2 !inflation value, as in \sigma_i^2 in eq (18) in GITM2/srcDoc/thermo.pdf and .tex, eg 49SFU^2, is a variance, not sd's
-  real, allocatable :: f_tmp(:), f_tmp2(:) !f107 temporary storage variables (before inflation and after)
-  real :: sum_f=0.0 !sum of f107 across the ensemble
-  real :: sum_fsq=0.0 !sum of f107 squares
-  real :: mean_f=0.0 !mean of f107 across ensemble
-  real :: var_f=0.0 !variance of f107 across ens.
-  logical :: IsThere=.false. !used to check if various files exist yet or not and suppressing writes
-!to here to perform driver (f107) inflation
+  ! alexey added from here
+  ! error for mpibcast statements
+  integer :: iError 
+  ! number of ensemble memebers total, ens. counter
+  integer :: ens_t, ens_c  
+  ! ensemble counter string (5 digits, so hopefully you don't do more
+  ! than 10^5 ensembles :)
+  character :: ens_cs*5   
+  ! inflation value, as in \sigma_i^2 in eq (18) in
+  ! GITM2/srcDoc/thermo.pdf and .tex, eg 49SFU^2, is a variance, not
+  ! sd's
+  real :: sigma_i2 
+  ! f107 temporary storage variables (before inflation and after)
+  real, allocatable :: f_tmp(:), f_tmp2(:) 
+  ! sum of f107 across the ensemble
+  real :: sum_f=0.0 
+  ! sum of f107 squares
+  real :: sum_fsq=0.0 
+  ! mean of f107 across ensemble
+  real :: mean_f=0.0 
+  ! variance of f107 across ens.
+  real :: var_f=0.0 
+  ! used to check if various files exist yet or not and suppressing writes
+  logical :: IsThere=.false.
+  ! to here to perform driver (f107) inflation
 
   call report("write_restart",1)
 
   if (iProc == 0) then
 
-     open(unit=iRestartUnit_, file=trim(dir)//"header.rst", status="unknown")
+     open(unit = iRestartUnit_, &
+          file = trim(dir) // "/header.rst", &
+          status="unknown")
 
      write(iRestartUnit_, *) ""
      write(iRestartUnit_, '(a)') "#ISTEP"
@@ -70,9 +85,11 @@ subroutine write_restart(dir)
 
   do iBlock = 1, nBlocks
 
-     write(cBlock,'(a1,i4.4)') "b",iBlock+iStartBLK
-     open(unit=iRestartUnit_, file=trim(dir)//"/"//cBlock//".rst", &
-          status="unknown", form="unformatted")
+     write(cBlock,'(a1,i4.4)') "b", iBlock+iStartBLK
+     open(unit = iRestartUnit_, &
+          file = trim(dir) // "/" // cBlock // ".rst", &
+          status = "unknown", &
+          form = "unformatted")
 
      write(iRestartUnit_) Longitude(:,iBlock)
      write(iRestartUnit_) Latitude(:,iBlock)
@@ -90,7 +107,7 @@ subroutine write_restart(dir)
         write(iRestartUnit_) IDensityS(:,:,:,iSpecies,iBlock)
      enddo
 
-!alexey start
+     !alexey start
      MeanMajorMass(:,:,:)=0  
      do iSpecies = 1, nSpecies  
         MeanMajorMass(:,:,:) = MeanMajorMass(:,:,:) +   &  
@@ -99,43 +116,55 @@ subroutine write_restart(dir)
      enddo
      TempUnit(:,:,:) = &  
           MeanMajorMass(:,:,:)/ Boltzmanns_Constant 
-     write(iRestartUnit_) Temperature(:,:,:,iBlock)*TempUnit(:,:,:) !alexey writes out temperature in Kelvin instead of scaled unit
-!alexey end
+     write(iRestartUnit_) Temperature(:,:,:,iBlock)*TempUnit(:,:,:)
+     ! alexey writes out temperature in Kelvin instead of scaled unit
+     ! alexey end
 
      write(iRestartUnit_) ITemperature(:,:,:,iBlock)
      write(iRestartUnit_) eTemperature(:,:,:,iBlock)
 
-     write(iRestartUnit_)  Velocity(:,:,:,:,iBlock)
+     write(iRestartUnit_) Velocity(:,:,:,:,iBlock)
      write(iRestartUnit_) IVelocity(:,:,:,:,iBlock)
      write(iRestartUnit_) VerticalVelocity(:,:,:,:,iBlock)
 
-!alexey start of driver inflation code
+     !alexey start of driver inflation code
      call get_f107(CurrentTime, f107, iError)
 
      !if DART is not used (useDART=0), then skip the following if statement
-     if (useDART == 1) then !this is the DART master ensemble member - collect f107 from other ensemble members via text files (a.txt),
-        !inflate f107 distribution, and distribute the new values via text files (b.txt)
-        if (iProc==0) then !only process zero needs to do this, others will receive this via MPI_BCAST
+     if (useDART == 1) then
+        !this is the DART master ensemble member - collect f107 from
+        !other ensemble members via text files (a.txt), inflate f107
+        !distribution, and distribute the new values via text files
+        !(b.txt)
+        if (iProc==0) then
+           ! only process zero needs to do this, others will receive
+           ! this via MPI_BCAST
            open(unit=103,file='a.txt')
            write(103,*) f107 
            close(103)
 
-           open(unit=103,file='here.txt') !signify to the master that a.txt is written
-           write(103,*) "I am here" !just so that file has something in it
+           ! signify to the master that a.txt is written
+           open(unit=103,file='here.txt')
+           ! just so that file has something in it
+           write(103,*) "I am here" 
            close(103)
 
-           !read f107 from all of the ensemble members, inflate it, write it back out
-           !must be in the advance_temp_e1 (the first ens. member run-directory)
-           !other ens. members must have some kind of waiting-code
+           ! read f107 from all of the ensemble members, inflate it,
+           ! write it back out must be in the advance_temp_e1 (the
+           ! first ens. member run-directory) other ens. members must
+           ! have some kind of waiting-code
 
-           open(unit=103,file='ens_size.txt',iostat=iError)  !find out how big the ensemble is 
+           ! find out how big the ensemble is 
+           open(unit=103,file='ens_size.txt',iostat=iError)  
            read(103,*) ens_t
            close(103)
            allocate(f_tmp(ens_t)) !allocate memory based on ens size
            allocate(f_tmp2(ens_t))
-           if (iDebugLevel > 4) write(*,*) '=====> rst.f90: opened ens_size.txt with iostat, #_of_ens: ', iError, ens_t
+           if (iDebugLevel > 4) &
+                write(*,*) '=====> rst.f90: opened ens_size.txt with iostat, #_of_ens: ', iError, ens_t
 
-           open(unit=103,file='sigma_i2.txt') !find out how much to inflate
+           ! find out how much to inflate
+           open(unit=103,file='sigma_i2.txt') 
            read(103,*) sigma_i2
            close(103)
 
@@ -167,61 +196,89 @@ subroutine write_restart(dir)
   
            mean_f = samp_mean(f_tmp)
            var_f = samp_var(f_tmp)
-           f_tmp2=sqrt(sigma_i2/var_f)*(f_tmp-mean_f)+mean_f !const variance, usually used for driver estimates
-           !+ by constant variance I mean that the user picks a number he or she desires for the ensemble variance 
-           !+ of the driver estimate. For my initial experiments with f107 the value of 7 SFU (this is standard deviation, 
-           !+ so variance is 49 SFU^2) worked well when average F107 value was 140 SFU (so we are talking something like 5%)
-           !+ GITM provides no dynamics for the drivers (just because it doesn't model them and hence doesn't update them).
-           !+ Consequently, it is beneficial to make EAKF driver estimate equally uncertain at every step, and hence 
-           !+ constantly keep searching for it and never let it get stuck at some fixed value.
-           !+ Anyways, the formula above removes whatever spread the driver estimate had right now (hence division by var_f)
-           !+ and replaces it with the desired spread (hence the multiplication by sigma_i2).
+           f_tmp2 = sqrt(sigma_i2 / var_f) * (f_tmp - mean_f) + mean_f
+           ! const variance, usually used for driver estimates + by
+           !constant variance I mean that the user picks a number he
+           !or she desires for the ensemble variance + of the driver
+           !estimate. For my initial experiments with f107 the value
+           !of 7 SFU (this is standard deviation, + so variance is 49
+           !SFU^2) worked well when average F107 value was 140 SFU (so
+           !we are talking something like 5%) + GITM provides no
+           !dynamics for the drivers (just because it doesn't model
+           !them and hence doesn't update them).  + Consequently, it
+           !is beneficial to make EAKF driver estimate equally
+           !uncertain at every step, and hence + constantly keep
+           !searching for it and never let it get stuck at some fixed
+           !value.  + Anyways, the formula above removes whatever
+           !spread the driver estimate had right now (hence division
+           !by var_f) + and replaces it with the desired spread (hence
+           !the multiplication by sigma_i2).
            if (iDebugLevel > 4) write(*,*) '=====> rst.f90: mean_f', mean_f
            if (iDebugLevel > 4) write(*,*) '=====> rst.f90: var_f', var_f
            if (iDebugLevel > 4) write(*,*) '=====> rst.f90: f_tmp2', f_tmp2
 
 
-           do ens_c=1,ens_t !cycle through all ensemble members to get each f107 estimate
-              write(ens_cs,'(I5)') ens_c !convert ensemble counter integer into a string
-              open(unit=103,file='../advance_temp_e'//trim(adjustl(ens_cs))//'/b.txt',iostat=iError) 
+           ! cycle through all ensemble members to get each f107 estimate
+           do ens_c=1,ens_t 
+              ! convert ensemble counter integer into a string
+              write(ens_cs,'(I5)') ens_c 
+              open(unit=103, &
+                   file = '../advance_temp_e' &
+                   // trim(adjustl(ens_cs)) &
+                   // '/b.txt', &
+                   iostat=iError) 
               !write this ensemble member's inflated est.
               write(103,*) f_tmp2(ens_c)
               close(103)
-              if (iDebugLevel > 4) write(*,*) '=====> rst.f90: wrote b.txt in ../advance_temp_e' & 
-                   //trim(adjustl(ens_cs))//' with iostat of', iError
+              if (iDebugLevel > 4) &
+                   write(*,*) '=====> rst.f90: wrote b.txt in ../advance_temp_e' & 
+                   // trim(adjustl(ens_cs)) // ' with iostat of', iError
               
-              open(unit=103,file='../advance_temp_e'//trim(adjustl(ens_cs))//'/here2.txt',iostat=iError) 
+              open(unit=103, file= '../advance_temp_e' &
+                   // trim(adjustl(ens_cs)) &
+                   // '/here2.txt', iostat=iError) 
               !tell slave that inflated file is written
-              write(103,*) 'Your inflated estimate is ready' !just so that file has something in it
+              !just so that file has something in it
+              write(103,*) 'Your inflated estimate is ready' 
               close(103)
-              if (iDebugLevel > 4) write(*,*) '=====> rst.f90: wrote here2.txt in ../advance_temp_e' & 
-                   //trim(adjustl(ens_cs))//' with iostat of', iError
+              if (iDebugLevel > 4) &
+                   write(*,*) '=====> rst.f90: wrote here2.txt in ../advance_temp_e' & 
+                   // trim(adjustl(ens_cs)) // ' with iostat of', iError
            enddo
 
-           f107=f_tmp2(1) !master should read his inflated f107
-           !write(101,*) f107 !write f107 into the f107_out.txt file (for plotting) 
-           if (iDebugLevel > 4) write(*,*) '=====> rst.f90: write_rst_f107', f107 
+           f107 = f_tmp2(1) !master should read his inflated f107
+           if (iDebugLevel > 4) &
+                write(*,*) '=====> rst.f90: write_rst_f107', f107 
            
            deallocate(f_tmp) !clean up
            deallocate(f_tmp2)
         endif
-        call MPI_BCAST(f107,1,MPI_Real,0,iCommGITM,iError) !+ this is b-casted so that all blocks have the same f107 
-        if (iDebugLevel > 4) write(*,*) '=====> rst.f90: broadcasted to iproc, f107:',iProc, f107
+        !+ this is b-casted so that all blocks have the same f107
+        call MPI_BCAST(f107,1,MPI_Real,0,iCommGITM,iError)
+        if (iDebugLevel > 4) &
+             write(*,*) '=====> rst.f90: broadcasted to iproc, f107:', &
+             iProc, f107
 
-     
+     elseif (useDART == 2) then
+        !this is the DART slave ensemble member - write out my
+        !estimate to a.txt, signal that it is written by + creating
+        !here.txt, wait for creation of a return handshake
+        !(here2.txt), signifying that the inflated file b.txt is ready
 
-     elseif (useDART == 2) then !this is the DART slave ensemble member - write out my estimate to a.txt, signal that it is written by
-        !+ creating here.txt, wait for creation of a return handshake (here2.txt), signifying that the inflated file b.txt is ready
-        if (iProc==0) then !only process zero needs to do this, others will receive this via MPI_BCAST
+        !only process zero needs to do this, others will receive this
+        !via MPI_BCAST
+        if (iProc==0) then 
            open(unit=103,file='a.txt') !write my estimate
            write(103,*) f107 
            close(103)
 
-           open(unit=103,file='here.txt') !signify to the master that my a.txt is written
+           !signify to the master that my a.txt is written
+           open(unit=103,file='here.txt') 
            write(103,*) 'I am here' !just so that file has something in it
            close(103)
 
-           inquire(file='here2.txt',EXIST=IsThere) !see if my inflater file is ready
+           !see if my inflater file is ready
+           inquire(file='here2.txt',EXIST=IsThere) 
            
            do while (.not.IsThere) !wait for it to get ready
               write(*,*) '=====> rst.f90: here2.txt file NOT found. Waiting.' 
@@ -229,27 +286,35 @@ subroutine write_restart(dir)
               inquire(file='here2.txt',EXIST=IsThere)
            enddo
 
-           if (iDebugLevel > 4) write(*,*) '=====> rst.f90: here2.txt file found. Continuing.'
-           open(103, file = 'here2.txt', status = 'OLD') !remove the readiness file
+           if (iDebugLevel > 4) &
+                write(*,*) '=====> rst.f90: here2.txt file found. Continuing.'
+           !remove the readiness file
+           open(103, file = 'here2.txt', status = 'OLD') 
            close(103, status = 'DELETE')
-           if (iDebugLevel > 4) write(*,*) '=====> rst.f90: here2.txt removed'
+           if (iDebugLevel > 4) &
+                write(*,*) '=====> rst.f90: here2.txt removed'
            
-           open(unit=103,file='b.txt', status = 'OLD') !read my new (inflated) estimate
+           !read my new (inflated) estimate
+           open(unit=103,file='b.txt', status = 'OLD') 
            read(103,*) f107
            close(103, status = 'DELETE')
-           !write(101,*) f107 !write f107 into the f107_out.txt file (for plotting) 
-           if (iDebugLevel > 4) write(*,*) '=====> rst.f90: write_rst_f107', f107 
+           if (iDebugLevel > 4) &
+                write(*,*) '=====> rst.f90: write_rst_f107', f107 
            
         endif
-        call MPI_BCAST(f107,1,MPI_Real,0,iCommGITM,iError) !+ this is b-casted so that all blocks have the same f107 
-        if (iDebugLevel > 4) write(*,*) '=====> rst.f90: broadcasted to iproc, f107:',iProc, f107
+        !+ this is b-casted so that all blocks have the same f107 
+        call MPI_BCAST(f107,1,MPI_Real,0,iCommGITM,iError) 
+        if (iDebugLevel > 4) &
+             write(*,*) '=====> rst.f90: broadcasted to iproc, f107:', &
+             iProc, f107
      
 
      endif
 
-     write(iRestartUnit_) f107 !alexey write f107 into the restart file (for DART)
-     write(iRestartUnit_) Rho(:,:,:,iBlock) !alexey
-!alexey end
+     !alexey write f107 into the restart file (for DART)
+     write(iRestartUnit_) f107 
+     write(iRestartUnit_) Rho(:,:,:,iBlock)
+     !alexey end
 
      if (isMars) then
         write(iRestartUnit_) SurfaceTemp(:,:,iBlock)
@@ -286,7 +351,9 @@ end subroutine write_restart
 subroutine read_restart(dir)
 
   use ModGITM
-  use ModInputs !alexey uses useDART and f107 variable as estimate updated by DART, f107a is set = f107 if useDART > 0
+  ! alexey uses useDART and f107 variable as estimate updated by DART,
+  ! f107a is set = f107 if useDART > 0
+  use ModInputs 
   use ModTime
   use ModSphereInterface, only: iStartBLK
  
@@ -376,13 +443,17 @@ subroutine read_restart(dir)
      read(iRestartUnit_) f107
      if (iDebugLevel > 4) write(*,*) "=====> Just read f107 = ", f107 
 
-     if (useDART .ne. 0) then !this is a DART ensemble member - put f107estimate into f107 and f107a
-        call IO_set_f107_single(f107) !replace f107 with the estimate
-        call IO_set_f107a_single(f107) !replace f107 81-day average with the SAME estimate
+     !this is a DART ensemble member - put f107estimate into f107 and f107a
+     if (useDART .ne. 0) then 
+        !replace f107 with the estimate
+        call IO_set_f107_single(f107) 
+        !replace f107 81-day average with the SAME estimate
+        call IO_set_f107a_single(f107) 
      endif
 
-     read(iRestartUnit_) Rho(:,:,:,iBlock) !read Rho, but hope DART will affect GITM via other vars instead
-!alexey end
+     !read Rho, but hope DART will affect GITM via other vars instead
+     read(iRestartUnit_) Rho(:,:,:,iBlock) 
+     !alexey end
 
      if (isMars) then
         if (iDebugLevel > 4) write(*,*) "=====> Reading SurfaceTemp"
