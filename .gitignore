@@ -1,6 +1,21 @@
-**.o
-**.mod
-run/
+
+# Compiled files:
+*.o
+*.a
+*.mod
+*.exe
+
+# Backup files for editors:
+*~
+*#
+
+# Run directories
+run*/
+
+# Python extras
+__pycache__
+
+
 Makefile.conf
 Makefile.def
 share/Library/src/Makefile.DEPEND
