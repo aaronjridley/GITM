@@ -19,6 +19,12 @@ Doga Ozturk (Localized Electrodynamics) - UAF
 
 Chen Wu (Lower boundary, Eclipse) - UM
 
+Angeline Burrell (python code and random things) - NRL
+
+Meghan Burleigh (Coupling to SWMF) - NRL
+
+Leonardo Regoli (Coupling to SWMF, Mars)
+
 ## Past Developers:
 
 Jie Zhu (Ti + Te calculation) - Microsoft
