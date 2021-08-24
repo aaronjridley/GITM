@@ -1,22 +1,28 @@
-!***************************************************************************************************
+!******************************************************************************
 !
 !  File Name: apexsh.f90
 !  Authors: John Emmert, Art Richmond
 !  Date: 11/13/2009
 !  Version: 1.0
-!  Description: Converts geodetic coordinates to and from Quasi-Dipole and Modified
-!               Apex Coordinates.
-!  References: Richmond, A. D., Ionospheric Electrodynamics Using Magnetic Apex Coordinates,
-!                J. Geomag. Geoelectr., 47, 191-212, 1995.
-!              Emmert, J. T., A. D. Richmond, and D. P. Drob, A computationally compact
-!                representation of Magnetic-Apex and Quasi-Dipole coordinates with smooth base
-!                vectors, J. Geophys. Res., 115, doi:10.1029/2010JA015326, 2010.
 !
-!***************************************************************************************************
+!  Description: Converts geodetic coordinates to and from Quasi-Dipole
+!               and Modified Apex Coordinates.
 !
-!  LOADAPXSH
-!  Loads spherical harmonic coefficients (created by MAKEAPXSH) for coordinate conversions. Must be
-!  run before calling the conversion routines.
+!  References: Richmond, A. D., Ionospheric Electrodynamics Using
+!                Magnetic Apex Coordinates, J. Geomag. Geoelectr., 47,
+!                191-212, 1995.
+!
+!              Emmert, J. T., A. D. Richmond, and D. P. Drob, A
+!                computationally compact representation of
+!                Magnetic-Apex and Quasi-Dipole coordinates with
+!                smooth base vectors, J. Geophys. Res., 115,
+!                doi:10.1029/2010JA015326, 2010.
+!
+!*******************************************************************************
+!
+!  LOADAPXSH: Loads spherical harmonic coefficients (created by
+!  MAKEAPXSH) for coordinate conversions. Must be run before calling
+!  the conversion routines.
 !
 !  CALL LOADAPXSH (DATAFILE, EPOCH)
 !

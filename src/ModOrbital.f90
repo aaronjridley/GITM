@@ -1,3 +1,6 @@
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 module ModOrbital
   !Updated orbital elements for all GITM bodies.
   !Orbital Elements taken from Keplerian Elements for the Approximate Positions

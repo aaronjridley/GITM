@@ -1,5 +1,6 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 !-----------------------------------------------------------------------------
 ! $Id: init_msis.Earth.f90,v 1.40 2017/08/09 15:18:05 ridley Exp $
 ! Author: Aaron Ridley, UMichigan

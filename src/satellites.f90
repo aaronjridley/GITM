@@ -1,5 +1,6 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 !----------------------------------------------------------------------
 ! $Id: satellites.f90,v 1.17 2017/07/17 19:52:02 lregoli Exp $
 !

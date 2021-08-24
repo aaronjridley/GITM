@@ -1,3 +1,6 @@
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 subroutine get_msis_temperature(lon, lat, alt, t, h)
 
   use ModTime

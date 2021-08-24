@@ -1,5 +1,6 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 !==============================================================================
 
 subroutine read_al_onset_list(iOutputError, StartTime, EndTime)
