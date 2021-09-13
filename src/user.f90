@@ -215,11 +215,10 @@ subroutine user_bc_perturbation(LogRhoBc, LogNSBc, VelBc_GD, TempBc)
              .and. WaveFreqIntri2 <= SoundSpeed2*(Kh2+1/ScaleHeight**2/4.)/2. &
              + sqrt(SoundSpeed2**2*(Kh2+1/ScaleHeight**2/4.)**2 &
              - 4.*Kh2*SoundSpeed2*BouyancyFreq2)/2.))then
-           if (.not. IsForbidden(iFreq) .and. iProc == 0)then
-              write(*,*) 'No longer a upward-propagating waves at Time = ', &
-                   CurrentTime-StartTime, 'iFreq =', iFreq
-              IsForbidden(iFreq) = .true.
-           endif
+           IsForbidden(iFreq) = .true.
+           if (iProc == 0) &
+                write(*,*) 'No longer a upward-propagating waves at Time = ', &
+                CurrentTime-StartTime, 'iFreq =', iFreq
            cycle
         endif
 
@@ -255,11 +254,10 @@ subroutine user_bc_perturbation(LogRhoBc, LogNSBc, VelBc_GD, TempBc)
            if((WaveFreqIntri2-SoundSpeed2/(4.*ScaleHeight**2))* &
                 (WaveFreqIntri2-BouyancyFreq2*(((Lon-EpicenterLon)*dLon)**2 + &
                 ((Lat-EpicenterLat)*dLat)**2)/RadialD**2) < 0)then
-              if (.not. IsForbidden(iFreq))then
-                 write(*,*) 'No longer a upward-propagating AGW at Time = ', &
-                      CurrentTime-StartTime, 'iFreq =', iFreq
-                 IsForbidden(iFreq) = .true.
-              endif
+              IsForbidden(iFreq) = .true.
+              if (iProc == 0) &
+                   write(*,*) 'No longer a upward-propagating AGW at Time = ', &
+                   CurrentTime-StartTime, 'iFreq =', iFreq
               cycle
            endif
 

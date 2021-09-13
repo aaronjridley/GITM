@@ -505,8 +505,7 @@ subroutine set_inputs
               if (iErrorFile /= 0) then
                  write(*,*) "Error finding #START in surface perturbation file: ",&
                       cSurfacePerturbFileName
-                 close(iUnitFile)
-                 return
+                 call stop_gitm("Must Stop!")
               endif
               iFreq = 0
               do while (iErrorFile == 0)
@@ -520,6 +519,7 @@ subroutine set_inputs
                     write(*,*) "For WP: Number of frequencies reaching the limit: ", &
                          nMaxPerturbFreq
                     write(*,*) "Increase nMaxPerturbFreq in ModInputs.f90 !!!"
+                    call stop_gitm("Must Stop!")
                  endif
               enddo              
               close(iUnitFile)

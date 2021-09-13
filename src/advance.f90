@@ -181,19 +181,39 @@ contains
   subroutine get_mean_bcs
     ! Get mean horizontal neutral wind and neutral temperature values at the 
     ! lower boundary for Wave Perturbation (WP) model
+
+    LocalMeanVelBc_D = 0
+    LocalMeanTempBc = 0
+    LocalSumVolume = 0
     
-    LocalMeanVelBc_D(iEast_) = &
-         sum(Velocity(:,:,-1:0,iEast_,:))/size(Velocity(:,:,-1:0,iEast_,:))
-    LocalMeanVelBc_D(iNorth_) = &
-         sum(Velocity(:,:,-1:0,iNorth_,:))/size(Velocity(:,:,-1:0,iNorth_,:))
-    LocalMeanTempBc = sum(Temperature(:,:,-1:0,1)*TempUnit(:,:,-1:0))/ &
-         size(Temperature(:,:,-1:0,:))
+    do iBlock = 1, nBlocks
+
+       LocalMeanVelBc_D(iEast_) = LocalMeanVelBc_D(iEast_) + &
+            sum(Velocity(1:nLons,1:nLats,-1:0,iEast_,iBlock) &
+            *   CellVolume(1:nLons,1:nLats,-1:0,iBlock))
+       LocalMeanVelBc_D(iNorth_) = LocalMeanVelBc_D(iNorth_) + &
+            sum(Velocity(1:nLons,1:nLats,-1:0,iNorth_,iBlock) &
+            *   CellVolume(1:nLons,1:nLats,-1:0,iBlock))
+
+       LocalMeanTempBc = LocalMeanTempBc + &
+            sum(Temperature(1:nLons,1:nLats,-1:0,iBlock) &
+            *   TempUnit(1:nLons,1:nLats,-1:0) &
+            *   CellVolume(1:nLons,1:nLats,-1:0,iBlock))
+
+       LocalSumVolume = LocalSumVolume + &
+            sum(CellVolume(1:nLons,1:nLats,-1:0,iBlock))
+
+    enddo   
+
     call MPI_ALLREDUCE(LocalMeanVelBc_D, MeanVelBc_D, 2, &
          MPI_REAL, MPI_SUM, iCommGITM, iError)
     call MPI_ALLREDUCE(LocalMeanTempBc, MeanTempBc, 1, &
          MPI_REAL, MPI_SUM, iCommGITM, iError)
-    MeanVelBc_D = MeanVelBc_D/nProcs
-    MeanTempBc = MeanTempBc/nProcs
+    call MPI_ALLREDUCE(LocalSumVolume, SumVolume, 1, &
+         MPI_REAL, MPI_SUM, iCommGITM, iError)    
+    MeanVelBc_D = MeanVelBc_D / SumVolume
+    MeanTempBc = MeanTempBc / SumVolume
+
     if(iDebugLevel > 0) &
          write(*,*) 'For WP-GITM: iProc, MeanVelBc_D, MeanTempBc=', &
          iProc, MeanVelBc_D, MeanTempBc

@@ -77,6 +77,9 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
   real :: MeshHm1, MeshHm2, MeshHm3, MeshHm4
   real :: MeshCoefm0, MeshCoefm1, MeshCoefm2, MeshCoefm3, MeshCoefm4
 
+  ! Temporary arrays of the lower boundary condition to pass to WP (WP-GITM)
+  real :: LogNS_LBC(2,nSpecies), VelGD_LBC(2,3)
+
   !------------------------------------------------------------------------
   !------------------------------------------------------------------------
   ! Bottom
@@ -391,10 +394,16 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
   ! For WP-GITM: add neutral atmospheric perturbations caused by
   ! tsunami or earthquake
   if (UseBcPerturbation) then
+     ! some compilers do not work with passing non-continuous sub-arrays,
+     ! extract sub-arrays to temporary arrays to be safe.
+     LogNS_LBC = LogNS(-1:0, :)
+     VelGD_LBC = Vel_GD(-1:0, iEast_ : iUp_)
      call user_bc_perturbation(LogRho(-1:0), &
-                               LogNS(-1:0, :), &
-                               Vel_GD(-1:0, iEast_ : iUp_), &
+                               LogNS_LBC, &
+                               VelGD_LBC, &
                                Temp(-1:0))
+     LogNS(-1:0, :) = LogNS_LBC
+     Vel_GD(-1:0, iEast_ : iUp_) = VelGD_LBC
   endif
 
   !------------------------------------------------------------------------
