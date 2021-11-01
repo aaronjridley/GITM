@@ -114,7 +114,10 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
      Ap = min(200.,max(-40.72 + 1.3 * HP, 10.))
 
      do iAlt = -1, 0
-        Alt = Altitude_G(iAlt)/1000.0
+        Alt = Altitude_G(iAlt)/1000.0 * &
+             (1.0 - &
+             MsisOblateFactor/2.0 + &
+             MsisOblateFactor * cos(Lat*3.1415/180.0))
         Lst = mod(UTime/3600.0+Lon/15.0,24.0)
 
         call msis_bcs(iJulianDay,UTime,Alt,Lat,Lon,Lst, &
