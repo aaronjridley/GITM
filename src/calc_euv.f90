@@ -103,14 +103,16 @@ subroutine euv_ionization_heat(iBlock)
 
      EuvHeating(:,:,iAlt,iBlock)  = EHeat*HeatingEfficiency_CB(:,:,iAlt,iBlock)
      eEuvHeating(:,:,iAlt,iBlock) = EHeat*eHeatingEfficiency_CB(:,:,iAlt,iBlock)
-     do ilon = 1, nlons 
-        do ilat =1 ,nlats
-           if (Altitude_GB(iLon,iLat,iAlt,iBlock) .lt. 80000.0) then
-              EUVHeating(iLon,iLat,iAlt,iBlock) =0.0
-              eEUVHeating(iLon,iLat,iAlt,iBlock) =0.0
-           endif
-        enddo
-     enddo
+
+     ! Why this? Is this for Mars or Venus or something?
+     !do ilon = 1, nlons 
+     !   do ilat =1 ,nlats
+     !      if (Altitude_GB(iLon,iLat,iAlt,iBlock) .lt. 80000.0) then
+     !         EUVHeating(iLon,iLat,iAlt,iBlock) =0.0
+     !         eEUVHeating(iLon,iLat,iAlt,iBlock) =0.0
+     !      endif
+     !   enddo
+     !enddo
      
   enddo
   
@@ -135,7 +137,7 @@ subroutine euv_ionization_heat(iBlock)
              EuvHeating2d(1:nLons,1:nLats) + &
              EuvHeating(:,:,iAlt,iBlock)  * &
              dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
-
+        
         EuvHeating(:,:,iAlt,iBlock) = EuvHeating(:,:,iAlt,iBlock) / &
              Rho(1:nLons,1:nLats,iAlt,iBlock) / &
              cp(1:nLons,1:nLats,iAlt,iBlock) / &
@@ -146,6 +148,7 @@ subroutine euv_ionization_heat(iBlock)
              HeatingEfficiency_CB(:,:,iAlt,iBlock)
 
      enddo
+
   else
      EuvHeating = 0.0
   endif
@@ -254,7 +257,7 @@ contains
 
   subroutine night_euv_ionization
 
-!!! Nighttime EUV Ionization
+    ! Nighttime EUV Ionization
 
     real :: night_col(nLons,nLats,nAlts,nSpecies)
     real :: dAlts(nLons,nLats)
@@ -696,9 +699,8 @@ subroutine calc_scaled_euv
      
            wavelength_ave = (WAVEL(N) + WAVES(N))/2.0
            PhotonEnergy(N)= 6.626e-34*2.998e8/(wavelength_ave*1.0e-10)
-
+           write(*,*) 'photonenergy : ', n, PhotonEnergy(N), wavelength_ave
         enddo
-
         ! Solar_Flux has the Tobiska and Hinteregger fluxes in there already:
   
         do N = 1,Num_WaveLengths_High
@@ -723,6 +725,12 @@ subroutine calc_scaled_euv
 
   endif
 
+  do N=1,Num_WaveLengths_High
+     ! Calculate the energy in the bin:
+     wavelength_ave = (WAVEL(N) + WAVES(N))/2.0
+     PhotonEnergy(N)= 6.626e-34*2.998e8/(wavelength_ave*1.0e-10)
+  enddo
+  
 end subroutine calc_scaled_euv
 
  !-------------------------------------------------------------------
