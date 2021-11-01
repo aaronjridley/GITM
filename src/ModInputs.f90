@@ -203,6 +203,7 @@ module ModInputs
   logical :: UseStatisticalModelsOnly = .false.
   real    :: DtStatisticalModels = 3600.0
   logical :: UseOBCExperiment = .false.
+  real :: MsisOblateFactor = 0.0
 
   logical :: UseGswmComp(4) = .true.
 
