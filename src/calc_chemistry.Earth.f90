@@ -244,6 +244,8 @@ subroutine calc_chemistry(iBlock)
         szap = cos(sza(iLon, iLat,iBlock))
         if (szap < 0.0) szap = 0.0
 
+        ChemicalHeating2d(iLon, iLat) = 0.0
+        
         do iAlt = 1, nAlts
 
            y1 = max(1.0,k1*exp(m1*altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0))
@@ -2367,13 +2369,16 @@ subroutine calc_chemistry(iBlock)
                  endif
               enddo
            endif
+           
+           ChemicalHeating2d(iLon, iLat) =  &
+                ChemicalHeating2d(iLon, iLat) + &
+                ChemicalHeatingRate(iLon, iLat, iAlt) * &
+                Element_Charge * & 
+                dAlt_GB(iLon, iLat, iAlt, iBlock)
 
-        enddo
-     enddo
-
-
-
-  enddo
+        enddo ! Alt
+     enddo ! Lat
+  enddo ! Lon
  
   if (iDebugLevel > 3) then
      do iIon = 1, nIons
