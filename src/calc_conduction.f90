@@ -1,7 +1,129 @@
 ! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
 ! Full license can be found in LICENSE
 
-subroutine calc_conduction(iBlock, DtIn, NeuBCS, Quantity, Diff, MulFac, dTdt_cond)
+! -------------------------------------------------------------------------------------
+! This file contains the following subroutines:
+! - calc_conduction: calculates the thermal conduction across all lats/lons
+! - calc_conduction_1d: a generalized solver for the Poisson Equation
+! -------------------------------------------------------------------------------------
+
+! -------------------------------------------------------------------------------------
+! This calculates the thermal conduction in the vertical direction
+! JMB Update 07/13/2017
+! Updated Conduction Routines Require intermediate
+! Steps outlined in Harwood et al. [2016]
+! Oscillation-free method for semi-linear diffusion equations
+! digitalcommons.georgefox.edu  
+! -------------------------------------------------------------------------------------
+
+subroutine calc_thermal_conduction(iBlock)
+
+  use ModInputs
+  use ModSources
+  use ModGITM
+  implicit none
+
+  integer, intent(in) :: iBlock
+  integer :: iErr
+  
+  real :: Rho110(nLons, nLats, 0:nAlts+1)
+  real :: tmp2(nLons, nLats, 0:nAlts+1)
+
+  ! NeuBCS used for Conduction and Bulk Winds
+  logical ::NeuBCS                      ! Set to true if you want Neumann BCs
+
+  real :: Prandtl(nLons,nLats,0:nalts+1)
+
+  ! Sub-timestep used in the multi-step conduction
+  real :: DtCSLocal
+
+  ! Temperature variables
+  real :: TemperatureStage1(1:nLons,1:nLats,-1:nAlts+2)
+  real :: TemperatureH(1:nLons,1:nLats,-1:nAlts+2)
+  real :: TemperatureF(1:nLons,1:nLats,-1:nAlts+2)
+
+  real :: TmpTemp(nLons, nLats, -1:nAlts+2)
+  real :: TmpDiff(nLons, nLats, 0:nAlts+1)
+  real :: TmpMulFac(nLons, nLats, 0:nAlts+1)
+
+  if (iDebugLevel > 4) write(*,*) "=====> conduction", iproc
+  if (UseBarriers) call MPI_BARRIER(iCommGITM,iErr)
+
+  Rho110 = Rho(1:nLons, 1:nLats,0:nAlts+1, iBlock)
+  
+  ! Note: Neumann = .true. is needed if you want 
+  ! the gradient to be zero at the top.
+
+  NeuBCS = .true.  ! Use Neumann Boundary Conditions
+
+  tmp2 = Rho110 * cp(1:nLons, 1:nLats,0:nAlts+1, iBlock)
+
+  if (UseTurbulentCond) then
+     Prandtl = &
+          KappaEddyDiffusion(1:nLons, 1:nLats,0:nAlts+1, iBlock) * &
+          Rho110 * &
+          Cp(1:nLons, 1:nLats,0:nAlts+1, iBlock)
+  else 
+     Prandtl = 0.0
+  endif
+
+  DtCSLocal = Dt/2.0
+  TmpTemp = Temperature(1:nLons, 1:nLats,-1:nAlts+2, iBlock) * &
+       TempUnit(1:nLons, 1:nLats,-1:nAlts+2)
+  TmpDiff = KappaTemp(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
+       Prandtl(1:nLons, 1:nLats, 0:nAlts+1)
+
+  call calc_conduction_1d(iBlock, DtCSLocal, NeuBCS, &
+       TmpTemp, TmpDiff, tmp2, MoleConduction)
+
+  TemperatureStage1(1:nLons,1:nLats,0:nAlts+1) = &
+       Temperature(1:nLons,1:nLats,0:nAlts+1,iBlock) + &
+       MoleConduction(1:nLons,1:nLats,0:nAlts+1)/&
+       TempUnit(1:nLons,1:nLats,0:nAlts+1)
+
+  DtCSLocal = Dt/2.0
+  TmpTemp = TemperatureStage1(1:nLons, 1:nLats,-1:nAlts+2) * &
+       TempUnit(1:nLons, 1:nLats,-1:nAlts+2)
+  TmpDiff = KappaTemp(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
+       Prandtl(1:nLons, 1:nLats, 0:nAlts+1)
+
+  call calc_conduction_1d(iBlock, DtCSLocal, NeuBCS, &
+       TmpTemp, TmpDiff, tmp2, MoleConduction)
+
+  TemperatureH(1:nLons,1:nLats, 0:nAlts+1) = &
+       TemperatureStage1(1:nLons,1:nLats,0:nAlts+1) + &
+       MoleConduction(1:nLons,1:nLats,0:nAlts+1)/&
+       TempUnit(1:nLons,1:nLats,0:nAlts+1)
+
+  ! Full Time Step Update
+  DtCSLocal = Dt
+  TmpTemp = Temperature(1:nLons, 1:nLats,-1:nAlts+2, iBlock) * &
+       TempUnit(1:nLons, 1:nLats,-1:nAlts+2)
+  TmpDiff = KappaTemp(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
+       Prandtl(1:nLons, 1:nLats, 0:nAlts+1)
+
+  call calc_conduction_1d(iBlock, DtCSLocal, NeuBCS, &
+       TmpTemp, TmpDiff, tmp2, MoleConduction)
+
+  TemperatureF(1:nLons,1:nLats, 0:nAlts+1) = &
+       Temperature(1:nLons,1:nLats, 0:nAlts+1,iBlock) + &
+       MoleConduction(1:nLons,1:nLats, 0:nAlts+1) / &
+       TempUnit(1:nLons,1:nLats, 0:nAlts+1)
+
+  ! Note that Conduction is the net temperature update
+  Conduction(1:nLons,1:nLats,0:nAlts+1) = &
+       (2.0*TemperatureH(1:nLons,1:nLats,0:nAlts+1) - &
+       TemperatureF(1:nLons,1:nLats,0:nAlts+1)) - &
+       Temperature(1:nLons,1:nLats,0:nAlts+1,iBlock) 
+
+end subroutine calc_thermal_conduction
+
+
+! -------------------------------------------------------------------------------------
+! General Poisson Equation solver in 1d (vertical), but looping across lons / lats
+! -------------------------------------------------------------------------------------
+
+subroutine calc_conduction_1d(iBlock, DtIn, NeuBCS, Quantity, Diff, MulFac, dTdt_cond)
 
   use ModSizeGitm
   use ModGITM, only: dAlt_GB, Latitude, Longitude, Altitude_GB, RadialDistance_GB
@@ -25,8 +147,8 @@ subroutine calc_conduction(iBlock, DtIn, NeuBCS, Quantity, Diff, MulFac, dTdt_co
   integer :: iLon, iLat, iAlt
   integer :: i
 
-  call start_timing("conduction")
-  call report("calc_conduction",3)
+  call start_timing("conduction_1d")
+  call report("calc_conduction_1d",3)
 
   do iLon = 1, nLons
      do iLat = 1, nLats
@@ -116,6 +238,7 @@ subroutine calc_conduction(iBlock, DtIn, NeuBCS, Quantity, Diff, MulFac, dTdt_co
      enddo
   enddo
 
-  call end_timing("conduction")
+  call end_timing("conduction_1d")
 
-end subroutine calc_conduction
+end subroutine calc_conduction_1d
+
