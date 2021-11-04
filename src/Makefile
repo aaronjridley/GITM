@@ -15,106 +15,110 @@ include Makefile.DEPEND
 include Makefile.RULES
 
 MODULES = \
-	ModSize.o\
-	ModTime.o\
+	apexsh.o\
+	ModAeAuroralModel.o\
+	ModChemistry.o\
 	ModConstants.o\
-	ModOrbital.o\
-	ModPlanet.o\
-	ModGITM.o\
-	ModSources.o\
-	ModVertical.o\
-	ModInputs.o\
-	ModSphereInterface.o\
-	ModTimingGITM.o\
-	ModRates.o\
 	ModEUV.o\
 	ModElectrodynamics.o\
-	ModSatellites.o\
-	ModLimiter.o\
-	ModTides.o\
-	ModNewell.o\
-	ModOvationSME.o\
-	ModAeAuroralModel.o\
-	ModMagTrace.o\
-	ModChemistry.o\
+	ModGITM.o\
 	ModGITMImplicit.o\
 	ModHwm14.o\
-	ModUser.o \
+	ModInputs.o\
+	ModLimiter.o\
+	ModMagTrace.o\
+	ModNewell.o\
+	ModOrbital.o\
+	ModOvationSME.o\
+	ModPlanet.o\
+	ModRates.o\
 	ModRCMR.o \
 	ModReadGitm3d.o\
 	ModSami.o\
-	apexsh.o
+	ModSatellites.o\
+	ModSize.o\
+	ModSources.o\
+	ModSphereInterface.o\
+	ModTides.o\
+	ModTime.o\
+	ModTimingGITM.o\
+	ModUser.o \
+	ModVertical.o
+
 
 OBJECTS = \
-	planet.o\
-	satellites.o\
-	calc_electron_temperature.o\
+	add_sources.o\
+	advance.o\
+	advance_horizontal.o\
+	advance_vertical.o\
+	apex_routines.o\
 	aurora.o\
-	get_potential.o\
+	calc_avesza.o\
+	calc_chemistry.o\
+	calc_conduction.o\
 	calc_efield.o\
-	set_inputs.o\
-	init_energy_deposition.o\
-	get_glow.o\
-	init_grid.o\
-	time_routines.o\
-	vertical_solver.o\
-	vertical_solver_ausm.o\
-	vertical_solver_rusanov.o\
-	library.o\
-	stretch_grid.o\
-	init_mpi.o\
-	restart.o\
-	initialize.o\
-	init_msis.o\
-	init_iri.o\
-	init_b0.o\
-	overwrite.o\
-	init_altitude.o\
-	finalize.o\
-	calc_neutral_friction.o\
-	lubksb.o\
-	ludcmp.o\
 	calc_electrodynamics.o\
-	divergence.o\
+	calc_electron_temperature.o\
+	calc_euv.o\
+	calc_ion_drag.o\
+	calc_ion_v.o\
+	calc_ir_heating.o\
+	calc_neutral_friction.o\
+	calc_physics.o\
 	calc_pressure.o\
 	calc_rates.o\
+	calc_sources.o\
+	calc_tec.o \
 	calc_timestep.o\
+	calc_viscosity.o\
+	chapman_new.o\
+	check_for_nans.o\
+	divergence.o\
 	exchange_messages_sphere.o\
-	timing.o\
-	advance.o\
-	advance_vertical.o\
-	advance_horizontal.o\
-	set_vertical_bcs.o\
-	set_horizontal_bcs.o\
+	finalize.o\
+	get_glow.o\
+	get_location.o \
+	get_potential.o\
+	gradient.o\
+	initialize.o\
+	init_altitude.o\
+	init_b0.o\
+	init_energy_deposition.o\
+	init_grid.o\
+	init_iri.o\
+	init_mpi.o\
+	init_msis.o\
+	library.o\
+	logfile.o\
+	lubksb.o\
+	ludcmp.o\
 	output.o\
 	output_common.o\
-	logfile.o\
-	calc_conduction.o\
-	calc_physics.o\
-	calc_avesza.o\
-	calc_euv.o\
-	calc_chemistry.o\
-	calc_ion_v.o\
-	chapman_new.o\
-	stop_file.o\
+	overwrite.o\
+	planet.o\
+	RCMR_routines.o \
 	read_inputs.o\
-	add_sources.o\
-	calc_sources.o\
-	apex_routines.o\
-	write_output.o\
-	gradient.o\
-	tides.o\
+	read_ACE_data.o\
 	read_MHDIMF_Indices_new.o\
 	read_NGDC_Indices_new.o\
 	read_NOAAHPI_Indices_new.o\
 	read_OMNIWEB_Ap_Indices_new.o\
-	read_ACE_data.o\
 	read_sme.o\
+	restart.o\
+	satellites.o\
+	set_inputs.o\
+	set_horizontal_bcs.o\
+	set_vertical_bcs.o\
+	stop_file.o\
+	stretch_grid.o\
+	tides.o\
+	time_routines.o\
+	timing.o\
 	user.o \
-	calc_tec.o \
-	get_location.o \
-	RCMR_routines.o \
-	check_for_nans.o
+	vertical_solver.o\
+	vertical_solver_ausm.o\
+	vertical_solver_rusanov.o\
+	write_output.o
 
 SAMI_EXTRAS = \
 	ModSamiInterp.o \
