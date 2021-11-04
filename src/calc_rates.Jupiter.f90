@@ -416,7 +416,7 @@ subroutine calc_collisions(iBlock)
 end subroutine calc_collisions
 
 
-subroutine calc_viscosity(iBlock)
+subroutine calc_viscosity_coef(iBlock)
 
   use ModGITM
 
@@ -426,4 +426,4 @@ subroutine calc_viscosity(iBlock)
 
   call calc_rate(iBlock)
 
-end subroutine calc_viscosity
+end subroutine calc_viscosity_coef
