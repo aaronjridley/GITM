@@ -38,6 +38,10 @@ subroutine add_sources
 
      call calc_GITM_sources(iBlock)
 
+     !-------------------------------------------------------------------------
+     ! Neutral Temperature Source Terms
+     !-------------------------------------------------------------------------
+
      !! To turn off EuvHeating, turn UseSolarHeating=.false. in UAM.in
      !! To turn off JouleHeating, turn UseJouleHeating=.false. in UAM.in
      !! To turn off AuroralHeating, turn Use=AuroralHeating.false. in UAM.in
@@ -74,37 +78,46 @@ subroutine add_sources
      UserData3D(:,:,:,1,iBlock) = 0.0
      UserData3D(1:nLons, 1:nLats, 1:nAlts, 1, iBlock) = JouleHeating
 
+     !-------------------------------------------------------------------------
+     ! Neutral Velocity Source Terms
+     !-------------------------------------------------------------------------
+
      !! To turn off IonDrag, turn UseIonDrag=.false. in UAM.in
      do iDir = 1, 3
-       Velocity(1:nLons, 1:nLats, 1:nAlts, iDir, iBlock) = &
+        ! Ion drag + gravity wave acceleration are defined 1 - nAlts
+        Velocity(1:nLons, 1:nLats, 1:nAlts, iDir, iBlock) = &
             Velocity(1:nLons, 1:nLats, 1:nAlts, iDir, iBlock) + &
             Dt*IonDrag(:,:,:,iDir) + GWAccel(:,:,:,iDir)
-
-       Velocity(1:nLons, 1:nLats, 0:nAlts+1, iDir, iBlock) = &
-            Velocity(1:nLons, 1:nLats, 0:nAlts+1, iDir, iBlock) + &
-            Viscosity(1:nLons,1:nLats, 0:nAlts+1,iDir)
+        ! Viscosity is defined 0 - nAlts + 1
+        Velocity(1:nLons, 1:nLats, 0:nAlts+1, iDir, iBlock) = &
+             Velocity(1:nLons, 1:nLats, 0:nAlts+1, iDir, iBlock) + &
+             Viscosity(1:nLons,1:nLats, 0:nAlts+1,iDir)
      enddo 
 
      !! To turn off NeutralFriction, turn UseNeutralFriction=.false. in UAM.in
-
      do iSpecies = 1, nSpecies
+        ! Ion drag + neutral friction are defined 1 - nAlts:
         VerticalVelocity(1:nLons, 1:nLats, 1:nAlts, iSpecies, iBlock) =&
              VerticalVelocity(1:nLons, 1:nLats, 1:nAlts, iSpecies, iBlock) + &
              Dt*(VerticalIonDrag(:,:,:,iSpecies)) + &
-             NeutralFriction(:,:,:,iSpecies) 
-
-        VerticalVelocity(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) =&
-        VerticalVelocity(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) +&
-                VerticalViscosityS(1:nLons,1:nLats,0:nAlts+1,iSpecies)
-
+             NeutralFriction(:,:,:,iSpecies)
+        ! Viscosity is defined 0 - nAlts + 1
+        VerticalVelocity(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) = &
+             VerticalVelocity(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) + &
+             VerticalViscosityS(1:nLons, 1:nLats, 0:nAlts+1, iSpecies)
      enddo
 
-     call report("done with IonDrag (add_sources)", 5)
+     !-------------------------------------------------------------------------
+     ! Electron Temperatures
+     !-------------------------------------------------------------------------
+
      if (DoCheckForNans) call check_for_nans_ions('before e-temp')
 
      call calc_electron_temperature(iBlock)
      
+     !-------------------------------------------------------------------------
      ! New Source Term for the ion density:
+     !-------------------------------------------------------------------------
 
      if (UseImprovedIonAdvection) then
      
@@ -114,30 +127,36 @@ subroutine add_sources
                 IDensityS(1:nLons,1:nLats,1:nAlts,iIon,iBlock) / (1 + change)
         enddo
         
-        IDensityS(:,:,:,ie_,iBlock) = 0.0
-        do iIon = 1, nIons-1
-           IDensityS(:,:,:,ie_,iBlock) = &
-                IDensityS(:,:,:,ie_,iBlock) + &
-                IDensityS(:,:,:,iIon,iBlock)
-        enddo
-
         if (DoCheckForNans) call check_for_nans_ions('After divergence')
 
      endif
 
-     do iLon = 1, nLons
-        do iLat = 1, nLats
-           do iAlt = 1, nAlts
-              Rho(iLon, iLat, iAlt, iBlock) = &
-                   sum(Mass(1:nSpecies) * &
-                   NDensityS(iLon,iLat,iAlt,1:nSpecies,iBlock) )
-              NDensity(iLon, iLat, iAlt, iBlock) = &
-                   sum(NDensityS(iLon,iLat,iAlt,1:nSpecies,iBlock) )
-           enddo
-        enddo
+     !-------------------------------------------------------------------------
+     ! Bulk Quantities (rho, number den, vertical velocity, electron den)
+     !-------------------------------------------------------------------------
+
+     IDensityS(:,:,:,ie_,iBlock) = 0.0
+     do iIon = 1, nIons-1
+        IDensityS(:,:,:,ie_,iBlock) = &
+             IDensityS(:,:,:,ie_,iBlock) + &
+             IDensityS(:,:,:,iIon,iBlock)
      enddo
 
+     Rho(1:nLons, 1:nLats, 1:nAlts, iBlock) = 0.0
+     NDensity(1:nLons, 1:nLats, 1:nAlts, iBlock) = 0.0
      Velocity(1:nLons, 1:nLats, 1:nAlts, iUp_, iBlock) = 0.0
+
+     do iSpecies = 1, nSpecies
+        Rho(1:nLons, 1:nLats, 1:nAlts, iBlock) = &
+             Rho(1:nLons, 1:nLats, 1:nAlts, iBlock) + &
+             Mass(iSpecies) * &
+             NDensityS(1:nLons, 1:nLats, 1:nAlts, iSpecies, iBlock)
+        NDensity(1:nLons, 1:nLats, 1:nAlts, iBlock) = &
+             NDensity(1:nLons, 1:nLats, 1:nAlts, iBlock) + &
+             NDensityS(1:nLons, 1:nLats, 1:nAlts, iSpecies, iBlock)
+     enddo
+     
+     ! Have to do this separately, since depends on Rho
      do iSpecies = 1, nSpecies
         Velocity(1:nLons, 1:nLats, 1:nAlts, iUp_, iBlock) = &
              Velocity(1:nLons, 1:nLats, 1:nAlts, iUp_, iBlock) + &
