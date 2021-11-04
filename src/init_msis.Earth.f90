@@ -15,12 +15,12 @@
 
 subroutine get_msis_temperature(lon, lat, alt, t, h)
 
- use ModIndicesInterfaces
   use ModTime
   use ModInputs
   use ModPlanet
   use ModGITM
   use ModRCMR, only: RCMRFlag, RCMROutType
+  use ModIndicesInterfaces
 
   use EUA_ModMsis00, only: meters, gtd7
 
@@ -77,13 +77,14 @@ subroutine get_msis_temperature(lon, lat, alt, t, h)
   nN2 = msis_dens(3)
   nO2 = msis_dens(4)
 
-  m = (nO * mass(iO_3P_) + nO2 * mass(iO2_) + nN2 * mass(iN2_)) / (nO + nO2 + nN2)
+  m = (nO * mass(iO_3P_) + nO2 * mass(iO2_) + nN2 * mass(iN2_)) / &
+       (nO + nO2 + nN2)
 
   r = RBody + alt
-!  g = Gravitational_Constant * (RBody/r) ** 2
-  g = Gravitational_Constant
+  g = Gravitational_Constant * (RBody/r) ** 2
+  !g = Gravitational_Constant
 
-  h = Boltzmanns_Constant * t / (m*g)
+  h = Boltzmanns_Constant * t / (m * g)
 
 end subroutine get_msis_temperature
 
@@ -98,6 +99,7 @@ subroutine init_msis
   use ModConstants
   use ModPlanet
   use ModTime
+  use ModIndicesInterfaces
 
   use EUA_ModMsis00, ONLY: meters, gtd7, tselec
 
@@ -108,7 +110,7 @@ subroutine init_msis
   real, dimension(1:2) :: msis_temp
   real, dimension(1:9) :: msis_dens
 
-  integer :: iBlock, iAlt, iLat, iLon, iSpecies, iyd
+  integer :: iBlock, iAlt, iLat, iLon, iSpecies, iyd, iError
   real :: geo_lat, geo_lon, geo_alt, geo_lst,m,k, ut
   real :: ffactor, h, no  
   real, dimension(7)  :: ap = 10.0
@@ -119,6 +121,21 @@ subroutine init_msis
   character(250) :: path = './DataIn/'
 
   call report("init_msis",0)
+
+  iError = 0
+  call get_f107(CurrentTime, f107, iError)
+  if (iError /= 0) then
+     write(*,*) "Error in getting F107 value (init_msis).  Is this set?"
+     write(*,*) "Code : ",iError
+     call stop_gitm("Stopping in advance")
+  endif
+
+  call get_f107a(CurrentTime, f107a, iError)
+  if (iError /= 0) then
+     write(*,*) "Error in getting F107a value (init_msis).  Is this set?"
+     write(*,*) "Code : ",iError
+     call stop_gitm("Stopping in advance")
+  endif
 
   !--------------------------------------------------------------------------
   !
@@ -150,7 +167,8 @@ subroutine init_msis
   if (UseMsisTides) then
      sw_msis = 1
   ELSE IF (UseMSISOnly) THEN
-     ! Diurnal, semidiurnal, and terdiurnal variations are excluded, EYigit:16June09
+     ! Diurnal, semidiurnal, and terdiurnal variations are excluded,
+     ! EYigit:16June09
      CALL report("...Using MSIS without tidal variations...",0)
      sw_msis = 1
      sw_msis(7) = 0
