@@ -243,14 +243,6 @@ subroutine set_indices
      if (iError /= 0) den = 5.0
      call IO_SetSWN(den)
 
-!!!     call get_kp(CurrentTime+TimeDelayHighLat, temp, iError)
-!!!     call IO_Setkp(temp)
-!!!
-!!!     if (iError /= 0) then
-!!!        write(*,*) "Code Error in get_kp called from get_potential.f90"
-!!!        call stop_gitm("Stopping in get_potential")
-!!!     endif
-
      if (UseNewellAurora) call calc_dfdt(by, bz, vx)
 
   endif
