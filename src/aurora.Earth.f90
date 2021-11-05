@@ -553,6 +553,14 @@ subroutine aurora(iBlock)
        0.92*AuroralBulkIonRate*&
        NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock)/temp
 
+  if (UseAuroralHeating) then
+     AuroralHeating = AuroralHeatingRate(:,:,:,iBlock) / &
+          TempUnit(1:nLons,1:nLats,1:nAlts) / cp(:,:,1:nAlts,iBlock) / &
+          rho(1:nLons,1:nLats,1:nAlts, iBlock)
+  else
+     AuroralHeating = 0.0
+  endif
+
   IsFirstTime(iBlock) = .false.
 
   call end_timing("Aurora")

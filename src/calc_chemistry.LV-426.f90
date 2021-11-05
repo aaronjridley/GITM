@@ -36,6 +36,11 @@ subroutine calc_chemistry(iBlock)
 
   DtMin = Dt
 
+  ChemicalHeatingRate = 0.0
+  ChemicalHeatingRateIon = 0.0
+  ChemicalHeatingRateEle = 0.0
+  ChemicalHeatingSpecies = 0.0
+
   call report("Chemistry",2)
   call start_timing("calc_chemistry")
 
@@ -235,7 +240,17 @@ subroutine calc_chemistry(iBlock)
         enddo
      enddo
   enddo
- 
+
+  ChemicalHeatingRate(:,:,:) = &
+       ChemicalHeatingRate(:,:,:) * Element_Charge / &
+       TempUnit(1:nLons,1:nLats,1:nAlts) / cp(1:nLons,1:nLats,1:nAlts,iBlock)/&
+       rho(1:nLons,1:nLats,1:nAlts,iBlock)
+	   
+  ChemicalHeatingRateIon(:,:,:) = &
+       ChemicalHeatingRateIon(:,:,:) * Element_Charge
+
+  ChemicalHeatingSpecies = ChemicalHeatingSpecies * Element_Charge
+  
   call end_timing("calc_chemistry")
 
 end subroutine calc_chemistry
