@@ -24,6 +24,8 @@ subroutine advance
   call report("advance",1)
   call start_timing("advance")
 
+  ! These are a bunch of user-defined source terms
+  
   if (RCMRFlag) call set_RCMR_estimations
   if (UseGSWMTides) call update_tides
   if (UseWACCMTides) call update_waccm_tides
@@ -31,6 +33,10 @@ subroutine advance
   if (UsePerturbation) call user_perturbation
 
   if (.not. UseStatisticalModelsOnly) then
+
+     ! Break the time-step up into three parts:
+     ! (1) vertical solver; (2) horizontal solver;
+     ! (3) source terms
 
      call advance_vertical_all
      call add_sources 
@@ -43,6 +49,8 @@ subroutine advance
   ! Increment time and all the time associated variables
   call update_time
   
+  ! If you want to just get statistical model results:
+
   if (UseStatisticalModelsOnly) then
      call init_msis
      call init_iri
