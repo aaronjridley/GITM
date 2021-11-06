@@ -36,6 +36,11 @@ subroutine calc_chemistry(iBlock)
 
   DtMin = Dt
 
+  ChemicalHeatingRate = 0.0
+  ChemicalHeatingRateIon = 0.0
+  ChemicalHeatingRateEle = 0.0
+  ChemicalHeatingSpecies = 0.0
+
   if (.not.UseIonChemistry) return
 
   call report("Chemistry",2)
@@ -334,6 +339,16 @@ subroutine calc_chemistry(iBlock)
        write(*,*) "===> Average Dt for this timestep : ", &
        (Dt*nLats*nLons*nAlts)/nIters
 
+  ChemicalHeatingRate(:,:,:) = &
+       ChemicalHeatingRate(:,:,:) * Element_Charge / &
+       TempUnit(1:nLons,1:nLats,1:nAlts) / cp(1:nLons,1:nLats,1:nAlts,iBlock)/&
+       rho(1:nLons,1:nLats,1:nAlts,iBlock)
+	   
+  ChemicalHeatingRateIon(:,:,:) = &
+       ChemicalHeatingRateIon(:,:,:) * Element_Charge
+
+  ChemicalHeatingSpecies = ChemicalHeatingSpecies * Element_Charge
+    
   call end_timing("calc_chemistry")
 
 end subroutine calc_chemistry

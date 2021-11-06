@@ -353,10 +353,14 @@ subroutine set_inputs
 
         case ("#MSISOBC")
            call read_in_logical(UseOBCExperiment, iError)
+           call read_in_real(MsisOblateFactor, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #MSISOBC:'
+              write(*,*) 'UseOBCExperiment - use MSIS [O] BC shifted by 6 months'
+              write(*,*) 'MsisOblateFactor - alt = alt * (1.0-f/2 + f*cos(lat))'
               write(*,*) '#MSISOBC'
               write(*,*) 'UseOBCExperiment        (logical)'
+              write(*,*) 'MsisOblateFactor           (real)'
            endif
 
         !xianjing

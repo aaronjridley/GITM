@@ -71,6 +71,11 @@ subroutine calc_chemistry(iBlock)
   UseNeutralConstituent = .true.
   UseIonConstituent     = .true.
 
+  ChemicalHeatingRate = 0.0
+  ChemicalHeatingRateIon = 0.0
+  ChemicalHeatingRateEle = 0.0
+  ChemicalHeatingSpecies = 0.0
+
 !  UseNeutralConstituent(iO_1D_) = .false.
 !  UseIonConstituent(iO_2PP_) = .false.
 !  UseIonConstituent(iO_2DP_) = .false.
@@ -2260,7 +2265,17 @@ subroutine calc_chemistry(iBlock)
         enddo
      enddo
   enddo
- 
+
+  ChemicalHeatingRate(:,:,:) = &
+       ChemicalHeatingRate(:,:,:) * Element_Charge / &
+       TempUnit(1:nLons,1:nLats,1:nAlts) / cp(1:nLons,1:nLats,1:nAlts,iBlock)/&
+       rho(1:nLons,1:nLats,1:nAlts,iBlock)
+	   
+  ChemicalHeatingRateIon(:,:,:) = &
+       ChemicalHeatingRateIon(:,:,:) * Element_Charge
+
+  ChemicalHeatingSpecies = ChemicalHeatingSpecies * Element_Charge
+  
   if (iDebugLevel > 3) then
      do iIon = 1, nIons
         write(*,*) "====> calc_chemistry: Max Ion Density: ", iIon, &

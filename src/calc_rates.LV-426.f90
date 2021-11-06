@@ -129,7 +129,7 @@ subroutine calc_collisions(iBlock)
 
 end subroutine calc_collisions
 
-subroutine calc_viscosity(iBlock)
+subroutine calc_viscosity_coef(iBlock)
 
   use ModGITM
 
@@ -142,5 +142,5 @@ subroutine calc_viscosity(iBlock)
        (Temperature(1:nLons,1:nLats,0:nAlts+1,iBlock)*&
        TempUnit(1:nLons,1:nLats,0:nAlts+1)/ 1000.)**(-0.71)
 
-end subroutine calc_viscosity
+end subroutine calc_viscosity_coef
 

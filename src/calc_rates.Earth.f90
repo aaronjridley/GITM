@@ -299,7 +299,7 @@ subroutine calc_collisions(iBlock)
 
 end subroutine calc_collisions
 
-subroutine calc_viscosity(iBlock)
+subroutine calc_viscosity_coef(iBlock)
 
   use ModGITM
   use ModInputs, only: UseTestViscosity, TestViscosityFactor
@@ -342,6 +342,5 @@ subroutine calc_viscosity(iBlock)
 
   endif
   
-
-end subroutine calc_viscosity
+end subroutine calc_viscosity_coef
 

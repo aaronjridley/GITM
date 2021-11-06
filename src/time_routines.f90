@@ -1,6 +1,42 @@
 ! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
 ! Full license can be found in LICENSE
 
+! ----------------------------------------------------------------------
+! Increment time and update variables associated with new time
+! ----------------------------------------------------------------------
+
+subroutine update_time
+
+  use ModTime
+  use ModGITM
+  use ModInputs
+
+  implicit none
+
+  integer, external :: jday
+  real*8 :: DTime
+  
+  tSimulation = tSimulation + dt
+  CurrentTime = StartTime + tSimulation
+
+  call time_real_to_int(CurrentTime, iTimeArray)
+
+  DTime = CurrentTime - VernalTime
+  do while (DTime > DaysPerYearInput*RotationPeriodInput)
+     VernalTime = VernalTime+int(DaysPerYearInput)*RotationPeriodInput
+     DTime = CurrentTime - VernalTime
+  enddo
+  iDay  = DTime / RotationPeriodInput
+  uTime = (DTime / RotationPeriodInput - iDay) * RotationPeriodInput
+
+  iJulianDay = jday(iTimeArray(1), iTimeArray(2), iTimeArray(3)) 
+  
+end subroutine update_time
+
+! ----------------------------------------------------------------------
+! Find day of year based on year, month, and day of month
+! ----------------------------------------------------------------------
+
 integer function jday(year, mon, day) result(Julian_Day)
 
   implicit none

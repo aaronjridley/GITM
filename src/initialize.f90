@@ -407,6 +407,8 @@ subroutine initialize_gitm(TimeIn)
            do iBlock = 1, nBlocks
               IDensityS(:,:,:,:,iBlock)    = 1.00e8
               IDensityS(:,:,:,ie_,iBlock)  = 1.00e8*(nIons-1)
+              eTemperature(:,:,:,iBlock) = 500.0
+              iTemperature(:,:,:,iBlock) = 500.0
            enddo
         endif
      endif

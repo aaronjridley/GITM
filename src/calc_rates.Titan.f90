@@ -267,7 +267,7 @@ subroutine calc_collisions(iBlock)
 
 end subroutine calc_collisions
 
-subroutine calc_viscosity(iBlock)
+subroutine calc_viscosity_coef(iBlock)
 
   use ModGITM
 
@@ -292,8 +292,8 @@ subroutine calc_viscosity(iBlock)
   real :: fnc 
 
   TL(1:nLons,1:nLats,-1:nAlts+2) = &
-     Temperature(1:nLons,1:nLats,-1:nAlts+2,iBlock)*&
-        TempUnit(1:nLons,1:nLats,-1:nAlts+2)
+       Temperature(1:nLons,1:nLats,-1:nAlts+2,iBlock)*&
+       TempUnit(1:nLons,1:nLats,-1:nAlts+2)
           
   ones = 1.0
 
@@ -302,74 +302,74 @@ subroutine calc_viscosity(iBlock)
   mcn = 1/mnc
 
   xnc = NDensityS(1:nLons,1:nLats,-1:nAlts+2,iN2_,iBlock)/&
-        NDensityS(1:nLons,1:nLats,-1:nAlts+2,iCH4_,iBlock)
+       NDensityS(1:nLons,1:nLats,-1:nAlts+2,iCH4_,iBlock)
 
   xcn = NDensityS(1:nLons,1:nLats,-1:nAlts+2,iCH4_,iBlock)/&
         NDensityS(1:nLons,1:nLats,-1:nAlts+2,iN2_,iBlock)
 
-!\
-! ViscN2, ViscCH4 are in units of kg/m/s
-! ViscCH4 (Yaws 1995)
-! ViscN2 Sutherland Formula(LMNO 2003)
-!/
+  !\
+  ! ViscN2, ViscCH4 are in units of kg/m/s
+  ! ViscCH4 (Yaws 1995)
+  ! ViscN2 Sutherland Formula(LMNO 2003)
+  !/
   eta0 = 0.01781e-03 ! in kg/m/s 
 
   cn2 = 111.0        ! in K
   temp0 = 300.55     ! in K
 
   ViscN2(:,:,:) =           &
-      (   eta0*(cn2 + temp0)/(TL + cn2)  )*( (TL/temp0)**(1.50) )   
+       (   eta0*(cn2 + temp0)/(TL + cn2)  )*( (TL/temp0)**(1.50) )   
       
   ViscCH4(:,:,:)  =  &
-      (  3.8435*ones + (4.0112e-01)*(TL) +  &
-      (1.4303e-04)*((TL)**2.0) )*(1.0e-07)
+       (  3.8435*ones + (4.0112e-01)*(TL) +  &
+       (1.4303e-04)*((TL)**2.0) )*(1.0e-07)
 
 !!! Shuts down the enhanced viscosity
 
   ViscCoef(1:nLons,1:nLats,0:nAlts+1) = &
-      (Mass(iN2_)*NDensityS(1:nLons,1:nLats,0:nAlts+1,iN2_,iBlock)*ViscN2(:,:,0:nAlts+1) +  &
-      Mass(iCH4_)*NDensityS(1:nLons,1:nLats,0:nAlts+1,iCH4_,iBlock)*ViscCH4(:,:,0:nAlts+1) )/&
-         Rho(1:nLons,1:nLats,0:nAlts+1,iBlock)
+       (Mass(iN2_)*NDensityS(1:nLons,1:nLats,0:nAlts+1,iN2_,iBlock)*ViscN2(:,:,0:nAlts+1) +  &
+       Mass(iCH4_)*NDensityS(1:nLons,1:nLats,0:nAlts+1,iCH4_,iBlock)*ViscCH4(:,:,0:nAlts+1) )/&
+       Rho(1:nLons,1:nLats,0:nAlts+1,iBlock)
 
   do iSpecies = 1, nSpecies
-    ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,iSpecies) = &
-         ViscCoef(1:nLons,1:nLats, 0:nAlts+1)
-  enddo 
+     ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,iSpecies) = &
+          ViscCoef(1:nLons,1:nLats, 0:nAlts+1)
+  enddo
 
   ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,iN2_) = &
-    ViscN2(1:nLons,1:nLats, 0:nAlts+1)
+       ViscN2(1:nLons,1:nLats, 0:nAlts+1)
 
- ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,iCH4_) = &
-    ViscCH4(1:nLons,1:nLats, 0:nAlts+1)
+  ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,iCH4_) = &
+       ViscCH4(1:nLons,1:nLats, 0:nAlts+1)
 
-     ViscCoefS(1:nLons,1:nLats,0:nAlts+1,i15N2_) = &
-        ViscN2(1:nLons,1:nLats,0:nAlts+1)
+  ViscCoefS(1:nLons,1:nLats,0:nAlts+1,i15N2_) = &
+       ViscN2(1:nLons,1:nLats,0:nAlts+1)
 
-     ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,i13CH4_) = &
-        ViscCH4(1:nLons,1:nLats, 0:nAlts+1)
+  ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,i13CH4_) = &
+       ViscCH4(1:nLons,1:nLats, 0:nAlts+1)
 
 !!!! Cui et al. [2008] suggested 5.5 x 10^-6 kg/m/s
-!     ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,iH2_) = &
-!           (1.4648e-07)*(TL(1:nLons,1:nLats,0:nAlts+1)**0.716)
+  !     ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,iH2_) = &
+  !           (1.4648e-07)*(TL(1:nLons,1:nLats,0:nAlts+1)**0.716)
 
 
-! Reduce Viscosity consistent with Boqueho and Blelly for minor species
-!     ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,iH_)  = (1.0000e-07)
-     ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,iH2_) = &
-           (1.4648e-07)*(TL(1:nLons,1:nLats,0:nAlts+1)**0.716)
+  ! Reduce Viscosity consistent with Boqueho and Blelly for minor species
+  !     ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,iH_)  = (1.0000e-07)
+  ViscCoefS(1:nLons,1:nLats, 0:nAlts+1,iH2_) = &
+       (1.4648e-07)*(TL(1:nLons,1:nLats,0:nAlts+1)**0.716)
 
-     ! Remove the atomic viscosities
+  ! Remove the atomic viscosities
 
-!     ViscCoefS(1:nLons,1:nLats,-1:nAlts+2,iH_)  = 0.0
-!     ViscCoefS(1:nLons,1:nLats,-1:nAlts+2,iN4S_)  = 0.0
+  !     ViscCoefS(1:nLons,1:nLats,-1:nAlts+2,iH_)  = 0.0
+  !     ViscCoefS(1:nLons,1:nLats,-1:nAlts+2,iN4S_)  = 0.0
 
-     ViscCoefS(1:nLons,1:nLats,-1:nAlts+2,iH_)  = 1.0e-06
+  ViscCoefS(1:nLons,1:nLats,-1:nAlts+2,iH_)  = 1.0e-06
 
-!     ViscCoefS(1:nLons,1:nLats,-1:nAlts+2,iH_)  = &
-!           (2.0715e-07)*(TL**0.716)
+  !     ViscCoefS(1:nLons,1:nLats,-1:nAlts+2,iH_)  = &
+  !           (2.0715e-07)*(TL**0.716)
 
-    ! ViscCoefS(1:nLons,1:nLats,-1:nAlts+2,iH_ ) = 0.0
-    ! ViscCoefS(1:nLons,1:nLats,-1:nAlts+2,iH2_) = 0.0
+  ! ViscCoefS(1:nLons,1:nLats,-1:nAlts+2,iH_ ) = 0.0
+  ! ViscCoefS(1:nLons,1:nLats,-1:nAlts+2,iH2_) = 0.0
 
-end subroutine calc_viscosity
+end subroutine calc_viscosity_coef
 

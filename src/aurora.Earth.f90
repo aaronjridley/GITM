@@ -71,8 +71,6 @@ subroutine aurora(iBlock)
 
   if (IsFirstTime(iBlock)) then
      
-     IsFirstTime(iBlock) = .false.
-
      if (UseFangEnergyDeposition) then
 
         ! Electrons
@@ -188,9 +186,17 @@ subroutine aurora(iBlock)
      call get_hpi(CurrentTime,Hpi,iError)
      ratio = Hpi/avepower
 
-     if (iDebugLevel >= 0) &
-          write(*,*) 'Auroral normalizing ratio : ', Hpi, avepower, ratio
-     
+     if (iDebugLevel >= 0) then
+        if ((iDebugLevel == 0) .and. IsFirstTime(iBlock)) then
+           write(*,*) '---------------------------------------------------'
+           write(*,*) 'Using auroral normalizing ratios!!! '
+           write(*,*) 'no longer reporting!'
+           write(*,*) '---------------------------------------------------'
+        else
+           if (iDebugLevel >= 1) &
+              write(*,*) 'auroral normalizing ratio: ', Hpi, avepower, ratio
+        endif
+     endif
      do i=1,nLats
         do j=1,nLons
            if (ElectronEnergyFlux(j,i)>0.1) then
@@ -546,6 +552,16 @@ subroutine aurora(iBlock)
   AuroralIonRateS(:,:,:,iN2_,iBlock) = &
        0.92*AuroralBulkIonRate*&
        NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock)/temp
+
+  if (UseAuroralHeating) then
+     AuroralHeating = AuroralHeatingRate(:,:,:,iBlock) / &
+          TempUnit(1:nLons,1:nLats,1:nAlts) / cp(:,:,1:nAlts,iBlock) / &
+          rho(1:nLons,1:nLats,1:nAlts, iBlock)
+  else
+     AuroralHeating = 0.0
+  endif
+
+  IsFirstTime(iBlock) = .false.
 
   call end_timing("Aurora")
 

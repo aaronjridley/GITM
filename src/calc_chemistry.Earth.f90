@@ -64,6 +64,10 @@ subroutine calc_chemistry(iBlock)
      enddo
   endif
 
+  ChemicalHeatingRate = 0.0
+  ChemicalHeatingRateIon = 0.0
+  ChemicalHeatingRateEle = 0.0
+  ChemicalHeatingSpecies = 0.0
  
   UseNeutralConstituent = .true.
   UseIonConstituent     = .true.
@@ -89,6 +93,8 @@ subroutine calc_chemistry(iBlock)
 !  open(unit=95,file='data.dat')
   DtMin = Dt
 
+  Emissions(:,:,:,:,iBlock) = 0.0
+  
   if (.not.UseIonChemistry) return
 
   call report("Chemistry",2)
@@ -244,6 +250,8 @@ subroutine calc_chemistry(iBlock)
         szap = cos(sza(iLon, iLat,iBlock))
         if (szap < 0.0) szap = 0.0
 
+        ChemicalHeating2d(iLon, iLat) = 0.0
+        
         do iAlt = 1, nAlts
 
            y1 = max(1.0,k1*exp(m1*altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0))
@@ -2367,14 +2375,27 @@ subroutine calc_chemistry(iBlock)
                  endif
               enddo
            endif
+           
+           ChemicalHeating2d(iLon, iLat) =  &
+                ChemicalHeating2d(iLon, iLat) + &
+                ChemicalHeatingRate(iLon, iLat, iAlt) * &
+                Element_Charge * & 
+                dAlt_GB(iLon, iLat, iAlt, iBlock)
 
-        enddo
-     enddo
+        enddo ! Alt
+     enddo ! Lat
+  enddo ! Lon
 
+  ChemicalHeatingRate(:,:,:) = &
+       ChemicalHeatingRate(:,:,:) * Element_Charge / &
+       TempUnit(1:nLons,1:nLats,1:nAlts) / cp(1:nLons,1:nLats,1:nAlts,iBlock)/&
+       rho(1:nLons,1:nLats,1:nAlts,iBlock)
+	   
+  ChemicalHeatingRateIon(:,:,:) = &
+       ChemicalHeatingRateIon(:,:,:) * Element_Charge
 
-
-  enddo
- 
+  ChemicalHeatingSpecies = ChemicalHeatingSpecies * Element_Charge
+  
   if (iDebugLevel > 3) then
      do iIon = 1, nIons
         write(*,*) "====> calc_chemistry: Max Ion Density: ", iIon, &
