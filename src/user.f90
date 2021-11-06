@@ -7,43 +7,6 @@
 !-----------------------------------------------------------------------------
 
 subroutine get_mean_bcs
-
-  use ModGITM
-  use ModInputs
-  use ModMpi
-  
-  implicit none
-
-  integer iError
-
-  LocalMeanVelBc_D(iEast_) = &
-       sum(Velocity(:,:,-1:0,iEast_,:))/size(Velocity(:,:,-1:0,iEast_,:))
-  LocalMeanVelBc_D(iNorth_) = &
-       sum(Velocity(:,:,-1:0,iNorth_,:))/size(Velocity(:,:,-1:0,iNorth_,:))
-  LocalMeanTempBc = sum(Temperature(:,:,-1:0,1)*TempUnit(:,:,-1:0))/ &
-       size(Temperature(:,:,-1:0,:))
-  call MPI_ALLREDUCE(LocalMeanVelBc_D, MeanVelBc_D, 2, &
-       MPI_REAL, MPI_SUM, iCommGITM, iError)
-  call MPI_ALLREDUCE(LocalMeanTempBc, MeanTempBc, 1, &
-       MPI_REAL, MPI_SUM, iCommGITM, iError)
-  MeanVelBc_D = MeanVelBc_D/nProcs
-  MeanTempBc = MeanTempBc/nProcs
-  if(iDebugLevel > 0) &
-       write(*,*) 'For WP-GITM: iProc, MeanVelBc_D, MeanTempBc=', &
-       iProc, MeanVelBc_D, MeanTempBc
-
-end subroutine get_mean_bcs
-
-!------------------------------------------------------------------------------
-!
-!------------------------------------------------------------------------------
-
-!------------------------------------------------------------------------------
-! Get mean horizontal neutral wind and neutral temperature values at the 
-! lower boundary for Wave Perturbation (WP) model
-!------------------------------------------------------------------------------
-
-subroutine get_mean_bcs
   
   use ModGITM
   use ModInputs
@@ -87,7 +50,9 @@ subroutine get_mean_bcs
   
 end subroutine get_mean_bcs
   
-
+!------------------------------------------------------------------------------
+!
+!------------------------------------------------------------------------------
 
 subroutine user_create_perturbation
 
