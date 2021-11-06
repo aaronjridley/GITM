@@ -12,6 +12,10 @@ subroutine get_mean_bcs
   use ModInputs
   use ModMpi
 
+  implicit none
+
+  integer:: iError, iBlock
+
   LocalMeanVelBc_D = 0
   LocalMeanTempBc = 0
   LocalSumVolume = 0
