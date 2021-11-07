@@ -1,4 +1,6 @@
-Data taken from OMNI
+Data taken from OMNI, columns represent
+yr mo dy hr mn sc msc bx[nT] by[nT] bz[nT] ux[km/s] uy[km/s] uz[km/s] n[/cc] T[K]
+
 #START
 2015  9 16 22 50  0   0     4.35     2.86    -2.58  -488.20   -16.06    16.96     5.09   58810.0
 2015  9 16 22 51  0   0     3.42     3.17    -3.52  -481.70   -14.07    23.89     4.71   50960.0
