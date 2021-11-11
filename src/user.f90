@@ -7,33 +7,53 @@
 !-----------------------------------------------------------------------------
 
 subroutine get_mean_bcs
-
+  
   use ModGITM
   use ModInputs
   use ModMpi
-  
+
   implicit none
 
-  integer iError
+  integer:: iError, iBlock
 
-  LocalMeanVelBc_D(iEast_) = &
-       sum(Velocity(:,:,-1:0,iEast_,:))/size(Velocity(:,:,-1:0,iEast_,:))
-  LocalMeanVelBc_D(iNorth_) = &
-       sum(Velocity(:,:,-1:0,iNorth_,:))/size(Velocity(:,:,-1:0,iNorth_,:))
-  LocalMeanTempBc = sum(Temperature(:,:,-1:0,1)*TempUnit(:,:,-1:0))/ &
-       size(Temperature(:,:,-1:0,:))
+  LocalMeanVelBc_D = 0
+  LocalMeanTempBc = 0
+  LocalSumVolume = 0
+  
+  do iBlock = 1, nBlocks
+     
+     LocalMeanVelBc_D(iEast_) = LocalMeanVelBc_D(iEast_) + &
+          sum(Velocity(1:nLons,1:nLats,-1:0,iEast_,iBlock) &
+          *   CellVolume(1:nLons,1:nLats,-1:0,iBlock))
+     LocalMeanVelBc_D(iNorth_) = LocalMeanVelBc_D(iNorth_) + &
+          sum(Velocity(1:nLons,1:nLats,-1:0,iNorth_,iBlock) &
+          *   CellVolume(1:nLons,1:nLats,-1:0,iBlock))
+     
+     LocalMeanTempBc = LocalMeanTempBc + &
+          sum(Temperature(1:nLons,1:nLats,-1:0,iBlock) &
+          *   TempUnit(1:nLons,1:nLats,-1:0) &
+          *   CellVolume(1:nLons,1:nLats,-1:0,iBlock))
+     
+     LocalSumVolume = LocalSumVolume + &
+          sum(CellVolume(1:nLons,1:nLats,-1:0,iBlock))
+     
+  enddo
+  
   call MPI_ALLREDUCE(LocalMeanVelBc_D, MeanVelBc_D, 2, &
        MPI_REAL, MPI_SUM, iCommGITM, iError)
   call MPI_ALLREDUCE(LocalMeanTempBc, MeanTempBc, 1, &
        MPI_REAL, MPI_SUM, iCommGITM, iError)
-  MeanVelBc_D = MeanVelBc_D/nProcs
-  MeanTempBc = MeanTempBc/nProcs
+  call MPI_ALLREDUCE(LocalSumVolume, SumVolume, 1, &
+       MPI_REAL, MPI_SUM, iCommGITM, iError)    
+  MeanVelBc_D = MeanVelBc_D / SumVolume
+  MeanTempBc = MeanTempBc / SumVolume
+  
   if(iDebugLevel > 0) &
        write(*,*) 'For WP-GITM: iProc, MeanVelBc_D, MeanTempBc=', &
        iProc, MeanVelBc_D, MeanTempBc
-
+  
 end subroutine get_mean_bcs
-
+  
 !------------------------------------------------------------------------------
 !
 !------------------------------------------------------------------------------
@@ -48,6 +68,9 @@ subroutine user_create_perturbation
 
 end subroutine user_create_perturbation
 
+!------------------------------------------------------------------------------
+!
+!------------------------------------------------------------------------------
 
 subroutine user_perturbation
 
@@ -146,7 +169,10 @@ subroutine user_perturbation
 end subroutine user_perturbation
 
 
-!=================================================================
+!------------------------------------------------------------------------------
+!
+!------------------------------------------------------------------------------
+
 subroutine user_bc_perturbation(LogRhoBc, LogNSBc, VelBc_GD, TempBc)
 
   ! PURPOSE: 
@@ -252,11 +278,10 @@ subroutine user_bc_perturbation(LogRhoBc, LogNSBc, VelBc_GD, TempBc)
              .and. WaveFreqIntri2 <= SoundSpeed2*(Kh2+1/ScaleHeight**2/4.)/2. &
              + sqrt(SoundSpeed2**2*(Kh2+1/ScaleHeight**2/4.)**2 &
              - 4.*Kh2*SoundSpeed2*BouyancyFreq2)/2.))then
-           if (.not. IsForbidden(iFreq) .and. iProc == 0)then
-              write(*,*) 'No longer a upward-propagating waves at Time = ', &
-                   CurrentTime-StartTime, 'iFreq =', iFreq
-              IsForbidden(iFreq) = .true.
-           endif
+           IsForbidden(iFreq) = .true.
+           if (iProc == 0) &
+                write(*,*) 'No longer a upward-propagating waves at Time = ', &
+                CurrentTime-StartTime, 'iFreq =', iFreq
            cycle
         endif
 
@@ -292,11 +317,10 @@ subroutine user_bc_perturbation(LogRhoBc, LogNSBc, VelBc_GD, TempBc)
            if((WaveFreqIntri2-SoundSpeed2/(4.*ScaleHeight**2))* &
                 (WaveFreqIntri2-BouyancyFreq2*(((Lon-EpicenterLon)*dLon)**2 + &
                 ((Lat-EpicenterLat)*dLat)**2)/RadialD**2) < 0)then
-              if (.not. IsForbidden(iFreq))then
-                 write(*,*) 'No longer a upward-propagating AGW at Time = ', &
-                      CurrentTime-StartTime, 'iFreq =', iFreq
-                 IsForbidden(iFreq) = .true.
-              endif
+              IsForbidden(iFreq) = .true.
+              if (iProc == 0) &
+                   write(*,*) 'No longer a upward-propagating AGW at Time = ', &
+                   CurrentTime-StartTime, 'iFreq =', iFreq
               cycle
            endif
 

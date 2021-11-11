@@ -1,4 +1,5 @@
-Data taken from OMNI
+Data taken from OMNI, columns represent
+yr mo dy hr mn sc msc bx[nT] by[nT] bz[nT] ux[km/s] uy[km/s] uz[km/s] n[/cc] T[K]
 #TIMEDELAY
       0.00000
 
