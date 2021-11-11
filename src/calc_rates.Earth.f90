@@ -302,45 +302,29 @@ end subroutine calc_collisions
 subroutine calc_viscosity_coef(iBlock)
 
   use ModGITM
-  use ModInputs, only: UseTestViscosity, TestViscosityFactor
+  use ModInputs, only: TestViscosityFactor
   implicit none
 
   integer, intent(in) :: iBlock
 
   integer :: iSpecies
-  ! This is Earth-based, and 
 
-  if (UseTestViscosity) then
+  ! TempUnit is mmm/boltzman
+  ! visc should be sqrt(Tn * mmm / Boltz) * constant 
+  ! The constant sets the viscosity to roughly 3.5 times the old
+  ! viscosity for March 2-5, 2013. Not sure if this is ideal, so it
+  ! should be tested a bit.
 
-     ! TempUnit is mmm/boltzman
-     ! visc should be sqrt(Tn * mmm / Boltz) * constant 
-     ! The constant sets the viscosity to roughly 3.5 times the old
-     ! viscosity for March 2-5, 2013. Not sure if this is ideal, so it
-     ! should be tested a bit.
+  ViscCoef(1:nLons,1:nLats,0:nAlts+1) = TestViscosityFactor * &
+       0.00013 * sqrt(Temperature(1:nLons,1:nLats,0:nAlts+1,iBlock) * &
+       TempUnit(1:nLons,1:nLats,0:nAlts+1) * &
+       TempUnit(1:nLons,1:nLats,0:nAlts+1))
 
-     ViscCoef(1:nLons,1:nLats,0:nAlts+1) = TestViscosityFactor * &
-          0.00013 * sqrt(Temperature(1:nLons,1:nLats,0:nAlts+1,iBlock) * &
-          TempUnit(1:nLons,1:nLats,0:nAlts+1) * &
-          TempUnit(1:nLons,1:nLats,0:nAlts+1))
+  do iSpecies = 1, nSpecies
+     ViscCoefS(1:nLons,1:nLats,0:nAlts+1,iSpecies) = & 
+          ViscCoef(1:nLons,1:nLats,0:nAlts+1) * &
+          sqrt(Mass(iSpecies) / MeanMajorMass(1:nLons,1:nLats,0:nAlts+1))
+  enddo
 
-     do iSpecies = 1, nSpecies
-        ViscCoefS(1:nLons,1:nLats,0:nAlts+1,iSpecies) = & 
-             ViscCoef(1:nLons,1:nLats,0:nAlts+1) * &
-             sqrt(Mass(iSpecies) / MeanMajorMass(1:nLons,1:nLats,0:nAlts+1))
-     enddo
-
-  else
-
-     ViscCoef(1:nLons,1:nLats,0:nAlts+1) = 4.5e-5 * &
-          (Temperature(1:nLons,1:nLats,0:nAlts+1,iBlock)*&
-          TempUnit(1:nLons,1:nLats,0:nAlts+1)/ 1000.)**(-0.71)
-
-     do iSpecies = 1, nSpecies
-        ViscCoefS(1:nLons,1:nLats,0:nAlts+1,iSpecies) = & 
-             ViscCoef(1:nLons,1:nLats,0:nAlts+1)
-     enddo
-
-  endif
-  
 end subroutine calc_viscosity_coef
 
