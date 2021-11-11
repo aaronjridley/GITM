@@ -8,7 +8,7 @@ module ModGITM
 
   implicit none
 
-  real :: GitmVersion = 4.0
+  real :: GitmVersion = 21.11
   
   real :: dt = 0.0
 
@@ -58,8 +58,8 @@ module ModGITM
   real, allocatable :: IPressure(:,:,:,:)
   real, allocatable :: ePressure(:,:,:,:)
 
-real, allocatable :: SpeciesDensity(:,:,:,:,:)
-real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
+  real, allocatable :: SpeciesDensity(:,:,:,:,:)
+  real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
   
   real, allocatable :: LogRhoS(:,:,:,:,:)
   real, allocatable :: LogNS(:,:,:,:,:)
