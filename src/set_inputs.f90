@@ -1066,13 +1066,11 @@ subroutine set_inputs
            endif
 
         case ("#USETESTVISCOSITY")
-           call read_in_logical(UseTestViscosity, iError)
            call read_in_real(TestViscosityFactor, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #USETESTVISCOSITY:'
               write(*,*) ''
               write(*,*) '#USETESTVISCOSITY'
-              write(*,*) "UseTestViscosity         (logical)"
               write(*,*) "TestViscosityFactor      (real)"
            endif
 
@@ -1118,37 +1116,6 @@ subroutine set_inputs
            call read_in_logical(UseIonChemistry, iError)
            call read_in_logical(UseIonAdvection, iError)
            call read_in_logical(UseNeutralChemistry, iError)
-
-!           call read_in_string(sNeutralChemistry, iError)
-!           call read_in_string(sIonChemistry, iError)
-!
-!           iInputIonChemType = -1
-!           iInputNeutralChemType = -1
-!
-!           do i = 1, nChemTypes_
-!              if (sNeutralChemistry == sChemType(i)) iInputNeutralChemType = i
-!              if (sIonChemistry == sChemType(i)) iInputIonChemType = i
-!           enddo
-!
-!           if (iInputNeutralChemType < 1) then
-!              write(*,*) "Error in #CHEMISTRY for Neutrals"
-!              write(*,*) "Input type : ", sNeutralChemistry
-!              write(*,*) "Acceptable types :"
-!              do i = 1, nChemTypes_
-!                 write(*,*) sChemType(i)
-!              enddo
-!              IsDone = .true.
-!           endif
-!
-!           if (iInputIonChemType < 1) then
-!              write(*,*) "Error in #CHEMISTRY for Ions"
-!              write(*,*) "Input type : ", sIonChemistry
-!              write(*,*) "Acceptable types :"
-!              do i = 1, nChemTypes_
-!                 write(*,*) sChemType(i)
-!              enddo
-!              IsDone = .true.
-!           endif
 
         case ("#FIXTILT")
 
@@ -1562,7 +1529,7 @@ subroutine set_inputs
               call read_in_real(lambda1, iError)      !Ankit23May16: Forgetting factor. 
               call read_in_real(W_Rtheta, iError)     !Ankit23May16: Rtheta. Or inv(P0).
               call read_in_real(Dts, iError)          !Ankit23May16: Time step used with RCMR
-              call read_in_real(Measure_Dts, iError)  !Ankit23May16: RCMR executes every Measure_Dts*Dts*steps timesteps.
+              call read_in_real(Measure_Dts, iError)  !Ankit23May16: Executes every Measure_Dts*Dts*steps steps.
               call read_in_int(C_on, iError)          !Ankit23May16: RCMR switches on after C_on steps.
               call read_in_int(uFiltLength, iError)   !Ankit23May16: Length of averaging filter.
            end if
