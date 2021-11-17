@@ -1,5 +1,5 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, 
-!  portions used with permission 
+!  Copyright (C) 2002 Regents of the University of Michigan,
+!  portions used with permission
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 
 module UA_wrapper
@@ -7,7 +7,8 @@ module UA_wrapper
   ! Wrapper for GITM Upper Atmosphere (UA) component
 
   implicit none
-
+  save
+  
   private ! except
 
   public:: UA_set_param
@@ -15,6 +16,28 @@ module UA_wrapper
   public:: UA_run
   public:: UA_save_restart
   public:: UA_finalize
+
+  ! IE Coupler:
+  public :: UA_get_info_for_ie
+  public :: UA_get_for_ie
+  public :: UA_put_from_ie
+
+  ! Variables for UA-IE coupling:
+  integer, save :: iSizeIeHemi, jSizeIeHemi ! Size of IE grid for 1 hemisphere.
+  
+  ! CON_coupler_points
+  ! These are not called anywhere, should not be public.
+  !public:: UA_find_points
+  !public:: UA_get_grid_info
+
+  ! GM coupler
+  ! These are disabled for the time being:
+  !public:: UA_get_for_gm
+  !public:: UA_put_from_gm
+
+  ! Are not called; should not be public:
+  !public:: UA_put_from_gm_dt
+  !public:: UA_put_from_gm_init
 
 contains
 
@@ -144,8 +167,9 @@ contains
     logical :: DoTest, DoTestMe, Done
 
     !------------------------------------------------------
-    !    call CON_set_do_test(NameSub,DoTest, DoTestMe)
-    !    if(DoTest)write(*,*)NameSub,' IsInitialized=',IsInitialized
+    call CON_set_do_test(NameSub,DoTest, DoTestMe)
+    if(DoTest) write(*,*)NameSub,' IsInitialized=',IsInitialized
+
     if(IsInitialized) return
 
     IsInitialized=.true.
@@ -174,10 +198,11 @@ contains
 
           iBlock = iStartBLK + iBlockPE
 
-          !        LatPE_I((iBlock-1)*nLats+1:iBlock*nLats) = &
-          !             Latitude(1:nLats,iBlockPE)
-          !        LonPE_I((iBlock-1)*nLons+1:iBlock*nLons) = &
-          !             Longitude(1:nLons,iBlockPE)
+                  !LatPE_I((iBlock-1)*nLats+1:iBlock*nLats) = &
+                  !     Latitude(1:nLats,iBlockPE)
+                  !LonPE_I((iBlock-1)*nLons+1:iBlock*nLons) = &
+                  !     Longitude(1:nLons,iBlockPE)
+                  ! write(*,*) 'iProc: ',iProc
           iProcPE_A(iBlock) = iProc
 
        enddo
@@ -198,10 +223,12 @@ contains
        call check_allocate(iError,NameSub)
     end if
 
+    if(DoTest) write(*,*) NameSub//': nCell: ',nLats,nLons,nAlts
+
     call set_grid_descriptor(                        &
          UA_,                                        &! component index
          nDim=3,                                     &! dimensionality
-         nRootBlock_D=(/nBlocksLat,nBlocksLon,1/),     &! blocks
+         nRootBlock_D=(/nBlocksLat,nBlocksLon,1/),   &! blocks
          nCell_D =(/nLats,nLons,nAlts/),             &! size of node based grid
          XyzMin_D=(/cHalf,cHalf,cHalf/),                   &! generalize coord
          XyzMax_D=(/nLats-cHalf,nLons-cHalf,nAlts-cHalf/), &! generalize coord
@@ -217,10 +244,9 @@ contains
   !============================================================================
 
   subroutine UA_init_session(iSession, SWMFTime)
-
     use ModTimeConvert, ONLY: TimeType
     use CON_physics,    ONLY: get_time
-    use ModTime, only : StartTime, EndTime, iTimeArray, CurrentTime
+    use ModTime,        ONLY: StartTime, EndTime, iTimeArray, CurrentTime
 
     real, intent(in)    :: SWMFTime
     integer, intent(in) :: iSession
@@ -251,7 +277,7 @@ contains
           write(*,*) NameSub//' End time     = ', EndTime
           write(*,*) NameSub//' Current time = ', CurrentTime
        end if
-          
+       
        call fix_vernal_time
 
        call initialize_gitm(CurrentTime)
@@ -282,7 +308,6 @@ contains
     integer :: ierror, CLAWiter, n
     real    :: maxi,tt
     integer :: time_array(7)
-
     logical :: exist, IsDone
 
     CurrentTime = StartTime + SWMFTime
@@ -320,6 +345,8 @@ contains
 
     real, intent(in) :: TimeSimulation
 
+    character(len=*), parameter :: NameSub='UA_save_restart'
+    !--------------------------------------------------------------------------
     call write_restart("UA/restartOUT/")
 
   end subroutine UA_save_restart
@@ -330,8 +357,271 @@ contains
 
     real, intent(in) :: TimeSimulation
 
+    character(len=*), parameter :: NameSub='UA_finalize'
+    !--------------------------------------------------------------------------
     call finalize_gitm
 
   end subroutine UA_finalize
+
+  !============================================================================
+  subroutine UA_get_info_for_ie(nVar, NameVar_V, nMagLat, nMagLon)
+    ! Get number and names of variables for IE to UA coupling.
+    ! UA reports what variables it needs here.
+    ! IE will use this info to fill buffers appropriately.
+
+    use ModElectrodynamics, ONLY: MagLatRes, MagLonRes
+    
+    integer, intent(out) :: nVar
+    integer, intent(out), optional :: nMagLat, nMagLon
+    character(len=*), intent(out), optional :: NameVar_V(:)
+    
+    logical :: DoTest, DoTestMe
+    character(len=*), parameter :: NameSub='UA_get_info_for_ie'
+    !-------------------------------------------------------------------------
+
+    call CON_set_do_test(NameSub, DoTest, DoTestMe)
+
+    ! Right now, only 3 variables are needed for UA-IE coupling:
+    ! potential, average energy, and energy flux.
+    nVar = 3
+    if(present(NameVar_V)) NameVar_V(1:3) = (/'pot','ave','tot'/)
+
+    ! If more information is needed, PARAMs should be set to configure this
+    ! behavior and changes made here, e.g.,
+    ! if(DoCoupleThing) nVar=nVar+1
+    ! if(present(NameVar_I)) NameVar_I(nVar) = 'new'
+
+    ! Pass information on size of GITM's electrodynamic grid.
+    ! Set following src/calc_electrodynamcs.f90::calc_electrodynamics
+    ! Lines ~101-102 and 341-342 (approx.; see source for more details).
+    if(present(nMagLat)) nMagLat =  88.0/MagLatRes ! 1 hemi ONLY, no equator.
+    if(present(nMagLon)) nMagLon = 360.0/MagLonRes+1
+    
+    if(DoTestMe)then
+       write(*,*) NameSub//': nVar=', nVar
+       if(present(NameVar_V)) write(*,*) NameSub//': NameVar_V=',NameVar_V
+    end if
+    
+  end subroutine UA_get_info_for_ie
+  
+  !============================================================================
+  subroutine UA_put_from_ie(Buffer_IIV, iSizeIn, jSizeIn, nVarIn, &
+       NameVarIn_V, iBlock)
+
+    use ModNumConst, only:cPi
+    use CON_coupler, ONLY: Grid_C, IE_
+    
+  ! This gets called for each variable- external loop over all variable names.
+  ! Namevar = Pot, Ave, and Tot.
+  ! iBlock = 1:North, 2:South.
+
+  ! Variables and what they do:
+  ! IEi_HavenLats = nLatsIE
+  ! IEi_HavenMlt  = nMltIE
+  !
+  use ModEIE_Interface  !!!!! changed from use ModIE_Interface - MB
+  use ModIE_Interface   !!!!! added this one back in...
+
+  implicit none
+
+  integer, intent(in)           :: iSizeIn, jSizeIn, nVarIn
+  real, intent(in)              :: Buffer_IIV(iSizeIn,jSizeIn,nVarIn)
+  character (len=*),intent(in)  :: NameVarIn_V(nVarIn)
+  integer,intent(in)            :: iBlock
+
+  logical :: IsInitialized = .false.
+  
+  integer :: i,j,ii, iVar, iError
+
+  logical :: DoTest, DoTestMe
+  character (len=*), parameter :: NameSub='UA_put_from_ie'
+  !--------------------------------------------------------------------------
+  call CON_set_do_test(NameSub,DoTest,DoTestMe)
+
+  if(.not. IsInitialized)then
+     ! Gather information on size/shape of IE grid.
+     ! Note that this is built for Ridley Serial, which stores its grid
+     ! using "iSize - 1".  The +1 here compensates for that.
+     iSizeIeHemi = Grid_C(IE_) % nCoord_D(1) + 1
+     jSizeIeHemi = Grid_C(IE_) % nCoord_D(2) + 1
+     
+     ! Build IE grid within UA infrastructure:
+     call EIE_InitGrid(iSizeIeHemi, jSizeIeHemi, 2, iError)
+     call EIE_FillLats(90.0-(Grid_C(IE_) % Coord1_I)*180.0/cPi,iError)
+     call EIE_FillMltsOffset((Grid_C(IE_) % Coord2_I)*180.0/cPi,iError)
+     IsInitialized = .true.
+  end if
+
+  ! Put each variable where it belongs based on the name.x
+  do iVar=1, nVarIn
+     select case(NameVarIn_V(iVar))
+
+     ! Electric Potential:
+     case('pot')
+        do i = 1, IEi_HavenLats
+           ii = i
+           do j = 1, IEi_HavenMlts
+              IEr3_HavePotential( j,i,iBlock) = Buffer_IIV(ii,j, iVar)
+              EIEr3_HavePotential(j,i,iBlock) = Buffer_IIV(ii,j, iVar)
+           enddo
+        enddo
+
+     ! Precipitation/average energy:
+     case('ave')
+        do i = 1, IEi_HavenLats
+           ii = i
+           do j = 1, IEi_HavenMlts
+              IEr3_HaveAveE(j,i,iBlock)  = Buffer_IIV(ii,j, iVar)
+              EIEr3_HaveAveE(j,i,iBlock) = Buffer_IIV(ii,j, iVar)
+           enddo
+        enddo
+
+     ! Precipitation/Total energy flux:
+     case('tot')
+        do i = 1, IEi_HavenLats
+           ii = i
+           !        if (iBlock == 2) ii = IEi_HavenLats - i + 1
+           do j = 1, IEi_HavenMlts
+              IEr3_HaveEFlux(j,i,iBlock) = &
+                   Buffer_IIV(ii,j,iVar) / (1.0e-7 * 100.0 * 100.0)
+              EIEr3_HaveEFlux(j,i,iBlock) = &
+                   Buffer_IIV(ii,j,iVar) / (1.0e-7 * 100.0 * 100.0)
+           enddo
+        enddo
+
+     case default
+        call CON_stop(NameSub//' invalid NameVarIn='//NameVarIn_V(iVar))
+
+     end select
+  end do
+
+  ! This bypasses some internal GITM issues.
+  UAl_UseGridBasedEIE = .true. 
+
+end subroutine UA_put_from_ie
+
+!============================================================================
+subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
+
+  use ModTime, ONLY: CurrentTime
+  use ModPlotFile, ONLY: save_plot_file
+  
+  ! Input variables: size of grid/number and name of requested vars
+  integer,          intent(in) :: nMltIn, nLatIn, nVarIn
+  character(len=3), intent(in) :: NameVarIn_V(nVarIn)
+  
+  ! Buffer for the variables on the 2D IE grid
+  real, intent(out) :: BufferOut_IIBV(nMltIn, nLatIn, 2, nVarIn) ! to fill
+
+  ! Buffers for UA variables after they are calculated:
+  real, dimension(:,:), allocatable :: UAr2_Mlts, UAr2_Lats
+  real, dimension(:,:), allocatable :: UAr2_Hal, UAr2_Ped, UAr2_Fac
+
+  integer :: UAi_nLats, UAi_nMlts, iError, iBlock, &
+       iStartN, iEndN, iStartS, iEndS, iVar
+
+  ! Debug related variables:
+  character(len=35) :: NameFile
+  real :: BufferPlot_VII(nVarIn, nMltIn, nLatIn)
+  integer :: time_array(7)
+  logical :: DoTest, DoTestMe
+  character (len=*), parameter :: NameSub='UA_get_for_ie'
+  !-------------------------------------------------------------------------
+  call CON_set_do_test(NameSub,DoTest,DoTestMe)
+  ! Do we need to do this?  Uncomment or delete when we figure that out.
+  !call initialize_ie_ua_buffers(iError)
+  
+  ! Calculate electrodynamics; get size of UA grid.
+  call UA_calc_electrodynamics(UAi_nMlts, UAi_nLats)
+
+  ! Ensure size of grid is same as buffer size for one hemisphere:
+  if( (nMltIn/=UAi_nMlts).or.(2*nLatIn+1/=UAi_nLats) ) then
+     write(*,*) NameSub//' UA electromagnetic grid does not match buffer:'
+     write(*,*) NameSub//' UA E&M grid nLon, nLats = ', UAi_nMlts, UAi_nLats
+     write(*,*) NameSub//' UA-IE coupling buffer nLon, nLats = ', nMltIn,nLatIn
+     call CON_stop(NameSub//' Array size mismatch.')
+  end if
+
+  ! Collect relevant values using native GITM functions:
+  allocate(UAr2_Fac(UAi_nMlts, UAi_nLats), &
+       UAr2_Ped(UAi_nMlts, UAi_nLats), &
+       UAr2_Hal(UAi_nMlts, UAi_nLats), &
+       UAr2_Lats(UAi_nMlts, UAi_nLats), &
+       UAr2_Mlts(UAi_nMlts, UAi_nLats), stat=iError)
+  
+  call UA_fill_electrodynamics(UAr2_Fac,UAr2_Ped,UAr2_Hal,UAr2_Lats, UAr2_Mlts)
+
+  if(DoTest)write(*,*)NameSub//' nMlts,nLats= ',UAi_nMlts, UAi_nLats
+
+  ! Set indices for northern/southern hemispheres.
+  ! UA goes from the South pole to the north pole, while IE goes
+  ! from the north pole to the south pole, so the blocks have to
+  ! be reversed, basically.  Equatorial point is skipped.
+  ! Northern hemisphere:
+  iStartN = INT(CEILING(REAL(UAi_nLats)/2)) + 1 !rounding an odd number up
+  iEndN   = UAi_nLats
+  ! Southern Hemisphere:
+  iStartS = 1
+  iEndS   = UAi_nLats/2
+  
+  ! Only collect variables requested:
+  do iVar=1, nVarIn
+     select case (NameVarIn_V(iVar))
+     case('lon')
+        BufferOut_IIBV(:,:,1,iVar) = UAr2_Mlts(:,iStartN:iEndN)
+        BufferOut_IIBV(:,:,2,iVar) = UAr2_Mlts(:,iStartS:iEndS)
+     case('lat')
+        BufferOut_IIBV(:,:,1,iVar) = UAr2_Lats(:,iStartN:iEndN)
+        BufferOut_IIBV(:,:,2,iVar) = UAr2_Lats(:,iStartS:iEndS)
+     case('hal')
+        BufferOut_IIBV(:,:,1,iVar) = UAr2_Hal(:,iStartN:iEndN)
+        BufferOut_IIBV(:,:,2,iVar) = UAr2_Hal(:,iStartS:iEndS)
+     case('ped')
+        BufferOut_IIBV(:,:,1,iVar) = UAr2_Ped(:,iStartN:iEndN)
+        BufferOut_IIBV(:,:,2,iVar) = UAr2_Ped(:,iStartS:iEndS)
+     case('fac')
+        BufferOut_IIBV(:,:,1,iVar) = UAr2_Fac(:,iStartN:iEndN)
+        BufferOut_IIBV(:,:,2,iVar) = UAr2_Fac(:,iStartS:iEndS)
+     case default
+        call CON_stop(NameSub//' Unrecognized coupling variable: ', &
+             NameVarIn_V(iVar))
+     end select
+  
+  end do
+
+  ! Dump contents to file in debug mode:
+  if(DoTestMe)then
+     ! Get current time; create output file name:
+     call time_real_to_int(CurrentTime, time_array)
+     write(NameFile,'(a,i4.3,2i2.2,"_",3i2.2,a)') &
+          'ua_ie_buffer_t', time_array(1:6), '.out'
+     write(*,*) NameSub//': Saving buffer to ', NameFile
+
+     ! Fill output array to match required ordering
+     do iVar=1, nVarIn
+        BufferPlot_VII(iVar,:,:) = BufferOut_IIBV(:,:,1,iVar)
+     end do
+     
+     ! Write file:
+     call save_plot_file(NameFile, &
+          TypeFileIn='ascii', &
+          StringHeaderIn='UA_get_for_ie BufferOut contents', &
+          TimeIn=CurrentTime, &
+          NameVarIn = NameVarIn, &
+          nDimIn = 2, &
+          CoordMinIn_D = [&
+          minval(UAr2_Mlts(:,iStartN:iEndN)), &
+          minval(UAr2_Lats(:,iStartN:iEndN)], &
+          CoordMaxIn_D = [&
+          maxval(UAr2_Mlts(:,iStartN:iEndN)), &
+          maxval(UAr2_Lats(:,iStartN:iEndN)], &
+          VarIn_VII = BufferPlot_VII)
+  end if
+  
+  ! Deallocate intermediate variables:
+  deallocate(UAr2_Fac, UAr2_Ped, UAr2_Hal, UAr2_Lats, UAr2_Mlts)
+  
+end subroutine UA_get_for_ie
+!============================================================================
 
 end module UA_wrapper
