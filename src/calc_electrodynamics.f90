@@ -16,7 +16,7 @@ subroutine UA_fill_electrodynamics(UAr2_fac, UAr2_ped, UAr2_hal, &
   UAr2_Hal  = SigmaHallMC
   UAr2_lats = MagLatMC
   UAr2_mlts = MagLocTimeMC
-
+  
 end subroutine UA_fill_electrodynamics
 
 !\
@@ -40,7 +40,7 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
 
   integer :: i,j,k,bs, iError, iBlock, iDir, iLon, iLat, iAlt, ip, im, iOff
 
-  integer :: iEquator
+  integer :: iEquator, nLatsToSolve
   
   real :: GeoLat, GeoLon, GeoAlt, xAlt, len, ped, hal
   real :: sp_d1d1_d, sp_d2d2_d, sp_d1d2_d, sh
@@ -66,7 +66,7 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
   
   real :: aLat, aLon, gLat, gLon, Date, sLat, sLon, gLatMC, gLonMC
 
-  real :: residual, oldresidual, a, tmp
+  real :: residual, oldresidual, a, tmp, AvgDyn
 
   logical :: IsDone, IsFirstTime = .true., DoTestMe, Debug=.False.
 
@@ -92,14 +92,19 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
   call report("UA_calc_electrodynamics",1)
   call start_timing("calc_electrodyn")
 
-  iEquator = DynamoHighLatBoundary/MagLatRes + 1
+  ! 88.0 is the DynamoHighLatBoundary value required for
+  ! coupling with SWMF.  Need to make this flexible for
+  ! non-SWMF coupling situations.
+  ! Permanently extends latitudinal span that pot solver
+  ! is solving over.
+  iEquator = 88.0/MagLatRes + 1
   iAve = (DynamoLonAverage/2) / MagLonRes
-     
+
   if (IsFirstTime) then
 
      IsFirstTime = .false.
 
-     nMagLats = (2*DynamoHighLatBoundary)/MagLatRes+1
+     nMagLats = (2*88.0)/MagLatRes+1 !! 88.0 == DynaamoHighLatBoundary
      nMagLons = 360.0 / MagLonRes
 
      allocate(DivJuAltMC(nMagLons+1,nMagLats), &
@@ -211,13 +216,12 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
              write(*,*) "==> Calculating Apex->Geo", i, iStart, iEnd
         do j=1,nMagLats
 
-           MagLatMC(i,j)     = float(j-1) * MagLatRes &
-                - DynamoHighLatBoundary
+           MagLatMC(i,j)     = float(j-1) * MagLatRes - 88.0 !! 88.0 == DynaamoHighLatBoundary
 
            MagLonMC(i,j)     = 360.0 * float(i-1) / float(nMagLons)
 
-           if (UseApex) then 
-
+           if (UseApex) then
+              
               aLat = MagLatMC(i,j)
               aLon = MagLonMC(i,j)
 
@@ -230,7 +234,7 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
               else
                  sLat = -100.0
               endif
-
+              
               ReferenceAlt = Altitude_GB(1,1,0,1)/1000.0
               AltMinIono = ReferenceAlt
 
@@ -253,7 +257,7 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
               GeoLonMC(i,j) = gLon*pi/180.0
 
            endif
-
+           
         enddo
      enddo
 
@@ -366,7 +370,7 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
      VeOe = Ve**2 + e_gyro**2
      ViOi = Vi**2 + i_gyro**2
 
-     Sigma_0 = q2 * E_Density / (1.0/MeVen + 1.0/MiVin)
+     Sigma_0 = q2 * E_Density * (1.0/MeVen + 1.0/MiVin)  !! should be multiplication
 
      Sigma_Pedersen = ((1.0/MeVen) * (Ve*Ve/VeOe) + &
           (1.0/MiVin) * (Vi*Vi/ViOi)) * E_Density * q2
@@ -1400,7 +1404,12 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
   ! Fill in the diagonal vectors
   iI = 0
 
-  nX = (nMagLats-2) * (nMagLons)
+
+  iStart = (88.0 - DynamoHighLatBoundary)/MagLatRes + 1 !! 88.0 == DynaamoHighLatBoundary
+  iEnd   = nMagLats - iStart + 1
+  nLatsToSolve = iEnd - iStart + 1
+  !write(*,*)'iStart,iEnd,nLatsToSolve,nMagLons: ',iStart,iEnd,nLatsToSolve,nMagLons
+  nX = (nLatsToSolve-2) * (nMagLons)
 
   allocate( x(nX), y(nX), rhs(nX), b(nX), &
        d_I(nX), e_I(nX), e1_I(nX), f_I(nX), f1_I(nX) )
@@ -1408,10 +1417,10 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
   call UA_SetnMLTs(nMagLons+1)
   call UA_SetnLats(2)
      
-  SmallMagLocTimeMC(:,1) = MagLocTimeMC(:,1)
-  SmallMagLocTimeMC(:,2) = MagLocTimeMC(:,nMagLats)
-  SmallMagLatMC(:,1)     = MagLatMC(:,1)
-  SmallMagLatMC(:,2)     = MagLatMC(:,nMagLats)
+  SmallMagLocTimeMC(:,1) = MagLocTimeMC(:,iStart)
+  SmallMagLocTimeMC(:,2) = MagLocTimeMC(:,iEnd)
+  SmallMagLatMC(:,1)     = MagLatMC(:,iStart)
+  SmallMagLatMC(:,2)     = MagLatMC(:,iEnd)
   iError = 0
   call UA_SetGrid(SmallMagLocTimeMC, SmallMagLatMC, iError)
   if (iError /= 0) then
@@ -1430,7 +1439,7 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
      SmallPotentialMC = 0.0
   endif
 
-  do iLat=2,nMagLats-1
+  do iLat=iStart+1,iEnd-1
      do iLon=1,nMagLons
 
         iI = iI + 1
@@ -1457,12 +1466,12 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
         f1_I(iI) = solver_b_mc(iLon, iLat)+solver_d_mc(iLon, iLat)
   
 
-        if (iLat == 2) then
+        if (iLat == iStart+1) then
            b(iI) = b(iI)-(solver_b_mc(iLon, iLat)-solver_d_mc(iLon, iLat)) * &
                 SmallPotentialMC(iLon, 1)
            e1_I(iI) = 0.0
         endif
-        if (iLat == nMagLats-1) then
+        if (iLat == iEnd-1) then
            b(iI) = b(iI)-(solver_b_mc(iLon, iLat)+solver_d_mc(iLon, iLat)) * &
                 SmallPotentialMC(iLon, 2)
            f1_I(iI) = 0.0
@@ -1512,15 +1521,29 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
        write(*,*) "=> gmres : ",MaxIteration,Residual, nIteration, iError
 
   iI = 0
-  do iLat=2,nMagLats-1
+  do iLat=iStart+1,iEnd-1
      do iLon=1,nMagLons
         iI = iI + 1
         DynamoPotentialMC(iLon, iLat) = x(iI)
      enddo
   enddo
-  DynamoPotentialMC(:,        1) = 0.0
-  DynamoPotentialMC(:, nMagLats) = 0.0
 
+  !----------- Subtract the equatorial average dynamo potential ---------
+  AvgDyn = SUM(DynamoPotentialMC(:,iEquator))/SIZE(DynamoPotentialMC(:,iEquator))  ! use as the equatorial average 
+  do iLat=iStart+1,iEnd-1
+     do iLon=1,nMagLons
+!        DynamoPotentialMC(iLon, iLat) = 0.0                                 ! for run_test14
+        DynamoPotentialMC(iLon, iLat) = DynamoPotentialMC(iLon, iLat) - AvgDyn ! for run_test15, use this for now
+     enddo
+  enddo
+  !----------------------------------------------------------------------
+
+  DynamoPotentialMC(:, iStart) = 0 ! SmallPotentialMC(:,1) ! github version uses 0
+  DynamoPotentialMC(:, iEnd) = 0   ! SmallPotentialMC(:,2)
+
+  ! --------------------------------------------------------------------------
+  ! This is mapping the northern hemisphere onto the southern hemisphere.
+  ! Should we really be doing this?????
   OldPotMC = DynamoPotentialMC
 
   do iLat=2,nMagLats/2
@@ -1529,13 +1552,14 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
         DynamoPotentialMC(iLon, iLat) = OldPotMC(iLon,iI) 
      enddo
   enddo
+  ! --------------------------------------------------------------------------
 
   DynamoPotentialMC(nMagLons+1,:) = DynamoPotentialMC(1,:)
 
   if(allocated(b)) deallocate(x, y, b, rhs, d_I, e_I, f_I, e1_I, f1_I)
 ! Electric fields
 
-  do j=1,nMagLats
+  do j=iStart,iEnd
      do i=2,nMagLons
         Ed1new(i,j) = -(1/(RBody*cos(MagLatMC(i,j)*pi/180))) * &
              0.5 * (DynamoPotentialMC(i+1,j)-DynamoPotentialMC(i-1,j))/deltapmc(i,j)
@@ -1546,21 +1570,21 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
   enddo
 
   do i=1,nMagLons+1
-     do j=2,nMagLats-1
+     do j=iStart+1,iEnd-1
         sinim = abs(2.0 * sin(MagLatMC(i,j)*pi/180) / &
              sqrt(4.0 - 3.0 * cos(MagLatMC(i,j)*pi/180)))+1e-6
         Ed2new(i,j) = (1/(RBody*sinIm))*   &
              0.5 * (DynamoPotentialMC(i,j+1)-DynamoPotentialMC(i,j-1))/deltalmc(i,j)
      enddo
-     sinim = abs(2.0 * sin(MagLatMC(i,1)*pi/180) / &
-          sqrt(4.0 - 3.0 * cos(MagLatMC(i,1)*pi/180)))+1e-6
-     Ed2new(i,1) = (1/(RBody*sinIm))*   &
-          (DynamoPotentialMC(i,2)-DynamoPotentialMC(i,1))/deltalmc(i,1)
+     sinim = abs(2.0 * sin(MagLatMC(i,iStart)*pi/180) / &
+          sqrt(4.0 - 3.0 * cos(MagLatMC(i,iStart)*pi/180)))+1e-6
+     Ed2new(i,iStart) = (1/(RBody*sinIm))*   &
+          (DynamoPotentialMC(i,iStart+1)-DynamoPotentialMC(i,iStart))/deltalmc(i,iStart)
 
-     sinim = abs(2.0 * sin(MagLatMC(i,nMagLats)*pi/180) / &
-          sqrt(4.0 - 3.0 * cos(MagLatMC(i,nMagLats)*pi/180)))+1e-6
-     Ed2new(i,nMagLats) = (1/(RBody*sinIm))*   &
-          (DynamoPotentialMC(i,nMagLats)-DynamoPotentialMC(i,nMagLats-1))/deltalmc(i,nMagLats)
+     sinim = abs(2.0 * sin(MagLatMC(i,iEnd)*pi/180) / &
+          sqrt(4.0 - 3.0 * cos(MagLatMC(i,iEnd)*pi/180)))+1e-6
+     Ed2new(i,iEnd) = (1/(RBody*sinIm))*   &
+          (DynamoPotentialMC(i,iEnd)-DynamoPotentialMC(i,iEnd-1))/deltalmc(i,iEnd)
 
   enddo
 ! End Electric field
