@@ -200,6 +200,9 @@ ${MY_LIB}: ${LIBPREV} ${MF} ${MODULES} ${OBJECTS}
 	${AR} ${MY_LIB} ${OBJECTS} ${MODULES}
 
 
+clean:
+	rm -f *~ core *.o *.mod fort.* a.out *.exe *.a *.so *.protex
+
 distclean: clean
 	rm -f 	ModSize.f90 \
 		ModPlanet.f90 \

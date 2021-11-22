@@ -48,4 +48,5 @@ AB_ARRAY_module.o:  AB_ARRAY_module.f90
 
 AB_ERROR_module.o:  AB_ERROR_module.f90
 
-
+clean:
+	rm -f *~ core *.o *.mod fort.* a.out *.exe *.a *.so *.protex
