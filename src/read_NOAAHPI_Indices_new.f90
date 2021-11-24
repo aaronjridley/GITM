@@ -18,7 +18,8 @@ subroutine read_NOAAHPI_Indices_new(iOutputError,StartTime,EndTime)
   logical :: done
 
   ! One line of input
-  character (len=iCharLenIndices_) :: line
+  integer, parameter :: iCharLenGitm = 400
+  character (len=iCharLenGitm) :: line
 
   real, dimension(6,MaxIndicesEntries) :: tmp
 

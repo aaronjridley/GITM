@@ -420,7 +420,6 @@ contains
   ! IEi_HavenMlt  = nMltIE
   !
   use ModEIE_Interface  !!!!! changed from use ModIE_Interface - MB
-  use ModIE_Interface   !!!!! added this one back in...
 
   implicit none
 
@@ -458,32 +457,32 @@ contains
 
      ! Electric Potential:
      case('pot')
-        do i = 1, IEi_HavenLats
+        do i = 1, EIEi_HavenLats
            ii = i
-           do j = 1, IEi_HavenMlts
-              IEr3_HavePotential( j,i,iBlock) = Buffer_IIV(ii,j, iVar)
+           do j = 1, EIEi_HavenMlts
+              !IEr3_HavePotential( j,i,iBlock) = Buffer_IIV(ii,j, iVar)
               EIEr3_HavePotential(j,i,iBlock) = Buffer_IIV(ii,j, iVar)
            enddo
         enddo
 
      ! Precipitation/average energy:
      case('ave')
-        do i = 1, IEi_HavenLats
+        do i = 1, EIEi_HavenLats
            ii = i
-           do j = 1, IEi_HavenMlts
-              IEr3_HaveAveE(j,i,iBlock)  = Buffer_IIV(ii,j, iVar)
+           do j = 1, EIEi_HavenMlts
+              !IEr3_HaveAveE(j,i,iBlock)  = Buffer_IIV(ii,j, iVar)
               EIEr3_HaveAveE(j,i,iBlock) = Buffer_IIV(ii,j, iVar)
            enddo
         enddo
 
      ! Precipitation/Total energy flux:
      case('tot')
-        do i = 1, IEi_HavenLats
+        do i = 1, EIEi_HavenLats
            ii = i
            !        if (iBlock == 2) ii = IEi_HavenLats - i + 1
-           do j = 1, IEi_HavenMlts
-              IEr3_HaveEFlux(j,i,iBlock) = &
-                   Buffer_IIV(ii,j,iVar) / (1.0e-7 * 100.0 * 100.0)
+           do j = 1, EIEi_HavenMlts
+              !IEr3_HaveEFlux(j,i,iBlock) = &
+              !     Buffer_IIV(ii,j,iVar) / (1.0e-7 * 100.0 * 100.0)
               EIEr3_HaveEFlux(j,i,iBlock) = &
                    Buffer_IIV(ii,j,iVar) / (1.0e-7 * 100.0 * 100.0)
            enddo
@@ -583,7 +582,7 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
         BufferOut_IIBV(:,:,1,iVar) = UAr2_Fac(:,iStartN:iEndN)
         BufferOut_IIBV(:,:,2,iVar) = UAr2_Fac(:,iStartS:iEndS)
      case default
-        call CON_stop(NameSub//' Unrecognized coupling variable: ', &
+        call CON_stop(NameSub//' Unrecognized coupling variable: '// &
              NameVarIn_V(iVar))
      end select
   
@@ -607,14 +606,14 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
           TypeFileIn='ascii', &
           StringHeaderIn='UA_get_for_ie BufferOut contents', &
           TimeIn=CurrentTime, &
-          NameVarIn = NameVarIn, &
+          NameVarIn_I = NameVarIn_V, &
           nDimIn = 2, &
           CoordMinIn_D = [&
           minval(UAr2_Mlts(:,iStartN:iEndN)), &
-          minval(UAr2_Lats(:,iStartN:iEndN)], &
+          minval(UAr2_Lats(:,iStartN:iEndN))], &
           CoordMaxIn_D = [&
           maxval(UAr2_Mlts(:,iStartN:iEndN)), &
-          maxval(UAr2_Lats(:,iStartN:iEndN)], &
+          maxval(UAr2_Lats(:,iStartN:iEndN))], &
           VarIn_VII = BufferPlot_VII)
   end if
   
