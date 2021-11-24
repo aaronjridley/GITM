@@ -16,7 +16,8 @@ subroutine read_al_onset_list(iOutputError, StartTime, EndTime)
   logical :: IsDone
 
   ! One line of input
-  character (len=iCharLenIndices_) :: line
+  integer, parameter :: iCharLenGitm = 400
+  character (len=iCharLenGitm) :: line
 
   real (Real8_) :: TimeDelay, BufferTime
 
@@ -142,7 +143,8 @@ subroutine read_sme(iOutputError, StartTime, EndTime, doUseAeForHp)
   logical :: IsDone
 
   ! One line of input
-  character (len=iCharLenIndices_) :: line
+  integer, parameter :: iCharLenGitm = 400
+  character (len=iCharLenGitm) :: line
 
   real (Real8_) :: TimeDelay, BufferTime = 180.0
 
