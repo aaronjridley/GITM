@@ -1,5 +1,6 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 !-----------------------------------------------------------------------------
 ! $Id: set_inputs.f90,v 1.84 2017/10/30 14:05:36 ridley Exp $
 !
@@ -352,10 +353,14 @@ subroutine set_inputs
 
         case ("#MSISOBC")
            call read_in_logical(UseOBCExperiment, iError)
+           call read_in_real(MsisOblateFactor, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #MSISOBC:'
+              write(*,*) 'UseOBCExperiment - use MSIS [O] BC shifted by 6 months'
+              write(*,*) 'MsisOblateFactor - alt = alt * (1.0-f/2 + f*cos(lat))'
               write(*,*) '#MSISOBC'
               write(*,*) 'UseOBCExperiment        (logical)'
+              write(*,*) 'MsisOblateFactor           (real)'
            endif
 
         !xianjing
@@ -504,8 +509,7 @@ subroutine set_inputs
               if (iErrorFile /= 0) then
                  write(*,*) "Error finding #START in surface perturbation file: ",&
                       cSurfacePerturbFileName
-                 close(iUnitFile)
-                 return
+                 call stop_gitm("Must Stop!")
               endif
               iFreq = 0
               do while (iErrorFile == 0)
@@ -519,6 +523,7 @@ subroutine set_inputs
                     write(*,*) "For WP: Number of frequencies reaching the limit: ", &
                          nMaxPerturbFreq
                     write(*,*) "Increase nMaxPerturbFreq in ModInputs.f90 !!!"
+                    call stop_gitm("Must Stop!")
                  endif
               enddo              
               close(iUnitFile)
@@ -1061,13 +1066,11 @@ subroutine set_inputs
            endif
 
         case ("#USETESTVISCOSITY")
-           call read_in_logical(UseTestViscosity, iError)
            call read_in_real(TestViscosityFactor, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #USETESTVISCOSITY:'
               write(*,*) ''
               write(*,*) '#USETESTVISCOSITY'
-              write(*,*) "UseTestViscosity         (logical)"
               write(*,*) "TestViscosityFactor      (real)"
            endif
 
@@ -1113,37 +1116,6 @@ subroutine set_inputs
            call read_in_logical(UseIonChemistry, iError)
            call read_in_logical(UseIonAdvection, iError)
            call read_in_logical(UseNeutralChemistry, iError)
-
-!           call read_in_string(sNeutralChemistry, iError)
-!           call read_in_string(sIonChemistry, iError)
-!
-!           iInputIonChemType = -1
-!           iInputNeutralChemType = -1
-!
-!           do i = 1, nChemTypes_
-!              if (sNeutralChemistry == sChemType(i)) iInputNeutralChemType = i
-!              if (sIonChemistry == sChemType(i)) iInputIonChemType = i
-!           enddo
-!
-!           if (iInputNeutralChemType < 1) then
-!              write(*,*) "Error in #CHEMISTRY for Neutrals"
-!              write(*,*) "Input type : ", sNeutralChemistry
-!              write(*,*) "Acceptable types :"
-!              do i = 1, nChemTypes_
-!                 write(*,*) sChemType(i)
-!              enddo
-!              IsDone = .true.
-!           endif
-!
-!           if (iInputIonChemType < 1) then
-!              write(*,*) "Error in #CHEMISTRY for Ions"
-!              write(*,*) "Input type : ", sIonChemistry
-!              write(*,*) "Acceptable types :"
-!              do i = 1, nChemTypes_
-!                 write(*,*) sChemType(i)
-!              enddo
-!              IsDone = .true.
-!           endif
 
         case ("#FIXTILT")
 
@@ -1557,7 +1529,7 @@ subroutine set_inputs
               call read_in_real(lambda1, iError)      !Ankit23May16: Forgetting factor. 
               call read_in_real(W_Rtheta, iError)     !Ankit23May16: Rtheta. Or inv(P0).
               call read_in_real(Dts, iError)          !Ankit23May16: Time step used with RCMR
-              call read_in_real(Measure_Dts, iError)  !Ankit23May16: RCMR executes every Measure_Dts*Dts*steps timesteps.
+              call read_in_real(Measure_Dts, iError)  !Ankit23May16: Executes every Measure_Dts*Dts*steps steps.
               call read_in_int(C_on, iError)          !Ankit23May16: RCMR switches on after C_on steps.
               call read_in_int(uFiltLength, iError)   !Ankit23May16: Length of averaging filter.
            end if

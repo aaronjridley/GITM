@@ -1,3 +1,6 @@
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 subroutine calc_chemistry(iBlock)
 
 !  No override of CO2 densities; explicit calculation
@@ -45,6 +48,11 @@ subroutine calc_chemistry(iBlock)
              maxval(IDensityS(1:nLons,1:nLats,(nAlts*4)/5,iIon,iBlock))
      enddo
   endif
+
+  ChemicalHeatingRate = 0.0
+  ChemicalHeatingRateIon = 0.0
+  ChemicalHeatingRateEle = 0.0
+  ChemicalHeatingSpecies = 0.0
 
   !   if (istep .lt. 10000) then
   !      useimplicitchemistry = .false.
@@ -138,6 +146,16 @@ subroutine calc_chemistry(iBlock)
      enddo
   enddo
 
+  ChemicalHeatingRate(:,:,:) = &
+       ChemicalHeatingRate(:,:,:) * Element_Charge / &
+       TempUnit(1:nLons,1:nLats,1:nAlts) / cp(1:nLons,1:nLats,1:nAlts,iBlock)/&
+       rho(1:nLons,1:nLats,1:nAlts,iBlock)
+	   
+  ChemicalHeatingRateIon(:,:,:) = &
+       ChemicalHeatingRateIon(:,:,:) * Element_Charge
+
+  ChemicalHeatingSpecies = ChemicalHeatingSpecies * Element_Charge
+  
   if (iDebugLevel > 3) then
      do iIon = 1, nIons
         write(*,*) "====> calc_chemistry: Max Ion Density: ", iIon, &

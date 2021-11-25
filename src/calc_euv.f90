@@ -1,5 +1,5 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
 
 subroutine euv_ionization_heat(iBlock)
 
@@ -22,7 +22,7 @@ subroutine euv_ionization_heat(iBlock)
 
   logical :: IsFirstTime(nBlocksMax) = .true.
 
-  real :: NeutralDensity(nLons, nLats, nSpecies)
+  real :: NeutralDensity(nLons, nLats, nSpeciesTotal)
   real :: ChapmanLittle(nLons, nLats, nSpecies)
   real :: EHeat(nLons, nLats)
   real :: nEuvHeating(nLons,nLats,nAlts), neEuvHeating(nLons,nLats,nAlts)
@@ -56,7 +56,7 @@ subroutine euv_ionization_heat(iBlock)
 
   do iAlt = 1, nAlts
 
-     NeutralDensity = NDensityS(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock)
+     NeutralDensity = NDensityS(1:nLons,1:nLats,iAlt,1:nSpeciesTotal,iBlock)
      ChapmanLittle  = Chapman(:,:,iAlt,1:nSpecies,iBlock)
      EHeat = 0.0
 
@@ -72,14 +72,20 @@ subroutine euv_ionization_heat(iBlock)
 
         do iIon = 1, nIons-1
            iNeutral = PhotoIonFrom(iIon)
-           EuvIonRateS(:,:,iAlt,iIon,iBlock) = &
-                EuvIonRateS(:,:,iAlt,iIon,iBlock) + &
-                Intensity * PhotoIon(iWave,iIon) * &
-                NeutralDensity(:,:,iNeutral) * &
-                (1.0 + PhotoElecIon(iWave,iIon))
+           ! If we have an ionization cross section, use it with the
+           ! appropriate neutral density, otherwise, there is no ionization
+           if (iNeutral > 0) then
+              EuvIonRateS(:,:,iAlt,iIon,iBlock) = &
+                   EuvIonRateS(:,:,iAlt,iIon,iBlock) + &
+                   Intensity * PhotoIon(iWave,iIon) * &
+                   NeutralDensity(:,:,iNeutral) * &
+                   (1.0 + PhotoElecIon(iWave,iIon))
+           else
+              EuvIonRateS(:,:,iAlt,iIon,iBlock) = 0.0
+           endif
         enddo
 
-        do iSpecies = 1, nSpeciesTotal
+        do iSpecies = 1, nSpecies
            EuvDissRateS(:,:,iAlt,iSpecies,iBlock) = &
                 EuvDissRateS(:,:,iAlt,iSpecies,iBlock) + &
                 Intensity*PhotoDis(iWave,iSpecies) * &
@@ -97,14 +103,16 @@ subroutine euv_ionization_heat(iBlock)
 
      EuvHeating(:,:,iAlt,iBlock)  = EHeat*HeatingEfficiency_CB(:,:,iAlt,iBlock)
      eEuvHeating(:,:,iAlt,iBlock) = EHeat*eHeatingEfficiency_CB(:,:,iAlt,iBlock)
-     do ilon = 1, nlons 
-        do ilat =1 ,nlats
-           if (Altitude_GB(iLon,iLat,iAlt,iBlock) .lt. 80000.0) then
-              EUVHeating(iLon,iLat,iAlt,iBlock) =0.0
-              eEUVHeating(iLon,iLat,iAlt,iBlock) =0.0
-           endif
-        enddo
-     enddo
+
+     ! Why this? Is this for Mars or Venus or something?
+     !do ilon = 1, nlons 
+     !   do ilat =1 ,nlats
+     !      if (Altitude_GB(iLon,iLat,iAlt,iBlock) .lt. 80000.0) then
+     !         EUVHeating(iLon,iLat,iAlt,iBlock) =0.0
+     !         eEUVHeating(iLon,iLat,iAlt,iBlock) =0.0
+     !      endif
+     !   enddo
+     !enddo
      
   enddo
   
@@ -129,7 +137,7 @@ subroutine euv_ionization_heat(iBlock)
              EuvHeating2d(1:nLons,1:nLats) + &
              EuvHeating(:,:,iAlt,iBlock)  * &
              dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
-
+        
         EuvHeating(:,:,iAlt,iBlock) = EuvHeating(:,:,iAlt,iBlock) / &
              Rho(1:nLons,1:nLats,iAlt,iBlock) / &
              cp(1:nLons,1:nLats,iAlt,iBlock) / &
@@ -140,6 +148,7 @@ subroutine euv_ionization_heat(iBlock)
              HeatingEfficiency_CB(:,:,iAlt,iBlock)
 
      enddo
+
   else
      EuvHeating = 0.0
   endif
@@ -248,12 +257,12 @@ contains
 
   subroutine night_euv_ionization
 
-!!! Nighttime EUV Ionization
+    ! Nighttime EUV Ionization
 
     real :: night_col(nLons,nLats,nAlts,nSpecies)
     real :: dAlts(nLons,nLats)
     real, dimension(nLons,nLats) :: nTau, nIntensity
-    real :: nNeutralDensity(nLons, nLats, nSpecies)
+    real :: nNeutralDensity(nLons, nLats, nSpeciesTotal)
     real :: tempflux(nLons,nLats), SZALocal(nLons,nLats)
     real :: ScaleHeightS(nLons,nLats)
     real :: scatterfac = 0.01
@@ -263,8 +272,8 @@ contains
     real :: nPhotonEnergy(Num_NightWaveLens)
     real :: tempPhotonEnergy = 0.0
 
-    nEuvIonRates   = 0.0
-    night_col   = 0
+    nEuvIonRates = 0.0
+    night_col = 0
 
     SZALocal = SZA(1:nLons,1:nLats,iBlock)
 
@@ -326,18 +335,15 @@ contains
 
     !! Calculate Tau
     do iAlt= nAlts, 1, -1
-       nNeutralDensity = NDensityS(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock)
+       nNeutralDensity = NDensityS(1:nLons,1:nLats,iAlt,1:nSpeciesTotal,iBlock)
        dAlts = dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
 
        do iSpecies = 1, nSpecies
 
           if (iAlt .LT. nAlts) then
-
              night_col(:,:,iAlt,iSpecies) = night_col(:,:,iAlt+1,iSpecies) &
                   + nNeutralDensity(:,:,iSpecies)*dAlts
-
           else
-
              ScaleHeightS =  &
                   Temperature(1:nLons,1:nLats,iAlt,iBlock) &
                   * TempUnit(1:nLons,1:nLats,iAlt) * Boltzmanns_Constant &
@@ -352,7 +358,8 @@ contains
 
     do iAlt = 1, nAlts
        nEHeat = 0.0
-       nNeutralDensity = NDensityS(1:nLons,1:nLats,iAlt,1:nSpecies,iBlock)
+       nNeutralDensity = NDensityS( &
+            1:nLons, 1:nLats, iAlt, 1:nSpeciesTotal, iBlock)
        do iWave = 1, Num_NightWaveLens
           nTau = 0.0
 
@@ -365,28 +372,34 @@ contains
 
           do iIon = 1, nIons-1
              iNeutral = PhotoIonFrom(iIon)
-             nEuvIonRateS(:,:,iAlt,iIon,iBlock) = &
-                  nEuvIonRateS(:,:,iAlt,iIon,iBlock) + &
-                  nIntensity*night_photoion(iWave,iIon) * &
-                  nNeutralDensity(:,:,iNeutral)
+             ! If we have an ionization cross section, use it with the
+             ! appropriate neutral density, otherwise, there is no ionization
+             if (iNeutral > 0) then
+                nEuvIonRateS(:,:,iAlt,iIon,iBlock) = &
+                     nEuvIonRateS(:,:,iAlt,iIon,iBlock) + &
+                     nIntensity*night_photoion(iWave,iIon) * &
+                     nNeutralDensity(:,:,iNeutral)
+             endif
           enddo
 
           do iSpecies = 1, nSpecies
              nEHeat = nEHeat + &
-                  nIntensity*nPhotonEnergy(iWave)* &
-                  night_photoabs(iWave, iSpecies) * nNeutralDensity(:,:,iSpecies)            
+                  nIntensity * &
+                  nPhotonEnergy(iWave)* &
+                  night_photoabs(iWave, iSpecies) * &
+                  nNeutralDensity(:,:,iSpecies)            
 
           enddo
 
        enddo
 
-       nEuvHeating(:,:,iAlt)  = nEHeat*HeatingEfficiency_CB(:,:,iAlt,iBlock)
-       neEuvHeating(:,:,iAlt) = nEHeat*eHeatingEfficiency_CB(:,:,iAlt,iBlock)
+       nEuvHeating(:,:,iAlt)  = nEHeat * HeatingEfficiency_CB(:,:,iAlt,iBlock)
+       neEuvHeating(:,:,iAlt) = nEHeat * eHeatingEfficiency_CB(:,:,iAlt,iBlock)
        do ilon = 1, nlons 
           do ilat =1 ,nlats
              if (Altitude_GB(iLon,iLat,iAlt,iBlock) .lt. 80000.0) then
-                nEUVHeating(iLon,iLat,iAlt) =0.0
-                neEUVHeating(iLon,iLat,iAlt) =0.0
+                nEUVHeating(iLon,iLat,iAlt) = 0.0
+                neEUVHeating(iLon,iLat,iAlt) = 0.0
              endif
           enddo
        enddo
@@ -526,7 +539,7 @@ subroutine calc_scaled_euv
     
      where (tDiff .lt. 0) tDiff = 1.e20
      iMin = minloc(tDiff)
-    
+
      Timed_Flux = SeeFlux(:,iMin(1))
 
      if (CurrentTime .ge. FlareTimes(iFlare) .and. CurrentTime-dt .le. FlareTimes(iFlare)) then
@@ -686,9 +699,8 @@ subroutine calc_scaled_euv
      
            wavelength_ave = (WAVEL(N) + WAVES(N))/2.0
            PhotonEnergy(N)= 6.626e-34*2.998e8/(wavelength_ave*1.0e-10)
-
+           write(*,*) 'photonenergy : ', n, PhotonEnergy(N), wavelength_ave
         enddo
-
         ! Solar_Flux has the Tobiska and Hinteregger fluxes in there already:
   
         do N = 1,Num_WaveLengths_High
@@ -713,6 +725,12 @@ subroutine calc_scaled_euv
 
   endif
 
+  do N=1,Num_WaveLengths_High
+     ! Calculate the energy in the bin:
+     wavelength_ave = (WAVEL(N) + WAVES(N))/2.0
+     PhotonEnergy(N)= 6.626e-34*2.998e8/(wavelength_ave*1.0e-10)
+  enddo
+  
 end subroutine calc_scaled_euv
 
  !-------------------------------------------------------------------
@@ -808,7 +826,7 @@ subroutine Set_Euv(iError, StartTime, EndTime)
   integer, dimension(7)                   :: TimeOfFlare,TimeArray
   real, dimension(6+Num_Wavelengths_High) :: temp
 
-  real (Real8_) :: TimeDelay, BufferTime = 180.0
+  real (Real8_) :: TimeDelay, BufferTime = 86400.0
 
   logical :: NotDone
   integer :: i, iline, ioerror, nline, nILine = 1, iErrortemp = 0
@@ -850,7 +868,6 @@ subroutine Set_Euv(iError, StartTime, EndTime)
 
         i=index(cLine,' '); if(i>0)cLine(i:len(cLine))=' '
         i=index(cLine,char(9)); if(i>0)cLine(i:len(cLine))=' '
-        
         select case (cLine)
            
         case("#FLARES")
@@ -899,7 +916,7 @@ subroutine Set_Euv(iError, StartTime, EndTime)
   close(iInputUnit_)
   nSeeTimes = iline - 1
 
-  if (nSeeTimes .gt. 3) iError = 0
+  if (nSeeTimes > 2) iError = 0
 
 end subroutine Set_Euv
 

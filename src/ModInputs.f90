@@ -1,5 +1,5 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
 
 module ModInputs
 
@@ -203,6 +203,7 @@ module ModInputs
   logical :: UseStatisticalModelsOnly = .false.
   real    :: DtStatisticalModels = 3600.0
   logical :: UseOBCExperiment = .false.
+  real :: MsisOblateFactor = 0.0
 
   logical :: UseGswmComp(4) = .true.
 
@@ -233,7 +234,6 @@ module ModInputs
   logical :: UseGravity          = .true.
   logical :: UseIonDrag          = .true.
   logical :: UseViscosity        = .true.
-  logical :: UseTestViscosity    = .false.
   real    :: TestViscosityFactor = 1.0
   logical :: UseCoriolis         = .true.
   logical :: UseGravityWave      = .false.

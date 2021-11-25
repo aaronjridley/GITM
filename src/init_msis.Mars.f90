@@ -1,3 +1,6 @@
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 !--------------------------------------------------------------
 !  Corrections by S. W. Bougher (9/28/07)
 !  -- atomic oxygen replaces O2 in mean mass and scale height

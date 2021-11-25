@@ -1,3 +1,5 @@
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
 
 subroutine calc_electron_temperature(iBlock)
 
@@ -70,6 +72,8 @@ subroutine calc_electron_ion_temperature(iBlock)
   logical :: NanFound
 
   !call calc_electron_ion_sources(iBlock)
+
+  call report("calc_electron_temperature", 2)
   
   tn = Temperature(1:nLons,1:nLats,0:nAlts+1,iBlock)*TempUnit(1:nLons,1:nLats,0:nAlts+1)
   nn = NDensity(1:nLons,1:nLats,0:nAlts+1,iBlock)
@@ -374,6 +378,9 @@ subroutine calc_electron_ion_temperature(iBlock)
   iTemperature(1:nLons,1:nLats,-1,iBlock) = itemp(1:nLons,1:nLats,0)
   iTemperature(1:nLons,1:nLats,nAlts+2,iBlock) = itemp(1:nLons,1:nLats,nAlts+1)
 
+  call report("done with calc_electron_temperature", 2)
+
+  
 contains
 
   Subroutine tridag(a,b,c,d,u)

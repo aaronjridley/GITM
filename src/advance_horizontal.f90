@@ -1,5 +1,60 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
+!------------------------------------------------------------------------------
+! Calculate the horizontal advection terms
+!------------------------------------------------------------------------------
+
+subroutine advance_horizontal_all
+
+  use ModInputs
+  use ModGitm
+  
+  implicit none
+
+  integer :: iBlock
+
+  call report("advance_horizontal_all",1)
+  call start_timing("horizontal_all")
+
+  call exchange_messages_sphere
+
+  do iBlock = 1, nBlocks
+
+     call calc_rates(iBlock)
+     call calc_physics(iBlock)
+
+     if (.not. IsFullSphere) call set_horizontal_bcs(iBlock)
+
+     call advance_horizontal(iBlock)
+
+  end do
+
+  ! Sync everything up again.
+
+  call exchange_messages_sphere
+
+  do iBlock = 1, nBlocks
+     if (.not. IsFullSphere) call set_horizontal_bcs(iBlock)
+  enddo
+
+  if (DoCheckForNans) then
+     call check_for_nans_ions("After Horizontal")
+     call check_for_nans_neutrals("After Horizontal")
+     call check_for_nans_temps("After Horizontal")
+  endif
+
+  call end_timing("horizontal_all")
+
+end subroutine advance_horizontal_all
+
+
+!------------------------------------------------------------------------------
+! Advance horizontal for all altitudes
+!------------------------------------------------------------------------------
+
+
+
 subroutine advance_horizontal(iBlock)
 
   use ModConstants, only : pi

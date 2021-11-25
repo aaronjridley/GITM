@@ -1,3 +1,5 @@
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
 
 subroutine calc_rates(iBlock)
 
@@ -441,7 +443,7 @@ subroutine calc_collisions(iBlock)
 
 end subroutine calc_collisions
 
-subroutine calc_viscosity(iBlock)
+subroutine calc_viscosity_coef(iBlock)
 
   use ModGITM
 
@@ -450,4 +452,4 @@ subroutine calc_viscosity(iBlock)
   integer, intent(in) :: iBlock
 
 
-end subroutine calc_viscosity
+end subroutine calc_viscosity_coef

@@ -1,5 +1,6 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 !----------------------------------------------------------------------------
 ! $Id: output_common.f90,v 1.63 2017/10/24 14:23:20 ridley Exp $
 !
@@ -319,7 +320,7 @@ subroutine output(dir, iBlock, iOutputType)
 
   case ('3DTHM')
 
-     nvars_to_write = 14
+     nvars_to_write = 14+4
      call output_3dthm(iBlock)
 
   case ('1DCHM')
@@ -379,7 +380,7 @@ subroutine output(dir, iBlock, iOutputType)
 
   case ('2DANC')
 
-     nvars_to_write = 10
+     nvars_to_write = 15
      call output_2danc(iBlock)
 
   case ('2DHME')
@@ -631,7 +632,12 @@ contains
        write(iOutputUnit_,"(I7,A1,a)")  7, " ", "AltIntJouleHeating (W/m2)"
        write(iOutputUnit_,"(I7,A1,a)")  8, " ", "AltIntHeatingTransfer (W/m2)"
        write(iOutputUnit_,"(I7,A1,a)")  9, " ", "AltIntEuvHeating (W/m2)"
-       write(iOutputUnit_,"(I7,A1,a)") 10, " ", "AltIntNOCooling (W/m2)"
+       write(iOutputUnit_,"(I7,A1,a)") 10, " ", "AltIntPhotoElectronHeating (W/m2)"
+       write(iOutputUnit_,"(I7,A1,a)") 11, " ", "AltIntChamicalHeating (W/m2)"
+       write(iOutputUnit_,"(I7,A1,a)") 12, " ", "AltIntRadCooling (W/m2)"
+       write(iOutputUnit_,"(I7,A1,a)") 12, " ", "AltIntCO2Cooling (W/m2)"
+       write(iOutputUnit_,"(I7,A1,a)") 12, " ", "AltIntNOCooling (W/m2)"
+       write(iOutputUnit_,"(I7,A1,a)") 12, " ", "AltIntOCooling (W/m2)"
 
     endif
 
@@ -665,6 +671,11 @@ contains
                   "Loss Rate ",cSpecies(iSpecies)
              
           enddo
+       else
+          write(iOutputUnit_,"(I7,A1,a)")  15, " ", "Cp"
+          write(iOutputUnit_,"(I7,A1,a)")  16, " ", "Rho"
+          write(iOutputUnit_,"(I7,A1,a)")  17, " ", "E-Field Mag"
+          write(iOutputUnit_,"(I7,A1,a)")  18, " ", "Sigma Ped"
        endif
        
     endif
@@ -1322,6 +1333,7 @@ subroutine output_3dthm(iBlock)
   use ModGITM
   use ModInputs
   use ModSources
+  use ModElectrodynamics
   use ModEuv, only : EuvTotal
   implicit none
 
@@ -1350,7 +1362,11 @@ subroutine output_3dthm(iBlock)
                 JouleHeating(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt),         &
                 -NOCooling(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt),           &
                 -OCooling(iiLon,iiLat,iiAlt)*dt*TempUnit(iiLon,iiLat,iiAlt),            &
-                EuvTotal(iiLon,iiLat,iiAlt,iBlock) * dt
+                EuvTotal(iiLon,iiLat,iiAlt,iBlock) * dt, &
+                cp(iiLon, iiLat, iiAlt, iBlock),  &
+                rho(iiLon, iiLat, iiAlt, iBlock),  &
+                sqrt(sum(EField(iLon,iLat,iAlt,:)**2)), & ! magnitude of E.F.
+                Sigma_Pedersen(iLon,iLat,iAlt)
            
         enddo
      enddo
@@ -1633,9 +1649,9 @@ subroutine output_2dgel(iBlock)
 
 end subroutine output_2dgel
 
-!-------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 ! AGB: Routine to output a 2D TEC file that includes the lat, lon, SZA, and VTEC
-!-------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
 subroutine output_2dtec(iBlock)
 
@@ -1664,10 +1680,10 @@ subroutine output_2dtec(iBlock)
 
 end subroutine output_2dtec
 
-!-------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 ! AJR: Routine to output a 2D ION file that includes:
 ! lat, lon, SZA, VTEC, potential, energy flux, average energy, etc.
-!-------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
 subroutine output_2danc(iBlock)
 
@@ -1675,7 +1691,7 @@ subroutine output_2danc(iBlock)
   use ModElectrodynamics
   use ModInputs
   use ModEUV, only : Sza
-  use ModSources, only : JouleHeating2d, EuvHeating2d, RadiativeCooling2d, HeatTransfer2d
+  use ModSources
 
   implicit none
 
@@ -1697,15 +1713,20 @@ subroutine output_2danc(iBlock)
              JouleHeating2d(iLon,iLat), &
              HeatTransfer2d(iLon,iLat), &
              EuvHeating2d(iLon,iLat), &
-             RadiativeCooling2d(iLon,iLat)
+             PhotoElectronHeating2d(iLon,iLat), &
+             ChemicalHeating2d(iLon,iLat), &
+             RadiativeCooling2d(iLon,iLat), &
+             CO2Cooling2d(iLon,iLat), &
+             NOCooling2d(iLon,iLat), &
+             OCooling2d(iLon,iLat)
      enddo
   enddo
 
 end subroutine output_2danc
 
-!-------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 ! AGB: Routine to output a 3D Mag file that includes the geomagnetic field info
-!-------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 
 subroutine output_3dmag(iBlock)
 

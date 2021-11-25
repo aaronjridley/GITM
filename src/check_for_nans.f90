@@ -1,3 +1,5 @@
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
 
 subroutine check_for_nans_ions(cMarker)
 

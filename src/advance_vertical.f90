@@ -1,5 +1,47 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
+!------------------------------------------------------------------------------
+! Calculate the vertical advection terms for all lat / lon
+!------------------------------------------------------------------------------
+
+subroutine advance_vertical_all
+
+  use ModInputs
+  use ModGitm
+  
+  implicit none
+
+  integer :: iBlock, iLon, iLat
+  
+  call report("advance_vertical_all",2)
+  call start_timing("vertical_all")
+
+  do iBlock = 1, nBlocks
+
+     call calc_rates(iBlock)
+     call calc_viscosity(iBlock)
+
+     do iLon = 1, nLons ; do iLat = 1, nLats
+        call advance_vertical(iLon,iLat,iBlock)
+     end do; end do
+
+  end do
+
+  if (DoCheckForNans) then
+     call check_for_nans_ions("After Vertical")
+     call check_for_nans_neutrals("After Vertical")
+     call check_for_nans_temps("After Vertical")
+  endif
+
+  call end_timing("vertical_all")
+
+end subroutine advance_vertical_all
+
+!------------------------------------------------------------------------------
+! Calculate the vertical advection terms for an individual lat / lon
+!------------------------------------------------------------------------------
+
 subroutine advance_vertical(iLon,iLat,iBlock)
   use ModEUV, only: SZA
   use ModGITM
@@ -107,38 +149,32 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   dAlt_F(0:nAlts+2)   = Altitude_G(0:nAlts+2) - Altitude_G(-1:nAlts+1)
   dAlt_F(-1)          = dAlt_F(0)
   InvDAlt_F           = 1.0/dAlt_F
-  SpeciesDensityOld(iLon,iLat,:,1:nSpeciesTotal,iBlock) = NDensityS(iLon,iLat,:,:,iBlock)
+  SpeciesDensityOld(iLon,iLat,:,1:nSpeciesTotal,iBlock) = &
+       NDensityS(iLon,iLat,:,:,iBlock)
   SpeciesDensityOld(iLon,iLat,:,nSpeciesTotal+1:nSpeciesAll,iBlock) = &
        IDensityS(iLon,iLat,:,1:nIons-1,iBlock)
-
-  
-! Old Version
- ! call advance_vertical_1d
 
   if (UseAUSMSolver) then
      call advance_vertical_1d_ausm
   else
-     ! Default case
      call advance_vertical_1d_rusanov
   endif
   
-
-   Rho(iLon,iLat,:,iBlock)                  = exp(LogRho)
+  Rho(iLon,iLat,:,iBlock) = exp(LogRho)
 
   do iDim = 1, 3 
-     Velocity(iLon,iLat,:,iDim,iBlock)           = Vel_GD(:,iDim)
+     Velocity(iLon,iLat,:,iDim,iBlock) = Vel_GD(:,iDim)
   enddo
 
-  !!!! CHANGE !!!!
-  Temperature(iLon,iLat,:,iBlock)          = Temp/TempUnit(iLon,iLat,:)
+  Temperature(iLon,iLat,:,iBlock) = Temp/TempUnit(iLon,iLat,:)
 
   do iSpecies = 1, nSpecies 
-     LogNS(iLon,iLat,:,iSpecies,iBlock)              = LogNS1(:,iSpecies)
+     LogNS(iLon,iLat,:,iSpecies,iBlock) = LogNS1(:,iSpecies)
      VerticalVelocity(iLon,iLat,:,iSpecies,iBlock) = VertVel(:,iSpecies)
   enddo
 
   do iSpecies = nSpecies+1, nSpecies 
-     LogNS(iLon,iLat,:,iSpecies,iBlock)              = LogNS1(:,iSpecies)
+     LogNS(iLon,iLat,:,iSpecies,iBlock) = LogNS1(:,iSpecies)
   enddo
 
   nDensity(iLon,iLat,:,iBlock) = 0.0

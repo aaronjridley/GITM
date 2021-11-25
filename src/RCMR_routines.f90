@@ -1,5 +1,6 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 !----------------------------------------------------------------------------
 ! $Id: RCMR_routines.f90,v 1.7 2017/10/30 14:05:36 ridley Exp $
 !
@@ -12,6 +13,31 @@
 !              removed test output files, removed unused variables, streamlined
 !              MPI calls.
 ! AGB 10/23/13: Adapted to allow driving of photoelectron heating efficiency
+!-----------------------------------------------------------------------------
+
+subroutine set_RCMR_estimations
+
+  use ModRCMR, only: RCMRFlag, RCMROutType
+  use ModInputs
+  use ModGITM
+
+  implicit none
+  
+  if (RCMROutType == 'F107') then
+     ! Asad: When running RCAC both the F10.7 and F10.7A should have the same
+     !       number at this point because they are being estimated together
+     call IO_set_f107_single(f107_est)
+     call IO_set_f107a_single(f107_est)
+  else if (RCMROutType == "PHOTOELECTRON") then
+     PhotoElectronHeatingEfficiency = PhotoElectronHeatingEfficiency_est 
+  else if (RCMROutType == "EDC") then
+     EddyDiffusionCoef = EDC_est(1,1)  !Ankit23May16: Added EDC_est out
+  end if
+  
+end subroutine set_RCMR_estimations
+
+!-----------------------------------------------------------------------------
+!
 !-----------------------------------------------------------------------------
 
 subroutine run_RCMR

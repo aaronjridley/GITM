@@ -1,6 +1,5 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions
-!  used with permission For more information, see
-!  http://csem.engin.umich.edu/tools/swmf 
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
 
 !  ------------------------------------------------------------
 !  set boundary conditions in the vertical direction
@@ -78,6 +77,9 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
   real :: MeshHm1, MeshHm2, MeshHm3, MeshHm4
   real :: MeshCoefm0, MeshCoefm1, MeshCoefm2, MeshCoefm3, MeshCoefm4
 
+  ! Temporary arrays of the lower boundary condition to pass to WP (WP-GITM)
+  real :: LogNS_LBC(2,nSpecies), VelGD_LBC(2,3)
+
   !------------------------------------------------------------------------
   !------------------------------------------------------------------------
   ! Bottom
@@ -115,7 +117,10 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
      Ap = min(200.,max(-40.72 + 1.3 * HP, 10.))
 
      do iAlt = -1, 0
-        Alt = Altitude_G(iAlt)/1000.0
+        Alt = Altitude_G(iAlt)/1000.0 * &
+             (1.0 - &
+             MsisOblateFactor/2.0 + &
+             MsisOblateFactor * cos(Lat*3.1415/180.0))
         Lst = mod(UTime/3600.0+Lon/15.0,24.0)
 
         call msis_bcs(iJulianDay,UTime,Alt,Lat,Lon,Lst, &
@@ -392,10 +397,16 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
   ! For WP-GITM: add neutral atmospheric perturbations caused by
   ! tsunami or earthquake
   if (UseBcPerturbation) then
+     ! some compilers do not work with passing non-continuous sub-arrays,
+     ! extract sub-arrays to temporary arrays to be safe.
+     LogNS_LBC = LogNS(-1:0, :)
+     VelGD_LBC = Vel_GD(-1:0, iEast_ : iUp_)
      call user_bc_perturbation(LogRho(-1:0), &
-                               LogNS(-1:0, :), &
-                               Vel_GD(-1:0, iEast_ : iUp_), &
+                               LogNS_LBC, &
+                               VelGD_LBC, &
                                Temp(-1:0))
+     LogNS(-1:0, :) = LogNS_LBC
+     Vel_GD(-1:0, iEast_ : iUp_) = VelGD_LBC
   endif
 
   !------------------------------------------------------------------------

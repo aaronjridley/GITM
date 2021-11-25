@@ -1,5 +1,5 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
 
 subroutine initialize_gitm(TimeIn)
 
@@ -407,6 +407,8 @@ subroutine initialize_gitm(TimeIn)
            do iBlock = 1, nBlocks
               IDensityS(:,:,:,:,iBlock)    = 1.00e8
               IDensityS(:,:,:,ie_,iBlock)  = 1.00e8*(nIons-1)
+              eTemperature(:,:,:,iBlock) = 500.0
+              iTemperature(:,:,:,iBlock) = 500.0
            enddo
         endif
      endif

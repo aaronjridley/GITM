@@ -24,37 +24,40 @@ subroutine fill_photo
   PhotoElecIon = 0.0
   PhotoElecDiss = 0.0
 
-  photoabs(:,iO_3P_)  = PhotoAbs_O
-  photoabs(:,iO2_)    = PhotoAbs_O2
-  photoabs(:,iN2_)    = PhotoAbs_N2
+  night_photoion = 0.0
+  night_photoabs = 0.0
+
+  photoabs(:, iO_3P_) = PhotoAbs_O
+  photoabs(:, iO2_) = PhotoAbs_O2
+  photoabs(:, iN2_) = PhotoAbs_N2
 
   if (nSpecies > 3) then
      iSpecies = iN_4S_
-     photoabs(:,min(iSpecies,nSpecies))    = PhotoIon_N
+     photoabs(:,min(iSpecies,nSpecies)) = PhotoIon_N
   endif
 
   ! JMB:  06/25/2016
   if (nSpecies > 5) then
      iSpecies = iHe_
-     photoabs(:,min(iSpecies,nSpecies))    = PhotoAbs_He
+     photoabs(:,min(iSpecies,nSpecies)) = PhotoAbs_He
   endif
 
   ! This may need to be as defined below....
-  photoion(:,iN2P_)   = PhotoIon_N2
-  photoion(:,iO2P_)   = PhotoIon_O2
-  photoion(:,iNP_)    = PhotoIon_N
+  photoion(:,iN2P_) = PhotoIon_N2
+  photoion(:,iO2P_) = PhotoIon_O2
+  photoion(:,iNP_) = PhotoIon_N
   photoion(:,iO_4SP_) = PhotoIon_OPlus4S
   photoion(:,iO_2DP_) = PhotoIon_OPlus2D
   photoion(:,iO_2PP_) = PhotoIon_OPlus2P
-  photoion(:,iHeP_)   = PhotoAbs_He
+  photoion(:,iHeP_) = PhotoAbs_He
 
-  PhotoIonFrom(iN2P_)   = iN2_
-  PhotoIonFrom(iO2P_)   = iO2_
-  PhotoIonFrom(iNP_)    = iN_4S_
+  PhotoIonFrom(iN2P_) = iN2_
+  PhotoIonFrom(iO2P_) = iO2_
+  PhotoIonFrom(iNP_) = iN_4S_
   PhotoIonFrom(iO_4SP_) = iO_3P_
   PhotoIonFrom(iO_2DP_) = iO_3P_ 
   PhotoIonFrom(iO_2PP_) = iO_3P_ 
-  PhotoIonFrom(iHeP_)   = iHe_
+  PhotoIonFrom(iHeP_) = iHe_
 
   ! Photoelectrons:
   ! N2:
@@ -96,29 +99,27 @@ subroutine fill_photo
         PhotoDis(iWave, iO2_) = &
              photoabs(iWave,iO2_) - PhotoIon(iWave, iO2P_)
      endif
-
      if (waves(iWave) >= 800.0 .and. wavel(iWave) <= 1250.0) then
         PhotoDis(iWave, iN2_) = &
              photoabs(iWave,iN2_) - PhotoIon(iWave, iN2P_)
      endif
-
   enddo
 
   ! Night time ionization:
-  
-  night_photoion(:,iN2P_)    = Night_PhotoIon_N2 *1.e-4
-  night_photoion(:,iO2P_)    = Night_PhotoIon_O2 *1.e-4
-  night_photoion(:,iNOP_)    = Night_PhotoIon_NO *1.e-4
-  night_photoion(:,iO_4SP_)  = Night_PhotoIon_OPlus4S *1.e-4
-  night_photoion(:,iO_2DP_)  = Night_PhotoIon_OPlus2D *1.e-4
-  night_photoion(:,iO_2PP_)  = Night_PhotoIon_OPlus2P *1.e-4
-  night_photoion(:,iNP_)     = Night_PhotoIon_N *1.e-4
 
-  night_photoabs(:,iN2_)    = Night_PhotoAbs_N2 *1.e-4
-  night_photoabs(:,iO2_)    = Night_PhotoAbs_O2 *1.e-4
-  night_photoabs(:,iNO_)    = Night_PhotoAbs_NO *1.e-4
-  night_photoabs(:,iO_3P_)  = Night_PhotoAbs_O *1.e-4
-  night_photoabs(:,iN_4S_)  = Night_PhotoAbs_N *1.e-4
+  night_photoion(:,iN2P_) = Night_PhotoIon_N2 *1.e-4
+  night_photoion(:,iO2P_) = Night_PhotoIon_O2 *1.e-4
+  night_photoion(:,iNOP_) = Night_PhotoIon_NO *1.e-4
+  night_photoion(:,iO_4SP_) = Night_PhotoIon_OPlus4S *1.e-4
+  night_photoion(:,iO_2DP_) = Night_PhotoIon_OPlus2D *1.e-4
+  night_photoion(:,iO_2PP_) = Night_PhotoIon_OPlus2P *1.e-4
+  night_photoion(:,iNP_) = Night_PhotoIon_N *1.e-4
+
+  night_photoabs(:,iN2_) = Night_PhotoAbs_N2 *1.e-4
+  night_photoabs(:,iO2_) = Night_PhotoAbs_O2 *1.e-4
+  night_photoabs(:,iNO_) = Night_PhotoAbs_NO *1.e-4
+  night_photoabs(:,iO_3P_) = Night_PhotoAbs_O *1.e-4
+  night_photoabs(:,iN_4S_) = Night_PhotoAbs_N *1.e-4
   
 end subroutine fill_photo
 
@@ -152,20 +153,37 @@ subroutine calc_planet_sources(iBlock)
 
   call calc_co2(iBlock)
 
+  RadiativeCooling2d = 0.0
+
   if (UseCO2Cooling) then
 
      ! The 0.165 is derived from the TIEGCM (2.65e-13 / 1.602e-12)
      ! multiplied by 1e6 for /cm2 to /m2
-     CO2Cooling = 0.165e6 * NDensityS(1:nLons,1:nLats,1:nAlts,iCO2_,iBlock)*&
-          exp(-960.0/( &
-            Temperature(1:nLons,1:nLats,1:nAlts,iBlock)* &
-            TempUnit(1:nLons,1:nLats,1:nAlts))) * &
-          MeanMajorMass(1:nLons,1:nLats,1:nAlts) * ( &
-           (NDensityS(1:nLons,1:nLats,1:nAlts,iO2_,iBlock)/Mass(iO2_) + &
-            NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock)/Mass(iN2_)) * &
-           2.5e-15 / 1e6 + &
-           (NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock)/Mass(iO_3P_)) * &
-           1.0e-12 / 1e6) * 1.602e-19
+     CO2Cooling = 0.0
+!     CO2Cooling = 0.165e6 * NDensityS(1:nLons,1:nLats,1:nAlts,iCO2_,iBlock)*&
+!          exp(-960.0/( &
+!            Temperature(1:nLons,1:nLats,1:nAlts,iBlock)* &
+!            TempUnit(1:nLons,1:nLats,1:nAlts))) * &
+!          MeanMajorMass(1:nLons,1:nLats,1:nAlts) * ( &
+!           (NDensityS(1:nLons,1:nLats,1:nAlts,iO2_,iBlock)/Mass(iO2_) + &
+!            NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock)/Mass(iN2_)) * &
+!           2.5e-15 / 1e6 + &
+!           (NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock)/Mass(iO_3P_)) * &
+!           1.0e-12 / 1e6) * 1.602e-19
+
+     CO2Cooling2d = 0.0
+     do iAlt=1,nAlts
+        RadiativeCooling2d(1:nLons, 1:nLats) = &
+             RadiativeCooling2d(1:nLons, 1:nLats) + &
+             CO2Cooling(1:nLons,1:nLats,iAlt) * &
+             dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
+        CO2Cooling2d = CO2Cooling2d + &
+             CO2Cooling(1:nLons,1:nLats,iAlt) * &
+             dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
+     enddo
+
+     CO2Cooling = CO2Cooling / TempUnit(1:nLons,1:nLats,1:nAlts) / &
+          (Rho(1:nLons,1:nLats,1:nAlts,iBlock)*cp(:,:,1:nAlts,iBlock))
 
   else
      CO2Cooling = 0.0
@@ -190,11 +208,15 @@ subroutine calc_planet_sources(iBlock)
           TempUnit(1:nLons,1:nLats,1:nAlts))) * &
           NDensityS(1:nLons,1:nLats,1:nAlts,iNO_,iBlock)
 
-     RadiativeCooling2d = 0.0
+     NOCooling2d = 0.0
      do iAlt=1,nAlts
         RadiativeCooling2d(1:nLons, 1:nLats) = &
              RadiativeCooling2d(1:nLons, 1:nLats) + &
-             NOCooling(1:nLons,1:nLats,iAlt) * dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
+             NOCooling(1:nLons,1:nLats,iAlt) * &
+             dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
+        NOCooling2d = NOCooling2d + &
+             NOCooling(1:nLons,1:nLats,iAlt) * &
+             dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
      enddo
 
      NOCooling = NOCooling / TempUnit(1:nLons,1:nLats,1:nAlts) / &
@@ -227,6 +249,18 @@ subroutine calc_planet_sources(iBlock)
           (1.0 + 0.6*tmp2 + 0.2*tmp3)
      ! In w/m3/3
      OCooling = OCooling/10.0
+
+     OCooling2d = 0.0
+     do iAlt=1,nAlts
+        RadiativeCooling2d(1:nLons, 1:nLats) = &
+             RadiativeCooling2d(1:nLons, 1:nLats) + &
+             OCooling(1:nLons,1:nLats,iAlt) * &
+             dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
+        OCooling2d = OCooling2d + &
+             OCooling(1:nLons,1:nLats,iAlt) * &
+             dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
+     enddo
+
      ! In our special units:
      OCooling = OCooling/ TempUnit(1:nLons,1:nLats,1:nAlts) / &
           (Rho(1:nLons,1:nLats,1:nAlts,iBlock)*cp(:,:,1:nAlts,iBlock))
@@ -245,7 +279,6 @@ subroutine calc_planet_sources(iBlock)
   RadCooling(1:nLons,1:nLats,1:nAlts,iBlock) = &
        OCooling + NOCooling + CO2Cooling
 
-
   PhotoElectronHeating(:,:,:,iBlock) = 0.0
   PhotoElectronHeating(:,:,:,iBlock) = &
        PhotoElectronHeatingEfficiency * &
@@ -256,17 +289,14 @@ subroutine calc_planet_sources(iBlock)
        EuvIonRateS(:,:,:,iO_4SP_,iBlock) + &
        EuvIonRateS(:,:,:,iO_2DP_,iBlock) + &
        EuvIonRateS(:,:,:,iO_2PP_,iBlock))
-       !( &
-       !EuvIonRateS(:,:,:,iO2P_,iBlock)* &
-       !NDensityS(1:nLons,1:nLats,1:nAlts,iO2_,iBlock) + &
-       !EuvIonRateS(:,:,:,iN2P_,iBlock) + & !* &
-       !NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock) + &
-       !EuvIonRateS(:,:,:,iO_4SP_,iBlock)* &
-       !NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock) + &
-       !EuvIonRateS(:,:,:,iO_2DP_,iBlock)* &
-       !NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock) + &
-       !EuvIonRateS(:,:,:,iO_2PP_,iBlock)* &
-       !NDensityS(1:nLons,1:nLats,1:nAlts,iO_3P_,iBlock))
+
+  PhotoElectronHeating2d = 0.0
+  do iAlt = 1, nAlts
+     PhotoElectronHeating2d(1:nLons,1:nLats) = &
+          PhotoElectronHeating2d(1:nLons,1:nLats) + &
+          PhotoElectronHeating(:,:,iAlt,iBlock)  * &
+          dAlt_GB(1:nLons,1:nLats,iAlt,iBlock)
+  enddo
   
   PhotoElectronHeating(:,:,:,iBlock) = &
        PhotoElectronHeating(:,:,:,iBlock) / &
@@ -320,6 +350,7 @@ subroutine init_heating_efficiency
 
   integer :: iLon, iLat, iAlt
   !------------------------------------------------------------------
+
   HeatingEfficiency_CB(:,:,:,1:nBlocks) = NeutralHeatingEfficiency
 !  max(0.1, &
 !       0.40 - &

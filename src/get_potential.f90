@@ -1,5 +1,5 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
 
 subroutine init_get_potential
 
@@ -19,7 +19,6 @@ subroutine init_get_potential
   character (len=iCharLen_) :: TimeLine
   real    :: bz
 
-!  real    :: dynamo(-1:nLons+2,-1:nLats+2)
   logical :: IsFirstTime = .true.
   integer :: iError
 
@@ -58,14 +57,14 @@ subroutine init_get_potential
      if (UseNewellAurora .or. UseOvationSME .or. UseAeModel) UseHPI = .false.
 
      call get_IMF_Bz(CurrentTime+TimeDelayHighLat, bz, iError)
-
+     
      call IO_SetIMFBz(bz)
      if (iError /= 0) then
-!        write(*,*) "Can not find IMF Bz."
-!        write(*,*) "Setting potential to Millstone HPI."
-        Lines(3) = "millstone_hpi"    ! Change to "zero" if you want
+        write(*,*) "Can not find IMF Bz."
+        !write(*,*) "Setting potential to Millstone HPI."
+        !Lines(3) = "millstone_hpi"    ! Change to "zero" if you want
+        call stop_gitm("must stop! Check your IMF file!!!")
      else
-!        write(*,*) "Setting potential to ",PotentialModel
         Lines(3) = PotentialModel    ! Change to "zero" if you want
         UseIMF = .true.
      endif
@@ -193,11 +192,17 @@ subroutine set_indices
 
   if (UseIMF) then
 
-     call read_NOAAHPI_Indices_new(iError, CurrentTime+TimeDelayHighLat, EndTime+TimeDelayHighLat)
-     call read_MHDIMF_Indices_new(iError, CurrentTime+TimeDelayHighLat, EndTime+TimeDelayHighLat)
+     call read_NOAAHPI_Indices_new( &
+          iError, &
+          CurrentTime+TimeDelayHighLat, &
+          EndTime+TimeDelayHighLat)
+     call read_MHDIMF_Indices_new( &
+          iError, &
+          CurrentTime+TimeDelayHighLat, &
+          EndTime+TimeDelayHighLat)
      call get_IMF_Bz(CurrentTime+TimeDelayHighLat, bz, iError)
-     if (bz < -20.0) bz = -20.0
-     if (bz >  20.0) bz =  20.0
+     if (bz < -50.0) bz = -50.0
+     if (bz >  50.0) bz =  50.0
      call IO_SetIMFBz(bz)
 
      if (iError /= 0) then
@@ -210,8 +215,8 @@ subroutine set_indices
      if (iDebugLevel > 1) write(*,*) "==> IMF Bz : ",bz
 
      call get_IMF_By(CurrentTime+TimeDelayHighLat, by, iError)
-     if (by < -20.0) by = -20.0
-     if (by >  20.0) by =  20.0
+     if (by < -50.0) by = -50.0
+     if (by >  50.0) by =  50.0
      call IO_SetIMFBy(by)
 
      if (iError /= 0) then
@@ -223,8 +228,8 @@ subroutine set_indices
      if (iDebugLevel > 1) write(*,*) "==> IMF By : ",by
 
      call get_SW_V(CurrentTime+TimeDelayHighLat, vx, iError)
-     if (vx < -800.0) vx = -800.0
-     if (vx >  800.0) vx =  800.0
+     if (vx < -2000.0) vx = -2000.0
+     if (vx >  2000.0) vx =  2000.0
      call IO_SetSWV(vx)
 
      if (iError /= 0) then
@@ -237,14 +242,6 @@ subroutine set_indices
      call get_SW_N(CurrentTime+TimeDelayHighLat, den, iError)
      if (iError /= 0) den = 5.0
      call IO_SetSWN(den)
-
-!!!     call get_kp(CurrentTime+TimeDelayHighLat, temp, iError)
-!!!     call IO_Setkp(temp)
-!!!
-!!!     if (iError /= 0) then
-!!!        write(*,*) "Code Error in get_kp called from get_potential.f90"
-!!!        call stop_gitm("Stopping in get_potential")
-!!!     endif
 
      if (UseNewellAurora) call calc_dfdt(by, bz, vx)
 
@@ -262,11 +259,10 @@ subroutine set_indices
 
   endif
 
-!  if (index(cAMIEFileNorth,"none") <= 0 .and. &
-!     index(cAMIEFileNorth,"SPS") <= 0 .and. iBlock == 1) then 
   if (index(cAMIEFileNorth,"none") <= 0 .and. &
      index(cAMIEFileNorth,"SPS") <= 0 .and. (.not. UseRegionalAMIE)) then
-     ! when UseRegionalAMIE, only get AMIE values during the specified time interval.
+     ! when UseRegionalAMIE, only get AMIE values during the specified
+     ! time interval.
      if (iDebugLevel > 1) &
           write(*,*) "==> Reading AMIE values for time :",CurrentTime
      call get_AMIE_values(CurrentTime+TimeDelayHighLat)

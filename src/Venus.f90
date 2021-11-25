@@ -1,3 +1,6 @@
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 !BP (8/24/2020): Compute the time scales for eddy diffusion, horizontal winds 
 !and vertical motion
 subroutine timescales

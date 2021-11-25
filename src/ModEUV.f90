@@ -1,5 +1,6 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 module ModEUV
 
   use ModGITM, only: nLats, nLons, nAlts,nBlocksMax,nBlocks
@@ -45,7 +46,7 @@ module ModEUV
   integer :: PhotoIonFrom(nIons-1)
   real :: photoabs(Num_WaveLengths_High, nSpeciesTotal)
   real :: photodis(Num_WaveLengths_High, nSpeciesTotal)
-  real :: PhotoElecDiss(Num_WaveLengths_High, nSpecies)
+  real :: PhotoElecDiss(Num_WaveLengths_High, nSpeciesTotal)
 
 !  integer, parameter :: nEUVMax = 25
 !  integer :: nEUVion, nEUVdis, nPhotoEion, nPhotoEdis

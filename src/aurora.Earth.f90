@@ -1,5 +1,6 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
+
 subroutine aurora(iBlock)
 
   use ModGITM
@@ -18,7 +19,7 @@ subroutine aurora(iBlock)
   real :: alat, hpi, ped, hal, av_kev, eflx_ergs, a,b, maxi
   real :: ion_av_kev, ion_eflx_ergs, ion_eflux, ion_avee
   real :: Factor,temp_ED, avee, eflux, p, E0, Q0, E0i, Q0i, ai
-  integer :: i, j, k, n, iError, iED, iErr, iEnergy
+  integer :: i, j, k, n, iAlt, iError, iED, iErr, iEnergy
   logical :: IsDone, IsTop, HasSomeAurora, UseMono, UseWave
 
   real, dimension(nLons,nLats,nAlts) :: temp, AuroralBulkIonRate, &
@@ -70,8 +71,6 @@ subroutine aurora(iBlock)
 
   if (IsFirstTime(iBlock)) then
      
-     IsFirstTime(iBlock) = .false.
-
      if (UseFangEnergyDeposition) then
 
         ! Electrons
@@ -125,6 +124,7 @@ subroutine aurora(iBlock)
 
   AuroralBulkIonRate               = 0.0
   AuroralHeatingRate(:,:,:,iBlock) = 0.0
+  AuroralIonRateS = 0.0
 
   call report("Aurora",1)
   call start_timing("Aurora")
@@ -186,8 +186,17 @@ subroutine aurora(iBlock)
      call get_hpi(CurrentTime,Hpi,iError)
      ratio = Hpi/avepower
 
-     write(*,*) 'Auroral normalizing ratio : ', Hpi, avepower, ratio
-     
+     if (iDebugLevel >= 0) then
+        if ((iDebugLevel == 0) .and. IsFirstTime(iBlock)) then
+           write(*,*) '---------------------------------------------------'
+           write(*,*) 'Using auroral normalizing ratios!!! '
+           write(*,*) 'no longer reporting!'
+           write(*,*) '---------------------------------------------------'
+        else
+           if (iDebugLevel >= 1) &
+              write(*,*) 'auroral normalizing ratio: ', Hpi, avepower, ratio
+        endif
+     endif
      do i=1,nLats
         do j=1,nLons
            if (ElectronEnergyFlux(j,i)>0.1) then
@@ -227,8 +236,8 @@ subroutine aurora(iBlock)
            ion_eflx_ergs = IonEnergyFlux(j,i)
            ion_av_kev = IonAverageEnergy(j,i)
         else
-           ion_eflx_ergs = 0.0
-           ion_av_kev = 0.0
+           ion_eflx_ergs = 0.001
+           ion_av_kev = 10.0
         endif
         
         ! For diffuse auroral models
@@ -267,6 +276,7 @@ subroutine aurora(iBlock)
            ! E0 = Characteristic Energy (0.5*avee)
            ! E = mid-point of energy bin
            !
+
            Q0 = eflux
            E0 = avee/2
            a = Q0/2/E0**3
@@ -282,7 +292,8 @@ subroutine aurora(iBlock)
                  ED_Flux(n) = a * (AuroraKappa-1) * (AuroraKappa-2) / &
                       (AuroraKappa**2) * &
                       ed_energies(n) * &
-                      (1 + ed_energies(n) / (AuroraKappa * E0)) ** (-k-1)
+                      (1 + ed_energies(n) / (AuroraKappa * E0)) ** &
+                      (-AuroraKappa-1)
               else
                  ! This is a Maxwellian from Fang et al. [2010]:
                  ED_flux(n) = a * ed_energies(n) * exp(-ed_energies(n)/E0)
@@ -306,7 +317,9 @@ subroutine aurora(iBlock)
         if (UseNewellAurora .and. UseNewellMono    ) UseMono = .true.
         if (UseOvationSME   .and. UseOvationSMEMono) UseMono = .true.
 
-        if (UseMono .and. ElectronNumberFluxMono(j,i) > 0.0) then
+        if ( UseMono .and. &
+             ElectronNumberFluxMono(j,i) > 1.0e4 .and. &
+             ElectronEnergyFluxMono(j, i) > 0.1) then
 
            av_kev = ElectronEnergyFluxMono(j, i) / &
                     ElectronNumberFluxMono(j, i) * 6.242e11 ! eV
@@ -331,6 +344,10 @@ subroutine aurora(iBlock)
                  ED_flux(n) = ED_Flux(n) + &
                       ElectronNumberFluxMono(j, i) / &
                       (ED_Energies(n-1) - ED_Energies(n))
+                 ED_EnergyFlux(n) = &
+                      ED_flux(n) * &
+                      ED_Energies(n) * &
+                      ED_delta_energy(n)
                  HasSomeAurora = .true.
               endif
            enddo
@@ -341,7 +358,9 @@ subroutine aurora(iBlock)
         if (UseNewellAurora .and. UseNewellWave    ) UseWave = .true.
         if (UseOvationSME   .and. UseOvationSMEWave) UseWave = .true.
 
-        if (UseWave .and. ElectronNumberFluxWave(j,i) > 0.0) then
+        if ( UseWave .and. &
+             ElectronNumberFluxWave(j,i) > 1.0e4 .and. &
+             ElectronEnergyFluxWave(j,i) > 0.1) then
 
            av_kev = ElectronEnergyFluxWave(j, i) / &
                     ElectronNumberFluxWave(j, i) * 6.242e11 ! eV
@@ -389,6 +408,10 @@ subroutine aurora(iBlock)
 !              ED_flux(k  ) = ED_Flux(k  ) + f3*ElectronNumberFluxWave(j, i) / detotal
 !              ED_flux(k+1) = ED_Flux(k+1) + f4*ElectronNumberFluxWave(j, i) / detotal
 !              ED_flux(k+2) = ED_Flux(k+2) + f5*ElectronNumberFluxWave(j, i) / detotal
+              do n = k-2, n+2
+                 ED_EnergyFlux(n) = ED_flux(n) * ED_Energies(n) * ED_delta_energy(n)
+              enddo
+              HasSomeAurora = .true.
            endif
 
         endif
@@ -409,7 +432,7 @@ subroutine aurora(iBlock)
                  ! /1000.0 is conversion from eV to keV
                  ! Fang doesn't include the dip angle, be we do.
                  Fang_y(iEnergy,:) = 2.0 / (ED_Energies(iEnergy)/1000.0) * &
-                      (ColumnIntegralRho(j,i,:) / 10.0 / 6e-6) ** 0.7
+                      (ColumnIntegralRho(j,i,1:nAlts) / 10.0 / 6e-6) ** 0.7
                       !sinDipAngle(j,i,1:nAlts,iBlock) / 6e-6) ** 0.7
 
                  Ci = Fang_Ci(iEnergy,:)
@@ -433,10 +456,10 @@ subroutine aurora(iBlock)
                     ! /10.0 in this statement is for kg/m2 to g/cm2
                     ! /1000.0 is conversion from eV to keV
                     Fang_Ion_y(iEnergy,:) = 7.5 / (ED_Energies(iEnergy)/1000.0) * &
-                         (ColumnIntegralRho(j,i,:) / 10.0 / 1e-4) ** 0.9
+                         (ColumnIntegralRho(j,i,1:nAlts) / 10.0 / 1e-4) ** 0.9
 
                     Ion_Ci = Fang_Ion_Ci(iEnergy,:)
-                    ! write(*,*) iEnergy, ED_Energies(iEnergy), Ci
+
                     Fang_Ion_f(iEnergy,:) = &
                          Ion_Ci(1) * Fang_Ion_y(iEnergy,:) ** Ion_Ci(2) * &
                          exp(-Ion_Ci(3) * Fang_Ion_y(iEnergy,:) ** Ion_Ci(4)) + &
@@ -529,6 +552,16 @@ subroutine aurora(iBlock)
   AuroralIonRateS(:,:,:,iN2_,iBlock) = &
        0.92*AuroralBulkIonRate*&
        NDensityS(1:nLons,1:nLats,1:nAlts,iN2_,iBlock)/temp
+
+  if (UseAuroralHeating) then
+     AuroralHeating = AuroralHeatingRate(:,:,:,iBlock) / &
+          TempUnit(1:nLons,1:nLats,1:nAlts) / cp(:,:,1:nAlts,iBlock) / &
+          rho(1:nLons,1:nLats,1:nAlts, iBlock)
+  else
+     AuroralHeating = 0.0
+  endif
+
+  IsFirstTime(iBlock) = .false.
 
   call end_timing("Aurora")
 

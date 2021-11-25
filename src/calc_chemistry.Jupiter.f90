@@ -1,5 +1,5 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
 
 subroutine calc_chemistry(iBlock)
 
@@ -35,6 +35,11 @@ subroutine calc_chemistry(iBlock)
   UseIonConstituent     = .true.
 
   DtMin = Dt
+
+  ChemicalHeatingRate = 0.0
+  ChemicalHeatingRateIon = 0.0
+  ChemicalHeatingRateEle = 0.0
+  ChemicalHeatingSpecies = 0.0
 
   if (.not.UseIonChemistry) return
 
@@ -334,6 +339,16 @@ subroutine calc_chemistry(iBlock)
        write(*,*) "===> Average Dt for this timestep : ", &
        (Dt*nLats*nLons*nAlts)/nIters
 
+  ChemicalHeatingRate(:,:,:) = &
+       ChemicalHeatingRate(:,:,:) * Element_Charge / &
+       TempUnit(1:nLons,1:nLats,1:nAlts) / cp(1:nLons,1:nLats,1:nAlts,iBlock)/&
+       rho(1:nLons,1:nLats,1:nAlts,iBlock)
+	   
+  ChemicalHeatingRateIon(:,:,:) = &
+       ChemicalHeatingRateIon(:,:,:) * Element_Charge
+
+  ChemicalHeatingSpecies = ChemicalHeatingSpecies * Element_Charge
+    
   call end_timing("calc_chemistry")
 
 end subroutine calc_chemistry

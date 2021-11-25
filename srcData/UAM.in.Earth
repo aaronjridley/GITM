@@ -18,17 +18,20 @@ F
 
 #DIFFUSION
 T
-1000.0		Eddy Diffusion Coefficient
-0.0010		Total Eddy Diffusion applied at alts below this pressures level
-0.0001		No Eddy Diffusion at altitudes above this pressure level
+50.0		Eddy Diffusion Coefficient
+0.010		Total Eddy Diffusion applied at alts below this pressures level
+0.005		No Eddy Diffusion at altitudes above this pressure level
 
 #THERMALCONDUCTION
 3.6e-4    ThermalConduction_AO2 (3.6e-4 to 5.6e-4)
 5.6e-4    ThermalConduction_AO (5.6e-4 to 7.6e-4)
-0.726     ThermalConduction_s (0.69 to 0.75)
+0.69     ThermalConduction_s (0.69 to 0.75)
+
+#NEUTRALHEATING
+0.05	   Efficiency of direct neutral heating
 
 #PHOTOELECTRON
-0.04      PhotoElectronHeatingEfficiency
+0.00      PhotoElectronHeatingEfficiency
 
 #CPUTIMEMAX
 86000.0		Maximum amount of cputime to use before stopping the code
@@ -54,7 +57,7 @@ T
 
 #LIMITER
 mc		only limiter available
-1.6
+1.8
 
 #STATISTICALMODELSONLY
 F		if you want to run with msis and iri only (i.e. not GITM)
@@ -158,6 +161,31 @@ imf/solarwind file
 none		northern hemisphere amie file
 none		southern hemisphere amie file
 
+-----------------------------------------------------------------
+Some new features:
+
+#MSISOBC
+F		Shift the [O] density at the lower boundary by 6 months 
+
+These are to play with the aurora:
+
+#AEMODEL
+F		Use New AE Model of the aurora developed at UM
+
+#AURORAMODS
+F		normalize to hemispheric power
+1.0		avee factor (1 is no mod)
+F		iskappa
+4.0		kappa (3 min; higher is maxwellian)
+
+#FANGENERGY
+F		Use Fang 2010 and 2013 energy deposition
+
+#IONPRECIPITATION
+F		If ions are included in the AMIE file, use them. FangEnergy=T!
+
+-----------------------------------------------------------------
+
 #THERMO
 T		 UseSolarHeating
 T		 UseJouleHeating
@@ -189,6 +217,8 @@ F
 45.0
 500
 1.0
+F
+40.0
 
 #CHEMISTRY
 T		UseIonChemistry

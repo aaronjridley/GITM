@@ -1,5 +1,5 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
 
 subroutine calc_chemistry(iBlock)
 
@@ -70,6 +70,11 @@ subroutine calc_chemistry(iBlock)
  
   UseNeutralConstituent = .true.
   UseIonConstituent     = .true.
+
+  ChemicalHeatingRate = 0.0
+  ChemicalHeatingRateIon = 0.0
+  ChemicalHeatingRateEle = 0.0
+  ChemicalHeatingSpecies = 0.0
 
 !  UseNeutralConstituent(iO_1D_) = .false.
 !  UseIonConstituent(iO_2PP_) = .false.
@@ -2260,7 +2265,17 @@ subroutine calc_chemistry(iBlock)
         enddo
      enddo
   enddo
- 
+
+  ChemicalHeatingRate(:,:,:) = &
+       ChemicalHeatingRate(:,:,:) * Element_Charge / &
+       TempUnit(1:nLons,1:nLats,1:nAlts) / cp(1:nLons,1:nLats,1:nAlts,iBlock)/&
+       rho(1:nLons,1:nLats,1:nAlts,iBlock)
+	   
+  ChemicalHeatingRateIon(:,:,:) = &
+       ChemicalHeatingRateIon(:,:,:) * Element_Charge
+
+  ChemicalHeatingSpecies = ChemicalHeatingSpecies * Element_Charge
+  
   if (iDebugLevel > 3) then
      do iIon = 1, nIons
         write(*,*) "====> calc_chemistry: Max Ion Density: ", iIon, &

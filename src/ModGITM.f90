@@ -1,5 +1,5 @@
-!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
-!  For more information, see http://csem.engin.umich.edu/tools/swmf
+! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
+! Full license can be found in LICENSE
 
 module ModGITM
 
@@ -8,7 +8,7 @@ module ModGITM
 
   implicit none
 
-  real :: GitmVersion = 4.0
+  real :: GitmVersion = 21.11
   
   real :: dt = 0.0
 
@@ -58,8 +58,8 @@ module ModGITM
   real, allocatable :: IPressure(:,:,:,:)
   real, allocatable :: ePressure(:,:,:,:)
 
-real, allocatable :: SpeciesDensity(:,:,:,:,:)
-real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
+  real, allocatable :: SpeciesDensity(:,:,:,:,:)
+  real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
   
   real, allocatable :: LogRhoS(:,:,:,:,:)
   real, allocatable :: LogNS(:,:,:,:,:)
@@ -177,7 +177,8 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
   real :: SunDeclination
 
   ! For WP-GITM: horizontal mean values at GITM's lower boundary
-  real :: MeanTempBc, MeanVelBc_D(2), LocalMeanTempBc, LocalMeanVelBc_D(2)
+  real :: MeanTempBc, MeanVelBc_D(2), LocalMeanTempBc, LocalMeanVelBc_D(2), &
+       LocalSumVolume, SumVolume
   
   integer, parameter :: iEast_ = 1, iNorth_ = 2, iUp_ = 3, iMag_ = 4
   integer, parameter :: iVIN_ = 1, iVEN_ = 2, iVEI_ = 3
