@@ -6,7 +6,6 @@
 #PBS -l mem=8GB
 #PBS -l wd
 #PBS -m ae
-#PBS -M g.bowden@adfa.edu.au
 #PBS -j oe
 module remove openmpi
 module load use.own
