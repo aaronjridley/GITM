@@ -1722,6 +1722,23 @@ subroutine set_inputs
               UseVariableInputs = .true.
            endif
         
+        case ("#F107_FILE")
+           cTempLines(1) = cLine
+           call read_in_string(cTempLine, iError)
+           cTempLines(2) = cTempLine
+           cTempLines(3) = " "
+           cTempLines(4) = "#END"
+
+           call IO_set_inputs(cTempLines)
+           call read_f107(iError)
+
+           if (iError /= 0) then 
+              write(*,*) "read indices was NOT successful (NOAA file)"
+              IsDone = .true.
+           else
+              UseVariableInputs = .true.
+           endif
+        
         case ("#OMNIWEB_AP_INDICES")
            cTempLines(1) = cLine
            call read_in_string(cTempLine, iError)
