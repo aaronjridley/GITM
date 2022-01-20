@@ -17,7 +17,7 @@ src/ModSize.f90:
 	cp src/ModSize.f90.orig src/ModSize.f90
 
 INSTALLFILES =  src/Makefile.DEPEND \
-		src/Makefile.RULES \
+		src/Makefile.RULES  \
 		srcInterface/Makefile.DEPEND
 
 install: src/ModSize.f90
@@ -59,7 +59,7 @@ GITM = ${DIR}/UA/GITM
 LIB:
 	cd $(ABDIR)     ; make                                         LIB
 	cd $(GLDIR)     ; make LIBPREV=${GITM}/${ABDIR}/libSphere.a   LIBADD
-	cd $(MAINDIR)   ; make LIBPREV=${GITM}/${GLDIR}/libUPTOGL.a   libGITM.a
+	cd $(MAINDIR)   ; make LIBPREV=${GITM}/${GLDIR}/libUPTOGL.a   LIB
 	cd srcInterface ; make LIBPREV=${GITM}/${MAINDIR}/libUA.a     LIB
 
 nompirun:
