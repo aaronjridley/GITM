@@ -35,7 +35,7 @@ T
 0.05       Efficiency of photoelectron heating
 
 #THERMALCONDUCTION
-1.0e-4     Thermal conductivity (o2)
+4.6e-4     Thermal conductivity (o2)
 4.6e-4     Thermal conductivity (o)
 0.69    Thermal conductivity (^s)
 
@@ -61,7 +61,7 @@ T
 #CFL
 0.80		percentage of maximum allowable time-step to take
 
-RCMR
+#RCMR
 RHO		Assimilate neutral density
 COND   		Drive F10.7
 AO2             which TC variable to update (AO, AO2, s)...only 1 variable currently
