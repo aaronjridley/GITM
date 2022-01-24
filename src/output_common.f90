@@ -87,7 +87,7 @@ subroutine output(dir, iBlock, iOutputType)
   use ModInputs
   use ModSources
   use ModUserGITM, only: nVarsUser2d, nVarsUser3d, nVarsUser1d, nVarsUser0d
-  use ModRCMR, only: RCMRFlag
+  use ModRCPE, only: RCMRFlag
   use ModConstants, only: pi
 
   implicit none

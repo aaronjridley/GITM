@@ -244,7 +244,7 @@ subroutine write_code_information(dir)
   use ModIndices
   use ModIndicesInterfaces
   use ModUtilities, ONLY: flush_unit
-  use ModRCMR
+  use ModRCPE
 
   implicit none
 

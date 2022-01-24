@@ -13,18 +13,18 @@
 !-----------------------------------------------------------------------------
 
 program GITM
-
+  use ModRCPE
   use ModInputs
   use ModTime
   use ModGITM
   use ModMpi
-  use ModRCMR
   use ModSatellites, only: SatCurrentDat, SatAltDat, nRCMRSat
   use ModEUV, only: sza
 
   implicit none
 
-  integer :: iBlock
+  integer :: iBlock, iTimeToCheck
+  real :: currentTimeTemp, tTemp
   
 
   ! ------------------------------------------------------------------------
@@ -58,24 +58,44 @@ program GITM
 
      !!! We may have to split cMax and Dt calculation!!!
      if(RCMRFlag) then
-        Dt = 2
+        Dt = 1 !was 2
      else
         Dt = FixedDt
      end if
 
+     !tTemp = tSimulation + dt
+     !currentTimeTemp = StartTime + tTemp
+     !call time_real_to_int2(currentTimeTemp, iTimeToCheck)
+
+     !if (iTimeToCheck .eq. 1) then
+     !  Dt = 1
+     !endif
+    
      call calc_timestep_vertical
      if (.not. Is1D) call calc_timestep_horizontal
 
-     if(RCMRFlag) then
-        call run_RCMR
-     endif
+     if(RCMRFlag .and. iStep .le. rcmrStepToTurnOff) then
+        call mainRCPE
+        if (mod((istep-1)*Dts,Measure_Dts) == 0.0 .and. iProc .eq. 5) then
+          if (coefficientToEstimate == "AO2") then
+            write(*,*) "ThermalConduction_" // coefficientToEstimate // ":", &
+                       ThermalConduction_AO2
+          else if (coefficientToEstimate == "AO") then
+            write(*,*) "ThermalConduction_" // coefficientToEstimate // ":", &
+                       ThermalConduction_AO
+          else if (coefficientToEstimate == "s") then
+            write(*,*) "ThermalConduction_" // coefficientToEstimate // ":", &
+                       ThermalConduction_s
+          endif
+        endif
+     endif  
 
      call advance
 
      if (.not.IsFramework) then
         call check_stop
      endif
-     
+
      iStep = iStep + 1
 
      call write_output
@@ -120,6 +140,75 @@ subroutine CON_io_unit_new(iUnit)
   return
 
 end subroutine CON_io_unit_new
+
+subroutine time_real_to_int2(timereal, itime)
+
+  implicit none
+
+  integer, dimension(1:12) :: dayofmon
+  integer :: itime
+  double precision :: timereal
+  integer :: nyear, nleap, nmonth, nday, nhour, nmin, nsec
+  double precision :: speryear = 31536000.0
+  double precision :: sperday = 86400.0
+  double precision :: sperhour = 3600.0
+  double precision :: spermin = 60.0
+  double precision :: timeleft
+
+  dayofmon(1) = 31
+  dayofmon(2) = 28
+  dayofmon(3) = 31
+  dayofmon(4) = 30
+  dayofmon(5) = 31
+  dayofmon(6) = 30
+  dayofmon(7) = 31
+  dayofmon(8) = 31
+  dayofmon(9) = 30
+  dayofmon(10) = 31
+  dayofmon(11) = 30
+  dayofmon(12) = 31
+
+  nyear = int(timereal/speryear)
+  nleap = nyear/4
+  nday = int((timereal - (dble(nyear)*speryear))/sperday)
+
+  if (nday.le.nleap) then
+     nyear = int((timereal - (dble(nleap)*sperday))/speryear)
+     nleap = nyear/4
+     nday = int((timereal - (dble(nyear)*speryear))/sperday)
+     if (nday.le.nleap) then
+        nyear = int((timereal - (dble(nleap)*sperday))/speryear)
+        nleap = nyear/4
+        nday = int((timereal - (dble(nyear)*speryear))/sperday)
+     endif
+  endif
+
+  if (mod((nyear+65),4).eq.0) dayofmon(2) = dayofmon(2) + 1
+
+  nday = nday - nleap
+
+  timeleft = timereal - dble(nyear)*speryear
+  timeleft = timeleft - dble(nday+nleap)*sperday
+
+  nhour = int(timeleft/sperhour)
+  timeleft = timeleft - dble(nhour)*sperhour
+
+  nmin = int(timeleft/spermin)
+  timeleft = timeleft - dble(nmin)*spermin
+
+  nsec = int(timeleft)
+
+  nmonth = 1;
+
+  do while (nday.ge.dayofmon(nmonth))
+     nday = nday - dayofmon(nmonth)
+     nmonth = nmonth + 1
+  end do
+
+  itime = nsec
+
+
+end subroutine time_real_to_int2
 
 !---------------------------------------------------------------------------
 

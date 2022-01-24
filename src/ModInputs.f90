@@ -10,6 +10,8 @@ module ModInputs
 
   implicit none
 
+  real :: EddyScaling = 1.0
+  logical :: UseUpdatedTurbulentCond = .false.  
   logical :: iRhoOutputList=.true.
   logical :: iNeutralDensityOutputList(nSpeciesTotal)=.true.
   logical :: iNeutralWindOutputList(3)=.true.
@@ -234,6 +236,7 @@ module ModInputs
   logical :: UseGravity          = .true.
   logical :: UseIonDrag          = .true.
   logical :: UseViscosity        = .true.
+  logical :: UseTestViscosity    = .false.
   real    :: TestViscosityFactor = 1.0
   logical :: UseCoriolis         = .true.
   logical :: UseGravityWave      = .false.

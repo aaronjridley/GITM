@@ -33,7 +33,7 @@
 
 subroutine read_satellites(iError)
 
-  use ModRCMR, only: RCMRFlag
+  use ModRCPE, only: RCMRFlag
   use ModSatellites
   use ModGITM, only: iUp_, iEast_, iNorth_
   use ModInputs, only: iDebugLevel, iCharLen_
@@ -180,7 +180,7 @@ end subroutine read_satellites
 
 subroutine move_satellites
 
-  use ModRCMR, only: RCMRFlag
+  use ModRCPE, only: RCMRFlag
   use ModSatellites
   use ModGITM, only: nBlocks, dt, iProc
   use ModTime, only: CurrentTime, tSimulation
