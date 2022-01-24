@@ -32,7 +32,7 @@ MODULES = \
 	ModOvationSME.o\
 	ModPlanet.o\
 	ModRates.o\
-	ModRCMR.o \
+	ModRCPE.o \
 	ModReadGitm3d.o\
 	ModSami.o\
 	ModSatellites.o\
@@ -96,7 +96,6 @@ OBJECTS = \
 	output_common.o\
 	overwrite.o\
 	planet.o\
-	RCMR_routines.o \
 	read_inputs.o\
 	read_ACE_data.o\
 	read_MHDIMF_Indices_new.o\
