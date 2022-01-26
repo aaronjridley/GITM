@@ -9,6 +9,8 @@
 
 subroutine IE_set_inputs(Lines)
 
+  use ModUtilities, ONLY: CON_stop
+  
   implicit none
 
   character (len=100), dimension(100), intent(in) :: Lines
@@ -25,6 +27,8 @@ end subroutine IE_set_inputs
 
 subroutine IE_Initialize(iError)
 
+  use ModUtilities, ONLY: CON_stop
+  
   implicit none
 
   integer, intent(out) :: iError
