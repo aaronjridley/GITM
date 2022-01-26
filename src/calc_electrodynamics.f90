@@ -197,7 +197,7 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
      OldPotMC = 0.0
 
      if (iError /= 0) then
-        call CON_stop("Error allocating array DivJuAltMC")
+        call stop_gitm("Error allocating array DivJuAltMC")
      endif
 
      date = iStartTime(1) + float(iJulianDay)/float(jday(iStartTime(1),12,31))

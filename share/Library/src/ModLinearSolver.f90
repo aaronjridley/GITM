@@ -17,6 +17,7 @@ module ModLinearSolver
 
   !USES:
   use ModMpi
+  use ModUtilities, ONLY: CON_stop
   use ModBlasLapack, ONLY: BLAS_gemm, BLAS_copy, BLAS_gemv, &
        LAPACK_getrf, LAPACK_getrs
 

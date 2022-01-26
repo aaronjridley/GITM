@@ -22,6 +22,7 @@ module ModInterpolateSimpleShape
   ! so that the provided routine may be used for interpolating values
   ! in the proximity of such points.  
   !/
+  use ModUtilities, ONLY: CON_stop
   implicit none
   PRIVATE
   SAVE

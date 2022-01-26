@@ -2,6 +2,7 @@
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 !==============================================================================
 module EEE_ModShearFlow
+  use ModUtilities, ONLY: CON_stop
   implicit none
   save
 

@@ -39,6 +39,7 @@ module ModPlotFile
   ! For read_plot_file the number of dimensions, variables, parameters, grid
   ! size are optionaal parameters.
 
+  use ModUtilities, ONLY: CON_stop
   use ModIoUnit,    ONLY: UnitTmp_
   use ModKind,      ONLY: Real4_
   use ModHdf5Utils, ONLY: save_hdf5_file

@@ -12,6 +12,7 @@ program post_idl
   ! Average out points that have the same coordinates.
   ! Save the results into an output file.
 
+  use ModUtilities,      ONLY: CON_stop
   use ModPlotFile,       ONLY: save_plot_file
   use ModNumConst,       ONLY: cHalfPi
   use ModInterpolate,    ONLY: linear

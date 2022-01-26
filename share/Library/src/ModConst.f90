@@ -4,6 +4,7 @@
 module ModConst
 
   ! no ONLY so all constants can be accessed via ModConst
+  use ModUtilities, ONLY: CON_stop
   use ModNumConst   
 
   implicit none

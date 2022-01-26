@@ -2,6 +2,7 @@
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 !==============================================================================
 module EEE_ModTD99
+  use ModUtilities, ONLY: CON_stop
   use EEE_ModCommonVariables
   implicit none
   save

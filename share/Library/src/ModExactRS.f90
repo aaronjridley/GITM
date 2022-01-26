@@ -2,6 +2,7 @@
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 !General routines used by the Godunov schemes with an exact Riemann solver
 module ModExactRS
+  use ModUtilities, ONLY: CON_stop
   implicit none
   real,private::GammaHere=1.6666666666666666
   real        ::PStar,UnStar !pressure and velocity in the Star Region

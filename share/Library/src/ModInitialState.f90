@@ -16,6 +16,8 @@ module ModInitialState
   ! between different states but identical material have no effect
   ! on the levelset function. 
 
+  use ModUtilities, ONLY: CON_stop
+  
   implicit none
 
   SAVE
