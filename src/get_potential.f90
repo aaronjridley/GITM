@@ -11,6 +11,7 @@ subroutine init_get_potential
   use ModNewell
   use ModOvationSME
   use ModAeAuroralModel
+  use ModFtaModel
   use ModEIE_Interface, only: EIEr3_HaveLats, EIEr3_HaveMLTs
 
   implicit none
@@ -42,6 +43,10 @@ subroutine init_get_potential
 
   if (UseAeModel) then
      call read_ae_model_files(iError)
+  endif
+
+  if (UseFtaModel) then
+     call initialize_fta
   endif
 
   call report("AMIE vs Weimer",4)
@@ -284,6 +289,7 @@ subroutine get_potential(iBlock)
   use ModNewell
   use ModOvationSME, only: run_ovationsme
   use ModAeAuroralModel, only: run_ae_model
+  use ModFtaModel, only: run_fta_model
   use ModEIE_Interface, only: UAl_UseGridBasedEIE
   use ModMpi
 
@@ -564,6 +570,8 @@ subroutine get_potential(iBlock)
         call run_ovationsme(StartTime, CurrentTime, iBlock)
      elseif (UseAeModel) then
         call run_ae_model(CurrentTime, iBlock)
+     elseif (UseFtaModel) then
+        call run_fta_model(CurrentTime, iBlock)
      else
 
         call UA_SetGrid(                    &

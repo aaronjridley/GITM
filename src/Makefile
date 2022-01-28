@@ -21,6 +21,7 @@ MODULES = \
 	ModConstants.o\
 	ModEUV.o\
 	ModElectrodynamics.o\
+	ModFtaModel.o\
 	ModGITM.o\
 	ModGITMImplicit.o\
 	ModHwm14.o\
