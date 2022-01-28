@@ -699,7 +699,6 @@ subroutine calc_scaled_euv
      
            wavelength_ave = (WAVEL(N) + WAVES(N))/2.0
            PhotonEnergy(N)= 6.626e-34*2.998e8/(wavelength_ave*1.0e-10)
-           write(*,*) 'photonenergy : ', n, PhotonEnergy(N), wavelength_ave
         enddo
         ! Solar_Flux has the Tobiska and Hinteregger fluxes in there already:
   
