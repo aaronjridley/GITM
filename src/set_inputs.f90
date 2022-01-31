@@ -691,11 +691,13 @@ subroutine set_inputs
 
         case ("#NEWELLAURORA")
            call read_in_logical(UseNewellAurora, iError)
-           call read_in_logical(UseNewellAveraged, iError)
-           call read_in_logical(UseNewellMono, iError)
-           call read_in_logical(UseNewellWave, iError)
-           call read_in_logical(DoNewellRemoveSpikes, iError)
-           call read_in_logical(DoNewellAverage, iError)
+           if (UseNewellAurora) then
+              call read_in_logical(UseNewellAveraged, iError)
+              call read_in_logical(UseNewellMono, iError)
+              call read_in_logical(UseNewellWave, iError)
+              call read_in_logical(DoNewellRemoveSpikes, iError)
+              call read_in_logical(DoNewellAverage, iError)
+           endif
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #NEWELLAURORA'
               write(*,*) 'This is for using Pat Newells aurora (Ovation).'
