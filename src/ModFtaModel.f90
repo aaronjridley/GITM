@@ -49,7 +49,7 @@ contains
     logical :: IsFirstTime=.true.
 
     integer :: iError, iAe, iMLat, i, iLat, iLon, iMlt
-    real :: au, al, gMlat, mindist
+    real :: au, al, ae, gMlat, mindist
     character (len=10) :: emis_type
 
     real, dimension(nMltsFta, nEnergies) :: mlats0_l, efs0_l, mlats0_s, efs0_s 
@@ -62,11 +62,10 @@ contains
        IsFirstTime = .false.
     endif
     
+    call get_ae(GitmCurrentTime+TimeDelayHighLat, ae, iError)
     call get_au(GitmCurrentTime+TimeDelayHighLat, au, iError)
     call get_al(GitmCurrentTime+TimeDelayHighLat, al, iError)
 
-    write(*,*) "Au, Al : ", Au, al
-    
     emis_type = 'lbhl'
     call calc_emission_pattern(au, al, emis_type, mlats0_l, efs0_l)
   
