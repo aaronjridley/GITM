@@ -347,8 +347,6 @@ if (cut == 'alt'):
 dr = (maxi-mini)/31
 levels = np.arange(mini, maxi, dr)
 
-i = 0
-
 # Define plot range:
 minX = (xPos[ 1] + xPos[ 2])/2
 maxX = (xPos[-2] + xPos[-3])/2
@@ -368,7 +366,7 @@ if (IsMovie):
     print(command)
     os.system(command)
 
-iter = 1
+iter = 0
 for time in AllTimes:
 
     ut = time.hour + time.minute/60.0 + time.second/3600.0
@@ -386,10 +384,10 @@ for time in AllTimes:
     else:
         cmap = cm.bwr
 
-    d2d = np.transpose(AllData2D[i])
+    d2d = np.transpose(AllData2D[iter])
     if (args["winds"]):
-        Ux2d = np.transpose(AllWindsX[i])
-        Uy2d = np.transpose(AllWindsY[i])
+        Ux2d = np.transpose(AllWindsX[iter])
+        Uy2d = np.transpose(AllWindsY[iter])
 
     sTime = time.strftime('%y%m%d_%H%M%S')
     if (IsMovie):
@@ -433,7 +431,7 @@ for time in AllTimes:
             ax2 = fig.add_subplot(gs[0, 0],projection='polar')
             r, theta = np.meshgrid(90.0-yPos[maskNorth], \
                                    (xPos+shift-90.0)*3.14159/180.0)
-            cax2 = ax2.pcolor(theta, r, AllData2D[i][:,maskNorth], \
+            cax2 = ax2.pcolor(theta, r, AllData2D[iter][:,maskNorth], \
                               vmin=miniN, vmax=maxiN, cmap=cmap)
             xlabels = ['', '12', '18', '00']
             ylabels = ['80', '70', '60', '50']
@@ -450,7 +448,7 @@ for time in AllTimes:
             r, theta = np.meshgrid(90.0+yPos[maskSouth], \
                                    (xPos+shift-90.0)*3.14159/180.0)
             ax3 = fig.add_subplot(gs[0, 1],projection='polar')
-            cax3 = ax3.pcolor(theta, r, AllData2D[i][:,maskSouth], \
+            cax3 = ax3.pcolor(theta, r, AllData2D[iter][:,maskSouth], \
                               vmin=miniS, vmax=maxiS, cmap=cmap)
             xlabels = ['', '12', '18', '00']
             ylabels = ['80', '70', '60', '50']
