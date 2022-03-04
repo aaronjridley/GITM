@@ -54,8 +54,6 @@ module ModInputs
   logical :: UseIMF = .true.
   logical :: UseHpi = .true.
 
-  logical :: UseIRHeating      = .false.
-  
   !!! Xing Meng Nov 2018 to use ISR E field in a local region + Weimer elsewhere
   logical :: UseRegionalAMIE = .false.
   logical :: UseTwoAMIEPotentials = .false.
@@ -275,7 +273,8 @@ module ModInputs
   logical :: UseOCooling       = .true.
   logical :: UseConduction     = .true.
   logical :: UseTurbulentCond = .true.
-
+  logical :: UseIRHeating      = .false.
+  
   logical :: UseDiffusion      = .false.
   logical :: UseVerAdvectionT  = .true.
 
