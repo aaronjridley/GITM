@@ -248,9 +248,9 @@ subroutine read_sme(iOutputError, StartTime, EndTime)
 
   if (iAE >= MaxIndicesEntries) ReReadSMEFile = .true.
 
-  nIndices_V(ae_) = iAE - 1
-  nIndices_V(au_) = iAE - 1
-  nIndices_V(al_) = iAE - 1
-
+  nIndices_V(ae_) = iAE - 2
+  nIndices_V(au_) = iAE - 2
+  nIndices_V(al_) = iAE - 2
+  
 end subroutine read_sme
 
