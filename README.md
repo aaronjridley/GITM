@@ -78,11 +78,7 @@ cd aetherpy
 git checkout develop
 
 # install the aetherpy libraries:
-python setup.py develop
-
-# link the main script into GITM's python directory:
-cd ../GITM/srcPython
-ln -s ../../aetherpy/aetherpy/run_plot_model_results.py .
+python setup.py develop --user
 
 # test it out:
 cd run/UA/data
