@@ -232,13 +232,12 @@ def download_sme_data(start, end):
         fileout = 'ae_' + ymd + '.txt'
         print('  --> Writing file ' + fileout)
         
-        l0 = 'Created by python code using SuperMAGGetIndices\n'
+        l0 = 'File created by python code using SuperMAGGetIndices\n'
         l1 = '============================================================\n'
         l2 = '<year>  <month>  <day>  <hour>  <min>  <sec>  '
         l2 = l2 + '<SME (nT)>  <SML (nT)>  <SMU (nT)>\n'
 
         fp = open(fileout, 'wb')
-        fp.write("\n".encode())
         fp.write(l0.encode())
         fp.write("\n".encode())
         fp.write(l1.encode())
