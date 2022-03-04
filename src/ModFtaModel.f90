@@ -66,6 +66,8 @@ contains
     call get_au(GitmCurrentTime+TimeDelayHighLat, au, iError)
     call get_al(GitmCurrentTime+TimeDelayHighLat, al, iError)
 
+    write(*,*) "Ae/Al/Au : ", ae, al, au
+    
     emis_type = 'lbhl'
     call calc_emission_pattern(au, al, emis_type, mlats0_l, efs0_l)
   
@@ -197,15 +199,19 @@ contains
  
     forder = 'r2'
     param = 'k_k'
+    !NameOfIndexFile = trim(DataDir)//'fit_coef_21bins_'//trim(emis_type)// &
+    !     '_'//trim(forder)//'_'//trim(param)//'.txt'
     NameOfIndexFile = trim(DataDir)//'fit_coef_21bins_'//trim(emis_type)// &
-         '_'//trim(forder)//'_'//trim(param)//'.txt'
+         '_'//trim(forder)//'_'//trim(param)//'_log_4p.txt'
     call read_coef_file(NameOfIndexFile,tmp2)
     k_k2 = tmp2
 
     forder = 'r2'
     param = 'k_b'
+    !NameOfIndexFile = trim(DataDir)//'fit_coef_21bins_'//trim(emis_type)// &
+    !     '_'//trim(forder)//'_'//trim(param)//'.txt'
     NameOfIndexFile = trim(DataDir)//'fit_coef_21bins_'//trim(emis_type)// &
-         '_'//trim(forder)//'_'//trim(param)//'.txt'
+         '_'//trim(forder)//'_'//trim(param)//'_log_4p.txt'
     call read_coef_file(NameOfIndexFile,tmp2)
     k_b2 = tmp2
 
@@ -332,6 +338,7 @@ contains
     character (len = 10) :: emis_type
 
     integer :: iEmission = 0
+    integer :: iMlt,iEngergy
 
     do i = 1,2
        if (trim(emis_type) == trim(emissions(i))) iEmission = i
@@ -367,8 +374,15 @@ contains
        mlat_b0 = cf_b_lat + cf_k_lat * AL_split
        ef_b0   = cf_b_ef + cf_k_ef * AL_split
 
-       cf_k_lat2 = kb_lat2(:, :, iEmission) + kk_lat2(:, :, iEmission) * AUs
-       cf_k_ef2  = kb_ef2(:, :, iEmission) + kk_ef2(:, :, iEmission) * AUs
+       !cf_k_lat2 = kb_lat2(:, :, iEmission) + kk_lat2(:, :, iEmission) * AUs
+       !cf_k_ef2  = kb_ef2(:, :, iEmission) + kk_ef2(:, :, iEmission) * AUs
+       
+       cf_k_lat2 = kb_lat2(:, :, iEmission) + kk_lat2(:, :, iEmission) * log(AUs)
+       cf_k_ef2  = kb_ef2(:, :, iEmission) + kk_ef2(:, :, iEmission) * log(AUs)
+       
+       where (cf_k_ef2<0)
+           cf_k_ef2 = 0
+       endwhere
 
        mlat_p = mlat_b0 + cf_k_lat2 * (ALs - AL_split)
        ef_p   = ef_b0   + cf_k_ef2 * (ALs - AL_split)
@@ -403,8 +417,10 @@ contains
           if ( (lbhl(iMlt, iLat) > 1) .and. &
                (lbhs(iMlt, iLat) > 1)) then
              ratio = lbhl(iMlt, iLat) / lbhs(iMlt, iLat)
-             avee(iMlt, iLat) = 10**(log((ratio - c) / a) / lb)
-          endif
+             if ((ratio-c)>0) &
+               avee(iMlt, iLat) = 10.0**(log((ratio - c) / a) / lb)
+              
+         endif
        enddo
     enddo
     
