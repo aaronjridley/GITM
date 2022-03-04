@@ -282,31 +282,31 @@ subroutine write_code_information(dir)
 
      call time_real_to_int(StartTime, iTime)
      write(iCodeInfoFileUnit_,*) "#TIMESTART"
-     write(iCodeInfoFileUnit_,*) iTimeArray(1)
-     write(iCodeInfoFileUnit_,*) iTimeArray(2)
-     write(iCodeInfoFileUnit_,*) iTimeArray(3)
-     write(iCodeInfoFileUnit_,*) iTimeArray(4)
-     write(iCodeInfoFileUnit_,*) iTimeArray(5)
-     write(iCodeInfoFileUnit_,*) iTimeArray(6)
+     write(iCodeInfoFileUnit_,*) iTime(1)
+     write(iCodeInfoFileUnit_,*) iTime(2)
+     write(iCodeInfoFileUnit_,*) iTime(3)
+     write(iCodeInfoFileUnit_,*) iTime(4)
+     write(iCodeInfoFileUnit_,*) iTime(5)
+     write(iCodeInfoFileUnit_,*) iTime(6)
      write(iCodeInfoFileUnit_,*) ""
 
      call time_real_to_int(EndTime, iTime)
      write(iCodeInfoFileUnit_,*) "#TIMEEND"
-     write(iCodeInfoFileUnit_,*) iTimeArray(1)
-     write(iCodeInfoFileUnit_,*) iTimeArray(2)
-     write(iCodeInfoFileUnit_,*) iTimeArray(3)
-     write(iCodeInfoFileUnit_,*) iTimeArray(4)
-     write(iCodeInfoFileUnit_,*) iTimeArray(5)
-     write(iCodeInfoFileUnit_,*) iTimeArray(6)
+     write(iCodeInfoFileUnit_,*) iTime(1)
+     write(iCodeInfoFileUnit_,*) iTime(2)
+     write(iCodeInfoFileUnit_,*) iTime(3)
+     write(iCodeInfoFileUnit_,*) iTime(4)
+     write(iCodeInfoFileUnit_,*) iTime(5)
+     write(iCodeInfoFileUnit_,*) iTime(6)
      write(iCodeInfoFileUnit_,*) ""
 
      write(iCodeInfoFileUnit_,*) "#GRID"
      write(iCodeInfoFileUnit_,*) nBlocksLon
      write(iCodeInfoFileUnit_,*) nBlocksLat
-     write(iCodeInfoFileUnit_,*) LatStart*180/pi
-     write(iCodeInfoFileUnit_,*) LatEnd*180/pi
-     write(iCodeInfoFileUnit_,*) LonStart*180/pi
-     write(iCodeInfoFileUnit_,*) LonEnd*180/pi
+     write(iCodeInfoFileUnit_,*) LatStart
+     write(iCodeInfoFileUnit_,*) LatEnd
+     write(iCodeInfoFileUnit_,*) LonStart
+     write(iCodeInfoFileUnit_,*) LonEnd
      write(iCodeInfoFileUnit_,*) ""
 
      write(iCodeInfoFileUnit_,*) "#DIFFUSION"
@@ -326,12 +326,16 @@ subroutine write_code_information(dir)
      write(iCodeInfoFileUnit_,*) PhotoElectronHeatingEfficiency
      write(iCodeInfoFileUnit_,*) ""
 
+     write(iCodeInfoFileUnit_,*) "#NEUTRALHEATING"
+     write(iCodeInfoFileUnit_,*) NeutralHeatingEfficiency
+     write(iCodeInfoFileUnit_,*) ""
+
      write(iCodeInfoFileUnit_,*) "#CFL"
      write(iCodeInfoFileUnit_,*) cfl
      write(iCodeInfoFileUnit_,*) ""
 
      write(iCodeInfoFileUnit_,*) "#LIMITER"
-     write(iCodeInfoFileUnit_,*) TypeLimiter
+     write(iCodeInfoFileUnit_,*) trim(TypeLimiter)
      write(iCodeInfoFileUnit_,*) BetaLimiter
      write(iCodeInfoFileUnit_,*) ""
 
@@ -371,8 +375,8 @@ subroutine write_code_information(dir)
      write(iCodeInfoFileUnit_,*) ""
 
      write(iCodeInfoFileUnit_,*) "#AMIEFILES"
-     write(iCodeInfoFileUnit_,*) cAMIEFileNorth
-     write(iCodeInfoFileUnit_,*) cAMIEFileSouth
+     write(iCodeInfoFileUnit_,*) trim(cAMIEFileNorth)
+     write(iCodeInfoFileUnit_,*) trim(cAMIEFileSouth)
      write(iCodeInfoFileUnit_,*) ""
 
      write(iCodeInfoFileUnit_,*) "#STATISTICALMODELSONLY"
@@ -388,8 +392,8 @@ subroutine write_code_information(dir)
 
      write(iCodeInfoFileUnit_,*) "#DUSTDATA"
      write(iCodeInfoFileUnit_,*) UseDustDistribution
-     write(iCodeInfoFileUnit_,*) cDustFile
-     write(iCodeInfoFileUnit_,*) cConrathFile
+     write(iCodeInfoFileUnit_,*) trim(cDustFile)
+     write(iCodeInfoFileUnit_,*) trim(cConrathFile)
      write(iCodeInfoFileUnit_,*) ""
 
      write(iCodeInfoFileUnit_,*) "#DUST"
@@ -502,10 +506,10 @@ subroutine write_code_information(dir)
      write(iCodeInfoFileUnit_,*) AltMinUniform
      write(iCodeInfoFileUnit_,*) ""
 
-     write(iCodeInfoFileUnit_,*) "#RCMR"
-     write(iCodeInfoFileUnit_,*) RCMRInType
-     write(iCodeInfoFileUnit_,*) RCMROutType
-     write(iCodeInfoFileUnit_,*) ""
+     !write(iCodeInfoFileUnit_,*) "#RCMR"
+     !write(iCodeInfoFileUnit_,*) RCMRInType
+     !write(iCodeInfoFileUnit_,*) RCMROutType
+     !write(iCodeInfoFileUnit_,*) ""
 
      write(iCodeInfoFileUnit_,*) "#ELECTRODYNAMICS"
      write(iCodeInfoFileUnit_,*) dTPotential
@@ -523,7 +527,7 @@ subroutine write_code_information(dir)
 
      write(iCodeInfoFileUnit_,*) "#EUV_DATA"
      write(iCodeInfoFileUnit_,*) UseEUVData
-     write(iCodeInfoFileUnit_,*) cEUVFile
+     write(iCodeInfoFileUnit_,*) trim(cEUVFile)
      write(iCodeInfoFileUnit_,*) ""
 
      write(iCodeInfoFileUnit_,*) "#RESTART"
