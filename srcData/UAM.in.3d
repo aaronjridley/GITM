@@ -145,9 +145,9 @@ This is for amie-like inputs:
 none		northern hemisphere amie file
 none		southern hemisphere amie file
 
-Low-latitude dynamo:
+Low-latitude dynamo (only run with higher res):
 #DYNAMO
-T		UseDynamo
+F		UseDynamo
 45.0		DynamoHighLatBoundary
 500		nItersMax
 1.0		MaxResidual
