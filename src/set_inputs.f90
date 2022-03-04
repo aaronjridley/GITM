@@ -940,6 +940,7 @@ subroutine set_inputs
               write(*,*) "UseOCooling       (logical)"
               write(*,*) "UseConduction     (logical)"
               write(*,*) "UseTurbulentCond  (logical)"
+              write(*,*) "UseIRHeating      (logical)"
               IsDone = .true.
            endif
 
