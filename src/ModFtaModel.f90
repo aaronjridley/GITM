@@ -61,13 +61,11 @@ contains
        iError = 0
        IsFirstTime = .false.
     endif
-    
+
     call get_ae(GitmCurrentTime+TimeDelayHighLat, ae, iError)
     call get_au(GitmCurrentTime+TimeDelayHighLat, au, iError)
     call get_al(GitmCurrentTime+TimeDelayHighLat, al, iError)
 
-    write(*,*) "Ae/Al/Au : ", ae, al, au
-    
     emis_type = 'lbhl'
     call calc_emission_pattern(au, al, emis_type, mlats0_l, efs0_l)
   
