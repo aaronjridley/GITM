@@ -26,6 +26,10 @@ subroutine IO_set_inputs(StringInputLines)
            call read_in_string(NameOfIndexFile)
         endif
 
+        if (index(StringLine,"#F107_FILE") > 0) then
+           call read_in_string(NameOfIndexFile)
+        endif
+
         if (index(StringLine,"#SME_INDICES") > 0) then
            call read_in_string(NameOfIndexFile)
            call read_in_string(NameOfSecondIndexFile)

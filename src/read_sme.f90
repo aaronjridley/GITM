@@ -226,8 +226,10 @@ subroutine read_sme(iOutputError, StartTime, EndTime)
              IndexTimes_TV(iAE,ae_) <= EndTime+BufferTime .and. &
              iAE < MaxIndicesEntries) then
 
+           IndexTimes_TV(iAE,al_) = IndexTimes_TV(iAE,ae_)
+           IndexTimes_TV(iAE,au_) = IndexTimes_TV(iAE,ae_)
            iAE = iAE + 1
-
+           
         else
 
            ! This means that the GITM time is all BEFORE the first 

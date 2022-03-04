@@ -78,7 +78,8 @@ module ModInputs
   logical :: UseOvationSMEWave = .false.
   logical :: UseOvationSMEIon  = .false.
   
-  logical :: UseAeModel        = .false.
+  logical :: UseAeModel = .false.
+  logical :: UseFtaModel = .false.
 
   logical :: UseFangEnergyDeposition = .false.
   
@@ -88,9 +89,6 @@ module ModInputs
   ! This is true because FR&E is default.
   logical :: NormalizeAuroraToHP = .true.
 
-  logical :: xxx
-
-  
   logical :: UseCusp = .false.
   real :: CuspAveE = 0.1
   real :: CuspEFlux = 2.0

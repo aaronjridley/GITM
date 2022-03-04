@@ -691,11 +691,13 @@ subroutine set_inputs
 
         case ("#NEWELLAURORA")
            call read_in_logical(UseNewellAurora, iError)
-           call read_in_logical(UseNewellAveraged, iError)
-           call read_in_logical(UseNewellMono, iError)
-           call read_in_logical(UseNewellWave, iError)
-           call read_in_logical(DoNewellRemoveSpikes, iError)
-           call read_in_logical(DoNewellAverage, iError)
+           if (UseNewellAurora) then
+              call read_in_logical(UseNewellAveraged, iError)
+              call read_in_logical(UseNewellMono, iError)
+              call read_in_logical(UseNewellWave, iError)
+              call read_in_logical(DoNewellRemoveSpikes, iError)
+              call read_in_logical(DoNewellAverage, iError)
+           endif
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #NEWELLAURORA'
               write(*,*) 'This is for using Pat Newells aurora (Ovation).'
@@ -744,6 +746,20 @@ subroutine set_inputs
               IsDone = .true.
            else
               if (UseAeModel .and. .not. HasSetAuroraMods) &
+                   NormalizeAuroraToHP = .false.
+           endif
+
+        case ("#FTAMODEL")
+           call read_in_logical(UseFtaModel, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #FTAMODEL'
+              write(*,*) 'This is for using the FTA Model of the aurora.'
+              write(*,*) ''
+              write(*,*) '#FTAMODEL'
+              write(*,*) 'UseFtaModel        (logical)'
+              IsDone = .true.
+           else
+              if (UseFtaModel .and. .not. HasSetAuroraMods) &
                    NormalizeAuroraToHP = .false.
            endif
 
@@ -1714,6 +1730,23 @@ subroutine set_inputs
 
            call IO_set_inputs(cTempLines)
            call read_NGDC_Indices_new(iError,CurrentTime,EndTime)
+
+           if (iError /= 0) then 
+              write(*,*) "read indices was NOT successful (NOAA file)"
+              IsDone = .true.
+           else
+              UseVariableInputs = .true.
+           endif
+        
+        case ("#F107_FILE")
+           cTempLines(1) = cLine
+           call read_in_string(cTempLine, iError)
+           cTempLines(2) = cTempLine
+           cTempLines(3) = " "
+           cTempLines(4) = "#END"
+
+           call IO_set_inputs(cTempLines)
+           call read_f107(iError)
 
            if (iError /= 0) then 
               write(*,*) "read indices was NOT successful (NOAA file)"
