@@ -749,6 +749,20 @@ subroutine set_inputs
                    NormalizeAuroraToHP = .false.
            endif
 
+        case ("#FTAMODEL")
+           call read_in_logical(UseFtaModel, iError)
+           if (iError /= 0) then
+              write(*,*) 'Incorrect format for #FTAMODEL'
+              write(*,*) 'This is for using the FTA Model of the aurora.'
+              write(*,*) ''
+              write(*,*) '#FTAMODEL'
+              write(*,*) 'UseFtaModel        (logical)'
+              IsDone = .true.
+           else
+              if (UseFtaModel .and. .not. HasSetAuroraMods) &
+                   NormalizeAuroraToHP = .false.
+           endif
+
         case ("#FANGENERGY")
            call read_in_logical(UseFangEnergyDeposition, iError)
            if (iError /= 0) then
@@ -1717,6 +1731,23 @@ subroutine set_inputs
 
            call IO_set_inputs(cTempLines)
            call read_NGDC_Indices_new(iError,CurrentTime,EndTime)
+
+           if (iError /= 0) then 
+              write(*,*) "read indices was NOT successful (NOAA file)"
+              IsDone = .true.
+           else
+              UseVariableInputs = .true.
+           endif
+        
+        case ("#F107_FILE")
+           cTempLines(1) = cLine
+           call read_in_string(cTempLine, iError)
+           cTempLines(2) = cTempLine
+           cTempLines(3) = " "
+           cTempLines(4) = "#END"
+
+           call IO_set_inputs(cTempLines)
+           call read_f107(iError)
 
            if (iError /= 0) then 
               write(*,*) "read indices was NOT successful (NOAA file)"

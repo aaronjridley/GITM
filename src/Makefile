@@ -21,6 +21,7 @@ MODULES = \
 	ModConstants.o\
 	ModEUV.o\
 	ModElectrodynamics.o\
+	ModFtaModel.o\
 	ModGITM.o\
 	ModGITMImplicit.o\
 	ModHwm14.o\
@@ -99,6 +100,7 @@ OBJECTS = \
 	RCMR_routines.o \
 	read_inputs.o\
 	read_ACE_data.o\
+	read_f107.o\
 	read_MHDIMF_Indices_new.o\
 	read_NGDC_Indices_new.o\
 	read_NOAAHPI_Indices_new.o\
