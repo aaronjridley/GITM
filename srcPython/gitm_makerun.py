@@ -27,9 +27,9 @@ def parse_args(plotTypes):
                         default = 'none')
     
     parser.add_argument('start', metavar = 'start', \
-                        help = 'start date as YYYYMMDD')
+                        help = 'start date as YYYYMMDD[.HHMM]')
     parser.add_argument('end', metavar = 'end', \
-                        help = 'end date as YYYYMMDD')
+                        help = 'end date as YYYYMMDD[.HHMM]')
 
     parser.add_argument('-imf', \
                         help='set IMF file (find = download IMF from omniweb)')
@@ -303,8 +303,8 @@ plotTypes = ['3dall', '3danc', '3dthm', '3dneu', '3dion',
 
 args = parse_args(plotTypes)
 
-start = args.start
-end = args.end
+# ----------------------------------------
+# read baseline UAM.in file:
 
 file = args.input
 
@@ -315,6 +315,68 @@ else:
     print('Can not find input file ', file, '!')
     print('  Please run with -h if you need help!')
     exit()
+
+# ----------------------------------------
+# Set Times:
+
+start = args.start
+end = args.end
+
+yStart = start[0:4]
+mo = start[4:6]
+da = start[6:8]
+
+if (len(start) >= 11):
+    hr = start[9:11]
+    if (len(start) >= 13):
+        mi = start[11:13]
+    else:
+        mi = '00'
+else:
+    hr = '00'
+    mi = '00'
+
+start = datetime(int(yStart), int(mo), int(da), int(hr), int(mi), 0)
+
+uam['#TIMESTART'] = {
+    0: [yStart, ' year'],
+    1: [mo, ' month'],
+    2: [da, ' day'],
+    3: [hr, ' hour'],
+    4: [mi, ' minute'],
+    5: ['00', ' second'] }
+
+yr = end[0:4]
+mo = end[4:6]
+da = end[6:8]
+
+if (len(end) >= 11):
+    hr = end[9:11]
+    if (len(end) >= 13):
+        mi = end[11:13]
+    else:
+        mi = '00'
+else:
+    hr = '00'
+    mi = '00'
+
+end = datetime(int(yr), int(mo), int(da), int(hr), int(mi), 0)
+
+uam['#TIMEEND'] = {
+    0: [yr, ' year'],
+    1: [mo, ' month'],
+    2: [da, ' day'],
+    3: [hr, ' hour'],
+    4: [mi, ' minute'],
+    5: ['00', ' second'] }
+
+print('--> Setting Start Time : ', start)
+print('--> Setting End Time : ', end)
+
+# omni needs times as YYYYMMDD, and needs at least 2 days:
+startOmni = start.strftime('%Y%m%d')
+endTemp = end + timedelta(seconds = 86400) 
+endOmni = end.strftime('%Y%m%d')
 
 # ----------------------------------------
 # output types
@@ -390,7 +452,7 @@ if (args.imf):
     print('--> Processing IMF file : ')
 
     if (args.imf.find('find') == 0):
-        results = download_omni_data(start, end, "-all")
+        results = download_omni_data(startOmni, endOmni, "-all")
         omniDirty = parse_omni_data(results)
         data = clean_omni(omniDirty)
 
@@ -410,38 +472,6 @@ if (args.imf):
     uam['#MHD_INDICES'] = {
         0: [imfFile, ' imf input file'] }
 
-
-# ----------------------------------------
-# Set Times:
-
-yStart = start[0:4]
-m = start[4:6]
-d = start[6:8]
-start = datetime(int(yStart), int(m), int(d), 0, 0, 0)
-
-uam['#TIMESTART'] = {
-    0: [yStart, ' year'],
-    1: [m, ' month'],
-    2: [d, ' day'],
-    3: ['00', ' hour'],
-    4: ['00', ' minute'],
-    5: ['00', ' second'] }
-
-y = end[0:4]
-m = end[4:6]
-d = end[6:8]
-end = datetime(int(y), int(m), int(d), 0, 0, 0)
-
-uam['#TIMEEND'] = {
-    0: [y, ' year'],
-    1: [m, ' month'],
-    2: [d, ' day'],
-    3: ['00', ' hour'],
-    4: ['00', ' minute'],
-    5: ['00', ' second'] }
-
-print('--> Setting Start Time : ', start)
-print('--> Setting End Time : ', end)
 
 # ----------------------------------------
 # Deal with F107 stuff:
@@ -511,13 +541,6 @@ if (args.sme):
     # find hemispheric power file:
     if (args.sme.find('find') == 0):
         smeFile = download_sme_data(start, end)
-        #smeFile = args.datadir + '/Ae/sme_' + yStart + '.txt'
-        #if (os.path.exists(smeFile)):
-        #    command = 'cp -f ' + smeFile + ' .'
-        #    print('--> SuperMAG AE/AU/AL File Found')
-        #    print(' --> running command : ' + command)
-        #    os.system(command)
-        #    smeFile = 'sme_' + yStart + '.txt'
     else:
         smeFile = args.sme
     if (os.path.exists(smeFile)):
@@ -622,7 +645,7 @@ if (args.newell):
         print(' --> WARNING : imf not set, so may not work right! Careful!')
 
 fileout = args.output
-if (fileout.find('none') != 1):
+if (fileout.find('none') == 0):
     fileout = start.strftime('UAM_%Y%m%d.in')
     
 print('--> Writing file : ', fileout)
