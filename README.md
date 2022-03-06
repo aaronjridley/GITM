@@ -33,13 +33,14 @@ in your start-up script (.cshrc, .bashrc, etc):
 module load comp-intel/2016.2.181
 module load mpi-hpe/mpt
 
+And you can use this to configure the code:
 3c. ./Config.pl -install -earth -compiler=ifort
 
 4. make
 
-5. make rundir
+5. Creates a run directory that has all of the input files:
 
-This creates a run directory that has all of the input files.
+make rundir
 
 6. cd run
 
@@ -53,7 +54,9 @@ lon. See below for how to set the resolution.
 
 8. cd UA
 
-9. pGITM
+9. Post process the output files by running:
+
+pGITM
 
 10. cd data
 
@@ -66,7 +69,7 @@ how to run this code.
 
 A more advanced plotter is available through aetherpy. This is a bit more
 complicated, since you need to install aetherpy. If you don't use python
-much, this is harder.
+much, this is harder. Here is how to do this:
 
 cd <directory where you started from>
 git clone https://github.com/AetherModel/aetherpy
@@ -81,9 +84,11 @@ git checkout develop
 python setup.py develop --user
 
 # test it out:
-cd run/UA/data
+cd <directory where you started from>
+cd GITM/run/UA/data
 ../../../srcPython/run_plot_model_results.py -var=34 -alt=300 3DALL_t021221_000500.bin
 
+# look at the beautiful plot.
 
 ## Contributing:
 
@@ -109,9 +114,11 @@ NCAR. The IGRF code that comes with it is also not developed at UM.
 Mitchell's Ovation SME, others in the util/EMPIRICAL/srcIE directory).
 
 3. MSIS and IRI, which are in util/EMPIRICAL/srcUA. MSIS is used as a
-lower BC at Earth. IRI is used to initialize the code.
+lower BC at Earth and was developed at NRL. IRI is used to initialize
+the code.
 
-4. The horizonal wind model (HWM) is used as a lower BC at Earth.
+4. The horizonal wind model (HWM) is used as a lower BC at Earth and
+was developed at NRL.
 
 ## Setting the Resolution:
 
@@ -126,10 +133,10 @@ If you wanted a grid that is (for example) 1 deg (lat) by 5 deg (lon),
 you would need 20 blocks (9 x 20 = 180 cells) in latitude and 8 blocks
 (9 x 8 = 72 cells) in longitude.  You need a total of 160 processors for this
 simulation. You can change the UAM.in file for these number of cells.
-(To get a simple 5 deg x 5 deg resolution, you need 4 blocks in lat
+To get a simple 5 deg x 5 deg resolution, you need 4 blocks in lat
 and 8 blocks in longitude, or 32 processors.  If you have fewer
 processors, you can change the src/ModSize.f90 code and adjust the
 number of cells in each block to compensate. For example, you have 8
 processors, so you can adjust ModSize.f90 to have 18 cells in lat and
-lon, then ask for 2 (lat) x 4 (lon) blocks.)
+lon, then ask for 2 (lat) x 4 (lon) blocks to get 5 deg x 5 deg resolution.
 
