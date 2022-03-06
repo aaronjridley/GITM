@@ -21,6 +21,7 @@ have the gfortran (version 10) compiler and things like mpif90 work
 ok.  If you don't have gfortran and mpif90, then you need to get these
 things for your computer.  If you have version 9 or before for gfortran,
 you can do:
+
 3b. ./Config.pl -install -earth -compiler=gfortran
 
 In theory, Mars, Venus, Titan, and LV-426 should work.  These are in
@@ -31,20 +32,28 @@ If running on Pleiades (as of March 3, 2022), you need to have these
 in your start-up script (.cshrc, .bashrc, etc):
 
 module load comp-intel/2016.2.181
+
 module load mpi-hpe/mpt
 
 And you can use this to configure the code:
+
 3c. ./Config.pl -install -earth -compiler=ifort
 
-4. make
+4. Make the binary:
+
+make
 
 5. Creates a run directory that has all of the input files:
 
 make rundir
 
-6. cd run
+6. Go into the run directory:
 
-7. mpirun -np 4 ./GITM.exe
+cd run
+
+7. Run the code:
+
+mpirun -np 4 ./GITM.exe
 
 GITM reads in a file called UAM.in, which sets the configuration of
 the simulation. The default UAM.in file has 2 lat blocks and 2 lon
@@ -52,13 +61,17 @@ blocks with 9 x 9 cells each, so the default resolution is 180 (deg
 lat) / (2 * 9) = 10 deg lat, by 360 (deg lon) / (2 * 9) = 20 deg
 lon. See below for how to set the resolution.
 
-8. cd UA
+8. Go into the directory which contains many of the outputs:
+
+cd UA
 
 9. Post process the output files by running:
 
 pGITM
 
-10. cd data
+10. Go into the output directory:
+
+cd data
 
 11. Make some plots with an old plotter:
 
@@ -67,28 +80,35 @@ pGITM
 Then look at the png file that is created.  You can use a -h to see
 how to run this code.
 
-A more advanced plotter is available through aetherpy. This is a bit more
+11b. A more advanced plotter is available through aetherpy. This is a bit more
 complicated, since you need to install aetherpy. If you don't use python
 much, this is harder. Here is how to do this:
 
 cd <directory where you started from>
+  
 git clone https://github.com/AetherModel/aetherpy
+
 ls
 
-# you should see 2 directories: GITM and aetherpy
+(you should see 2 directories: GITM and aetherpy)
 
 cd aetherpy
+  
 git checkout develop
 
-# install the aetherpy libraries:
+(install the aetherpy libraries)
+
 python setup.py develop --user
 
-# test it out:
+11c. Test out the new plotter:
+  
 cd <directory where you started from>
+
 cd GITM/run/UA/data
+
 ../../../srcPython/run_plot_model_results.py -var=34 -alt=300 3DALL_t021221_000500.bin
 
-# look at the beautiful plot.
+(look at the beautiful plot)
 
 ## Contributing:
 
