@@ -91,7 +91,7 @@ contains
        if(iProc==0)then
           call check_dir("UA/DataIn")
           call check_dir("UA/data")
-          call check_dir("UA/RestartOUT")
+          call check_dir("UA/restartOUT")
        end if
 
        IsFramework = .true.
