@@ -35,15 +35,15 @@ subroutine set_inputs
 
   logical :: IsDone, IsStartFound, doUseAeForHp
   integer :: iDebugProc=0
-  character (len=iCharLen_) :: cLine
+  character (len=100) :: cLine
   integer :: iLine, iSpecies, iSat
   integer :: i, iError, iOutputTypes, iErrorFile, iFreq
   integer, dimension(7) :: iTimeEnd
   integer :: iUnitFile = UnitTmp_
 
-  character (len=iCharLen_)                 :: cTempLine
-  character (len=iCharLen_)                 :: sIonChemistry, sNeutralChemistry
-  character (len=iCharLen_), dimension(100) :: cTempLines
+  character (len=100)                 :: cTempLine
+  character (len=100)                 :: sIonChemistry, sNeutralChemistry
+  character (len=100), dimension(100) :: cTempLines
 
   real :: Vx, Bx, Bz, By, Kp, HemisphericPower, tsim_temp
   real :: EDC_est_tmp
@@ -1946,7 +1946,7 @@ contains
   end subroutine read_in_logical
 
   subroutine read_in_string(variable, iError)
-    character (len=iCharLen_), intent(out) :: variable
+    character (len=100), intent(out) :: variable
     integer :: iError
     if (iError == 0) then 
        iline = iline + 1
