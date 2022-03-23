@@ -113,6 +113,7 @@ rundir:
 		mkdir restartOUT data DataIn; \
 		ln -s restartOUT restartIN; \
 		ln -s ${UADIR}/src/pGITM .; \
+		ln -s ${UADIR}/srcPython/pGITM.py .; \
 		ln -s ${UADIR}/srcData/* DataIn; rm -f DataIn/CVS; \
 		ln -s ${UADIR}/data/* DataIn;    rm -f DataIn/CVS
 	cd ${RUNDIR} ;                                   \
