@@ -87,8 +87,7 @@ subroutine output(dir, iBlock, iOutputType)
   use ModSources
   use ModUserGITM, only: nVarsUser2d, nVarsUser3d, nVarsUser1d, nVarsUser0d
   use ModRCMR, only: RCMRFlag
-  use ModConstants, only: pi
- 
+  use ModConstants, only: pi 
   implicit none
 
   character (len=*), intent(in) :: dir
@@ -320,7 +319,7 @@ subroutine output(dir, iBlock, iOutputType)
 
   case ('3DTHM')
 
-     nvars_to_write = 11
+     nvars_to_write = 27
      call output_3dthm(iBlock)
 
   case ('1DCHM')
@@ -332,7 +331,7 @@ subroutine output(dir, iBlock, iOutputType)
   case ('3DCHM')
 
      nvars_to_write = 30
-     nvars_to_write = 22
+     nvars_to_write = 3 + nSpeciesTotal
      call output_3dchm(iBlock)
 
   case ('3DGLO')
@@ -405,6 +404,7 @@ subroutine output(dir, iBlock, iOutputType)
 
      nGCs = 0
      nvars_to_write = 14 + (nspeciestotal*2)
+     nvars_to_write = 25
      call output_1dthm
 
   case ('1DNEW')
@@ -643,24 +643,40 @@ contains
     if (cType(3:5) == "THM") then
        write(iOutputUnit_,"(I7,A1,a)")  4, " ", "Rho (kg/m^3)"
        write(iOutputUnit_,"(I7,A1,a)")  5, " ", "Cp (J/kg/K)"
-       write(iOutputUnit_,"(I7,A1,a)")  6, " ", "EUV Heating (K/day) "
-       write(iOutputUnit_,"(I7,A1,a)")  7, " ", "Conduction  (K/day)"
-       write(iOutputUnit_,"(I7,A1,a)")  8, " ", "RadCooling (K/day) "
+       write(iOutputUnit_,"(I7,A1,a)")  6, " ", "FISM Heating (K/day) "
+       write(iOutputUnit_,"(I7,A1,a)")  7, " ", "EUVAC Heating (K/day) "
+       write(iOutputUnit_,"(I7,A1,a)")  8, " ", "Conduction  (K/day)"
+       write(iOutputUnit_,"(I7,A1,a)")  9, " ", "RadCooling (K/day) "
+       write(iOutputUnit_,"(I7,A1,a)")  10, " ", "RadCooling_untouched (K/day) "
 !      write(iOutputUnit_,"(I7,A1,a)")  9, " ", "Lower Atmos Heating/Cool (K/sol)"             
-       write(iOutputUnit_,"(I7,A1,a)")  9, " ", "Near IR Heating (K/day)"
-       write(iOutputUnit_,"(I7,A1,a)")  10, " ", "ChemicalHeatingRate"
-       write(iOutputUnit_,"(I7,A1,a)")  11, " ", "DissociationHeatingRate"
-       if (cType(1:2) == "1D") then
-          do iSpecies = 1, nSpeciesTotal
-             write(iOutputUnit_,"(I7,A1,a,a)") 11 + iSpecies, " ", &
-                  "Production Rate ",cSpecies(iSpecies)
-          enddo
-          do iSpecies = 1, nSpeciesTotal
-             write(iOutputUnit_,"(I7,A1,a,a)") 11 + nSpeciesTotal + iSpecies, " ", &
-                  "Loss Rate ",cSpecies(iSpecies)
+       write(iOutputUnit_,"(I7,A1,a)")  11, " ", "Near IR Heating (K/day)"
+       write(iOutputUnit_,"(I7,A1,a)")  12, " ", "ChemicalHeatingRate"
+       write(iOutputUnit_,"(I7,A1,a)")  13, " ", "DissociationHeatingRate"
+       write(iOutputUnit_,"(I7,A1,a)")  14, " ", "Pressure"
+       write(iOutputUnit_,"(I7,A1,a)")  15, " ", "Neutral O Sources"
+       write(iOutputUnit_,"(I7,A1,a)")  16, " ", "CO2 + O+ ->"
+       write(iOutputUnit_,"(I7,A1,a)")  17, " ", "Neutral CO Sources"
+       write(iOutputUnit_,"(I7,A1,a)")  18, " ", "Neutral CO Losses"
+       write(iOutputUnit_,"(I7,A1,a)")  19, " ", "Viscosity (m/s^2)"
+       write(iOutputUnit_,"(I7,A1,a)")  20, " ", "Gravity (m/s^2)"
+       write(iOutputUnit_,"(I7,A1,a)")  21, " ", "Ion Drag (m/s^2)"
+       write(iOutputUnit_,"(I7,A1,a)")  22, " ", "GWAccel (m/s^2)"
+       write(iOutputUnit_,"(I7,A1,a)")  23, " ", "Spherical Geometry (m/s^2)"
+       write(iOutputUnit_,"(I7,A1,a)")  24, " ", "Coriois (m/s^2)"
+       write(iOutputUnit_,"(I7,A1,a)")  25, " ", "Gradient Pressure (m/s^2)"
+       write(iOutputUnit_,"(I7,A1,a)")  26, " ", "Solar Zenith Angle"
+       write(iOutputUnit_,"(I7,A1,a)")  27, " ", "Horizontal Advection (Temperature)"
+       !if (cType(1:2) == "1D") then
+       !   do iSpecies = 1, nSpeciesTotal
+       !      write(iOutputUnit_,"(I7,A1,a,a)") 11 + iSpecies, " ", &
+       !           "Production Rate ",cSpecies(iSpecies)
+       !   enddo
+       !   do iSpecies = 1, nSpeciesTotal
+       !      write(iOutputUnit_,"(I7,A1,a,a)") 11 + nSpeciesTotal + iSpecies, " ", &
+       !           "Loss Rate ",cSpecies(iSpecies)
 
-          enddo
-       endif
+       !   enddo
+       !endif
 
     endif
 
@@ -1130,6 +1146,7 @@ subroutine output_3dall(iBlock)
        enddo
     enddo
  enddo
+
 end subroutine output_3dall
 
 !----------------------------------------------------------------
@@ -1303,7 +1320,9 @@ subroutine output_3dthm(iBlock)
  use ModGITM
  use ModInputs
  use ModSources
- use ModEuv, only : EuvTotal
+ use ModEuv, only : EuvTotal, SZA
+ use ModTime, only : iTimeArray
+ use ModVertical, only: Coriolis
  implicit none
 
 
@@ -1323,25 +1342,44 @@ subroutine output_3dthm(iBlock)
           Altitude_GB(iLon,iLat,iAlt,iBlock),   &
           ! I have added rho and cp to the output files                                                  ! to allow us to quickly calculate the W/m^3 from the                                          ! K/s variables below
           Rho(iLon,iLat,iAlt,iBlock),   &
-          cp(iLon,iLat,iAlt,iBlock),   &
+          cp(iiLon,iiLat,iiAlt,iBlock),   &
           EuvHeating(iiLon,iiLat,iiAlt,iBlock)*&
+          TempUnit(iiLon,iiLat,iiAlt)*86400.,  &
+          EuvHeating_bp(iiLon,iiLat,iiAlt,iBlock)*&
           TempUnit(iiLon,iiLat,iiAlt)*86400.,  &
           ! Conduction (need to divide by Dt for K/sol
           Conduction(iiLon,iiLat,iiAlt)*TempUnit(iiLon,iiLat,iiAlt)/&
             (Dt + 1.0e-03)*86400., &
           ! RadCooling  ! Units of K/sol
           -RadCooling(iiLon,iiLat,iiAlt,iBlock)*TempUnit(iiLon,iiLat,iiAlt)&
-            *86400., &
+          *86400., &
+          -RadCoolingRate_untouched(iiLon,iiLat,iiAlt,iBlock)*TempUnit(iiLon,iiLat,iiAlt)&
+          *86400., &
           ! Near IR heating Heating  ! Units of K/sol
           QnirTOT(iiLon, iiLat, iiAlt, iBlock)*TempUnit(iiLon,iiLat,iiAlt)*86400.0, &
           ChemicalHeatingRate(iiLon,iiLat,iiAlt)*TempUnit(iiLon,iiLat,iiAlt)* &
           86400.0, &
           DissociationHeatingRate(iiLon,iiLat,iiAlt,iBlock)* TempUnit(iiLon,iiLat,iiAlt)*&
-          86400.0
+          86400.0, &
+          Pressure(iiLon,iiLat,iiAlt,iBlock), &
+          reactionrate(iiLon,iiLat,iiAlt,iBlock,1), &
+          reactionrate(iiLon,iiLat,iiAlt,iBlock,2), &
+          reactionrate(iiLon,iiLat,iiAlt,iBlock,3), &
+          reactionrate(iiLon,iiLat,iiAlt,iBlock,4), &
+          Viscosity(iiLon,iiLat,iiAlt, iEast_)/(dt + 1.0e-03), &
+          Gravity_GB(iiLon,iiLat,iiAlt,iBlock), &
+          IonDrag(iiLon,iiLat,iiAlt,iEast_), &
+          GWAccel(iiLon,iiLat,iiAlt,iEast_)/(dt + 1.0e-03), &
+          (Velocity(iiLon,iiLat,iiAlt,iNorth_,iBlock)**2 + &
+          Velocity(iiLon,iiLat,iiAlt,iEast_,iBlock)**2) &
+          / (RBody + Altitude_GB(iiLon,iiLat,iiAlt,iBlock)), &
+          Coriolis * Velocity(iiLon,iiLat,iiAlt,iEast_,iBlock), &
+          GradientPressure(iiLon,iiLat,iiAlt,iBlock), &
+          SZA(iiLon,iiLat,iBlock)*180.0/pi, &
+          HorizontalAdvectionTemperature(iiLon,iiLat,iiAlt,iBlock)*86400.0
        enddo
     enddo
  enddo
-
 end subroutine output_3dthm
 
 !----------------------------------------------------------------
@@ -1402,37 +1440,62 @@ subroutine output_1dthm
  use ModInputs
  use ModSources
  use ModEuv, only : EuvTotal
+ use ModTime, only : iTimeArray
+ use ModVertical, only: Coriolis
  implicit none
 
- integer :: iAlt, iLat, iLon, iiAlt,iSpecies
+ integer :: iAlt, iLat, iLon, iiAlt,iSpecies, iiLon, iiLat, iBlock = 1
  real    :: varsS(nSpeciesTotal),varsL(nSpeciesTotal)
 
-
  do iAlt=-1,nAlts+2
+
+    
     iiAlt = max(min(iAlt,nAlts),1)
 
-    do iSpecies = 1, nSpeciesTotal 
-       varsS(iSpecies) = NeutralSourcesTotal(iialt,iSpecies)
-       varsL(iSpecies) = NeutralLossesTotal(iialt,iSpecies)
-    enddo
-
+    iiLon = 1
+    iiLat = 1
+    iLon = 1
+    iLat = 1
     write(iOutputUnit_) &
-         Longitude(1,1),               &
-         Latitude(1,1),                &
-         Altitude_GB(1,1,iAlt,1),   &
-         EuvHeating(1,1,iiAlt,1)*dt*TempUnit(1,1,iiAlt),    &
-         Conduction(1,1,iiAlt)*TempUnit(1,1,iiAlt),              &
-         MoleConduction(1,1,iiAlt),                             &
-         EddyCond(1,1,iiAlt),                                   &
-         EddyCondAdia(1,1,iiAlt),                               &
-         ChemicalHeatingRate(1,1,iiAlt)*TempUnit(1,1,iiAlt),     &
-         AuroralHeating(1,1,iiAlt)*dt*TempUnit(1,1,iiAlt),       &
-         JouleHeating(1,1,iiAlt)*dt*TempUnit(1,1,iiAlt),         &
-         -RadCooling(1,1,iiAlt,1)*dt*TempUnit(1,1,iiAlt),           &
-         -OCooling(1,1,iiAlt)*dt*TempUnit(1,1,iiAlt),            &
-         EuvTotal(1,1,iiAlt,1) * dt,                             &
-         varsS, varsL
-
+    Longitude(iiLon,iBlock),               &
+          Latitude(iiLat,iBlock),                &
+          Altitude_GB(iiLon,iiLat,iAlt,iBlock),   &
+          ! I have added rho and cp to the output files                                                  ! to allow us to quickly calculate the W/m^3 from the                                          ! K/s variables below
+          Rho(iLon,iLat,iAlt,iBlock),   &
+          cp(iLon,iLat,iAlt,iBlock),   &
+          EuvHeating(iiLon,iiLat,iiAlt,iBlock)*&
+          TempUnit(iiLon,iiLat,iiAlt)*86400.,  &
+          EuvHeating_bp(iiLon,iiLat,iiAlt,iBlock)*&
+          TempUnit(iiLon,iiLat,iiAlt)*86400.,  &
+          ! Conduction (need to divide by Dt for K/sol
+          Conduction(iiLon,iiLat,iiAlt)*TempUnit(iiLon,iiLat,iiAlt)/&
+            (Dt + 1.0e-03)*86400., &
+          ! RadCooling  ! Units of K/sol
+          -RadCooling(iiLon,iiLat,iiAlt,iBlock)*TempUnit(iiLon,iiLat,iiAlt)&
+          *86400., &
+          -RadCoolingRate_untouched(iiLon,iiLat,iiAlt,iBlock)*TempUnit(iiLon,iiLat,iiAlt)&
+          *86400., &
+          ! Near IR heating Heating  ! Units of K/sol
+          QnirTOT(iiLon, iiLat, iiAlt, iBlock)*TempUnit(iiLon,iiLat,iiAlt)*86400.0 , &
+          ChemicalHeatingRate(iiLon,iiLat,iiAlt)*TempUnit(iiLon,iiLat,iiAlt)* &
+          86400.0, &
+          DissociationHeatingRate(iiLon,iiLat,iiAlt,iBlock)* TempUnit(iiLon,iiLat,iiAlt)*&
+          86400.0, &
+          Pressure(iiLon,iiLat,iiAlt,iBlock), &
+          reactionrate(iiLon,iiLat,iiAlt,iBlock,1), &
+          reactionrate(iiLon,iiLat,iiAlt,iBlock,2), &
+          reactionrate(iiLon,iiLat,iiAlt,iBlock,3), &
+          reactionrate(iiLon,iiLat,iiAlt,iBlock,4), &
+          Viscosity(iiLon,iiLat,iiAlt, iEast_)/(Dt + 1.0e-03), &
+          Gravity_GB(iiLon,iiLat,iiAlt,iBlock), &
+          IonDrag(iiLon,iiLat,iiAlt,iEast_), &
+          GWAccel(iiLon,iiLat,iiAlt,iEast_)/(Dt + 1.0e-03), &
+          (Velocity(iiLon,iiLat,iiAlt,iNorth_,iBlock)**2 + &
+          Velocity(iiLon,iiLat,iiAlt,iEast_,iBlock)**2) &
+            / (RBody + Altitude_GB(iiLon,iiLat,iiAlt,iBlock)), &
+           Velocity(iiLon,iiLat,iiAlt,iEast_,iBlock), &
+          GradientPressure(iiLon,iiLat,iiAlt,iBlock) !does this need iblock?
+    
  enddo
 
 end subroutine output_1dthm
@@ -1482,7 +1545,7 @@ subroutine output_3dchm(iBlock)
   use ModInputs
   use ModSources
   use ModConstants
-  use ModChemistry, only: reactionrate
+  use ModChemistry
   implicit none
 
   integer, intent(in) :: iBlock
@@ -1490,7 +1553,6 @@ subroutine output_3dchm(iBlock)
   real :: vars(nReactions)
   integer :: nReactionsToTrack = 8
   
-  write(*,*) "Reaction rate 1 in output_common:", reactionrate(1)
   do iAlt=-1,nAlts+2
      iiAlt = max(min(iAlt,nAlts),1)
      do iLat=-1,nLats+2
@@ -1502,8 +1564,7 @@ subroutine output_3dchm(iBlock)
                 Longitude(iLon,iBlock),               &
                 Latitude(iLat,iBlock),                &
                 Altitude_GB(iLon,iLat,iAlt,iBlock),   &
-                (NDensityS(iLon,iLat,iAlt,i,iBlock),i=1,nSpeciesTotal), &
-                (reactionrate(i), i=1,nReactionsToTrack)
+                (NDensityS(iLon,iLat,iAlt,i,iBlock),i=1,nSpeciesTotal)
         enddo
      enddo
   enddo

@@ -17,11 +17,17 @@ subroutine calc_electron_temperature(iBlock)
                                                 - 98.078)**2. + &
                                                 8.5257*Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0*1.0E-04)
         else
-          eTemperature(iLon,iLat,iAlt,iBlock) = Temperature(iLon,iLat,iAlt,iBlock)*TempUnit(iLon,iLat,iAlt)
+           if (Temperature(iLon,iLat,iAlt,iBlock)*TempUnit(iLon,iLat,iAlt) > 5000) then !this is weird...
+              eTemperature(iLon,iLat,iAlt,iBlock) = 500
+           else
+              eTemperature(iLon,iLat,iAlt,iBlock) = Temperature(iLon,iLat,iAlt,iBlock)*TempUnit(iLon,iLat,iAlt)
+           endif
+           
         endif
       enddo
     enddo
   enddo
+
 end subroutine calc_electron_temperature
 
 

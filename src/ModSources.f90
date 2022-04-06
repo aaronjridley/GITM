@@ -31,6 +31,8 @@ module ModSources
   real, allocatable :: PhotoElectronHeating(:,:,:,:)
   real, allocatable :: RadCooling(:,:,:,:)
   real, allocatable :: RadCoolingRate(:,:,:,:)
+  real, allocatable :: RadCoolingRate_untouched(:,:,:,:)
+  
   real, allocatable :: RadCoolingErgs(:,:,:,:)
   real, allocatable :: EuvHeatingErgs(:,:,:,:)
   real, allocatable :: LowAtmosRadRate(:,:,:,:)
@@ -40,7 +42,8 @@ module ModSources
   real, allocatable :: QnirTOT(:,:,:,:)
   real, allocatable :: QnirLTE(:,:,:,:)
   real, allocatable :: CirLTE(:,:,:,:)
-
+  real, allocatable :: GradientPressure(:,:,:,:)
+  real, allocatable :: HorizontalAdvectionTemperature(:,:,:,:)
   real(kind=8), allocatable :: eHeatingp(:,:,:)
   real(kind=8), allocatable :: iHeatingp(:,:,:)
   real(kind=8), allocatable :: eHeatingm(:,:,:)
@@ -55,7 +58,7 @@ module ModSources
 
   !BP
   real, dimension(40,11) :: qIR_table
-  
+
   !\
   ! Reactions used in chemistry output
   ! i.e. in2p_e -->  n2+ + e
@@ -143,6 +146,7 @@ contains
     allocate(PhotoElectronHeating(nLons, nLats, nAlts,nBlocks))
     allocate(RadCooling(nLons, nLats, nAlts,nBlocks))
     allocate(RadCoolingRate(nLons, nLats, nAlts,nBlocks))
+    allocate(RadCoolingRate_untouched(nLons, nLats, nAlts,nBlocks))
     allocate(RadCoolingErgs(nLons, nLats, nAlts,nBlocks))
     allocate(EuvHeatingErgs(nLons, nLats, nAlts,nBlocks))
     allocate(LowAtmosRadRate(nLons, nLats, nAlts,nBlocks))
@@ -158,7 +162,8 @@ contains
     allocate(IonPrecipHeatingRate(nLons,nLats,nAlts,nBlocks))
     allocate(KappaEddyDiffusion(nLons,nLats,-1:nAlts+2,nBlocks))
     allocate(DissociationHeatingRate(nLons, nLats, nAlts,nBlocks))
-
+    allocate(GradientPressure(nLons,nLats,nAlts,nBlocks))
+    allocate(HorizontalAdvectionTemperature(nLons,nLats,nAlts,nBlocks))
     allocate(eHeatingp(0:nLons+1,0:nLats+1,0:nAlts+1))
     allocate(iHeatingp(0:nLons+1,0:nLats+1,0:nAlts+1))
     allocate(eHeatingm(0:nLons+1,0:nLats+1,0:nAlts+1))
@@ -167,6 +172,7 @@ contains
     allocate(lame(0:nLons+1,0:nLats+1,0:nAlts+1))
     allocate(lami(0:nLons+1,0:nLats+1,0:nAlts+1))
 
+    EuvHeating = 0.0
   end subroutine init_mod_sources
   !=========================================================================
   subroutine clean_mod_sources
@@ -174,10 +180,12 @@ contains
 
     if(.not.allocated(EuvHeating)) RETURN
     deallocate(EuvHeating)
+    deallocate(EuvHeating_bp)
     deallocate(eEuvHeating)
     deallocate(PhotoElectronHeating)
     deallocate(RadCooling)
     deallocate(RadCoolingRate)
+    deallocate(RadCoolingRate_untouched)
     deallocate(RadCoolingErgs)
     deallocate(EuvHeatingErgs)
     deallocate(LowAtmosRadRate)
@@ -193,6 +201,8 @@ contains
     deallocate(IonPrecipHeatingRate)
     deallocate(KappaEddyDiffusion)
     deallocate(DissociationHeatingRate)
+    deallocate(GradientPressure)
+    deallocate(HorizontalAdvectionTemperature)
   end subroutine clean_mod_sources
   !=========================================================================
 end module ModSources

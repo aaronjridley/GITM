@@ -405,10 +405,16 @@ subroutine initialize_gitm(TimeIn)
      else
         if (IsEarth .or. IsVenus) then
            do iBlock = 1, nBlocks
-              IDensityS(:,:,:,:,iBlock)    = 1.00e8
-              IDensityS(:,:,:,ie_,iBlock)  = 1.00e8*(nIons-1)
+              if (IsEarth) then
+                IDensityS(:,:,:,:,iBlock)    = 1.0
+                IDensityS(:,:,:,ie_,iBlock)  = 1.0*(nIons-1)
+
+              elseif (IsVenus) then
+                IDensityS(:,:,:,:,iBlock) = 1.0e-24
+                IDensityS(:,:,:,ie_,iBlock) = 1.0*(nIons-1)
+              endif
            enddo
-        endif
+        endif 
      endif
 
   endif

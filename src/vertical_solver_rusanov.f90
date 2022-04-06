@@ -68,7 +68,7 @@ subroutine advance_vertical_1d_rusanov
   real :: DtOriginal
 
   real :: OldBCINS(2,1:nIons)
-
+  
   if (UseBarriers) call MPI_BARRIER(iCommGITM,iError)
   if (iDebugLevel > 6) write(*,*) "=======> vertical bcs 1", iproc
 
@@ -136,7 +136,7 @@ subroutine advance_vertical_1d_rusanov
 
   !!! Now Calculate the Next Update Stage
   !!! We need Y(Updated) = Y(n) + 0.5*K1
-
+   
    UpdatedVel_GD(-1:nAlts+2,1:3) = &
       OrigVel_GD(-1:nAlts+2,1:3) + &
         0.5*K1Vel_GD(-1:nAlts+2,1:3) 
@@ -180,7 +180,6 @@ subroutine advance_vertical_1d_rusanov
   NewVertVel = VertVel
 
 !!!!! Calculate K2
-
   call advance_vertical_1stage(&
        LogRho, LogNS, Vel_GD, Temp, NewLogRho, NewLogNS, NewVel_GD, NewTemp, &
        LogINS, NewLogINS, IVel, VertVel, NewVertVel)
@@ -224,12 +223,11 @@ subroutine advance_vertical_1d_rusanov
 
      UpdatedTemp(-1:nAlts+2) = &
         OrigTemp(-1:nAlts+2) + &
-     0.5*K2Temp(-1:nAlts+2) 
-
+        0.5*K2Temp(-1:nAlts+2)
+     
        UpdatedVS(-1:nAlts+2,1:nSpecies) = &
           OrigVS(-1:nAlts+2,1:nSpecies)   + &
         0.5*K2VS(-1:nAlts+2,1:nSpecies) 
-
 
 !! Update Boundary Conditions
   call set_vertical_bcs(UpdatedLogRho, UpdatedLogNS, UpdatedVel_GD, &
@@ -301,6 +299,7 @@ subroutine advance_vertical_1d_rusanov
           OrigVS(-1:nAlts+2,1:nSpecies)   + &
             K3VS(-1:nAlts+2,1:nSpecies) 
 
+
 !!!! Update Boundary Conditions
   call set_vertical_bcs(UpdatedLogRho, UpdatedLogNS, UpdatedVel_GD, &
                           UpdatedTemp, UpdatedLogINS, IVel, UpdatedVS)
@@ -368,7 +367,6 @@ subroutine advance_vertical_1d_rusanov
                           FinalTemp, FinalLogINS, IVel, FinalVS)
 
 !!! Set the Updated State:  Stage 2
-
    LogNS = FinalLogNS
   LogINS = FinalLogINS
   LogRho = FinalLogRho

@@ -36,7 +36,7 @@ module ModEUV
     character(len = 4) :: waveStr
     real :: multiplicationFactor
     character(len = 9) :: unitStr
-    real, dimension(59) :: data
+    real, dimension(63) :: data
  END TYPE wavelengthRow
 
  TYPE :: crossSectionRow
@@ -45,7 +45,7 @@ module ModEUV
     character(len = 3) :: reactionType
     real :: multiplicationFactor
     character(len = 2) :: unitStr
-    real, dimension(59) :: crossSection
+    real, dimension(63) :: crossSection
   END TYPE crossSectionRow
 
   TYPE(wavelengthRow) :: firstLine
@@ -91,18 +91,23 @@ module ModEUV
   !
   !
 
-  real :: photoion(Num_WaveLengths_High, nIons-1)
-  real :: PhotoElecIon(Num_WaveLengths_High, nIons-1)
+  !real :: photoion(Num_WaveLengths_High, nIons-1)
+  real :: photoion(63, nIons-1)
+  !real :: PhotoElecIon(Num_WaveLengths_High, nIons-1)
+  real :: PhotoElecIon(63, nIons-1)
   integer :: PhotoIonFrom(nIons-1)
-  real :: photoabs(Num_WaveLengths_High, nSpeciesTotal)
+  !real :: photoabs(Num_WaveLengths_High, nSpeciesTotal)
+  real :: photoabs(63, nSpeciesTotal)
   !BP
-  real :: photoAbsorptionCrossSection(59,nSpeciesTotal)
-  real :: photoIonizationCrossSection(59,nIons-1)
-  real :: photoDissociationCrossSection(59,nSpeciesTotal)
+  real :: photoAbsorptionCrossSection(63,nSpeciesTotal)
+  real :: photoIonizationCrossSection(63,nIons-1)
+  real :: photoDissociationCrossSection(63,nSpeciesTotal)
 
   
-  real :: photodis(Num_WaveLengths_High, nSpeciesTotal)
-  real :: PhotoElecDiss(Num_WaveLengths_High, nSpecies)
+  !real :: photodis(Num_WaveLengths_High, nSpeciesTotal)
+  real :: photodis(63, nSpeciesTotal)
+  !real :: PhotoElecDiss(Num_WaveLengths_High, nSpecies)
+  real :: PhotoElecDiss(63, nSpecies)
 
 !  integer, parameter :: nEUVMax = 25
 !  integer :: nEUVion, nEUVdis, nPhotoEion, nPhotoEdis
@@ -1614,6 +1619,7 @@ contains
   
       read(UnitTmp_,*) firstLineString, nWavelengths
       close(UnitTmp_)
+      
     endif
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -1657,6 +1663,7 @@ contains
     allocate(photoIonCrossSection_CO2_CO2P(nWavelengths))
     allocate(photoIonCrossSection_CO_COP(nWavelengths))
     
+    call read_euv_csv
   end subroutine init_mod_euv
   !=========================================================================
   subroutine clean_mod_euv
@@ -1716,7 +1723,7 @@ contains
     !if energy required to dissociate non-dissociatable things
     !like O or N were 0 then excess energy would be put into those
     !and that doesn't make sense
-    energyRequired(:) = 10**40
+    energyRequired(:) = 10**80
     
     do iSpecies = 1, nSpecies
        !loop through all the species that photodissociate
@@ -1884,7 +1891,7 @@ subroutine read_euv_csv
   !All the data is read now. Start filling in the correct variables
   shortWavelengths = firstLine%data * 1E-10 !meters
   longWavelengths  = secondLine%data * 1E-10 !meters
-
+  
   !Gets read, but only used if using EUVAC
   f74113_bp        = thirdLine%data * thirdLine%multiplicationFactor !modified reference flux
      
@@ -1925,6 +1932,8 @@ subroutine read_euv_csv
   photoDissociationCrossSection(:,iCO2_) = &
        photoAbsorptionCrossSection(:,iCO2_)  - &
        photoIonizationCrossSection(:,iCO2P_)
+  photoDissociationCrossSection(63,iCO2_) = 0.0
+
 
   photoDissociationCrossSection(:,iCO_) = &
        photoAbsorptionCrossSection(:,iCO_)  - &
@@ -1945,6 +1954,10 @@ subroutine read_euv_csv
   photoDissociationCrossSection(:,iAr_) = 0.0
   photoDissociationCrossSection(:,iN4S_) = 0.0
   
+  where (photoDissociationCrossSection < 0.0)
+    photoDissociationCrossSection = 0.0
+  endwhere 
+
   close(UnitTmp_)
 
   !Write fluxes to a file and stop code

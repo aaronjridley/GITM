@@ -500,6 +500,33 @@ subroutine set_inputs
               IsDone = .true.
            endif
 
+       case ("#HORIZONTALVELOCITYBC")
+         call read_in_real(HorizontalVelocityBC, iError)
+         if (iError /= 0) then
+              write(*,*) 'Incorrect format for #HORIZONTALVELOCITYBC:'
+              write(*,*) 'If you are running for anything except Venus. Remove this '
+              write(*,*) 'from your UAM.in. You do not need it. This is setting the '
+              write(*,*) 'cloud-top (~70 km, bottom boundary) East/West boundary condition.'
+              write(*,*) 'Consider making this a negative number, since the '
+              write(*,*) 'RSZ flow is westard'
+              write(*,*) '#HORIZONTALVELOCITYBC'
+              write(*,*) 'HorizontalVelocityBC  (real)'
+              IsDone = .true.
+         endif
+
+        case ("#USENIGHTSIDEIONS")
+         call read_in_logical(useNightsideIons, iError)
+         if (iError /= 0) then
+              write(*,*) 'Incorrect format for #USENIGHTSIDEIONS:'
+              write(*,*) 'If you are running for anything except Venus. Remove this '
+              write(*,*) 'from your UAM.in. You do not need it. This is adding O+ to '
+              write(*,*) 'the top of the model on the nightside. '
+              write(*,*) '#USENIGHTSIDEIONS'
+              write(*,*) 'useNightsideIons  (logical)'
+              IsDone = .true.
+         endif
+
+
         case ("#FIXEDDT")
            call read_in_real(fixeddt, iError)
            if (iError /= 0) then
@@ -1571,7 +1598,7 @@ subroutine set_inputs
               write(*,*) 'UseEUVData            (logical)'
               write(*,*) 'cEUVFile              (string)'
            endif
-
+ 
         case ("#ECLIPSE")
            IncludeEclipse = .true.
            call read_in_time(EclipseStartTime, iError)
@@ -1725,6 +1752,20 @@ subroutine set_inputs
            else
               UseVariableInputs = .true.
            endif
+
+        case ("#IR_HEATING")
+          call read_in_real(p_0,iError)
+          call read_in_real(p_1,iError)
+          call read_in_real(b_exponent,iError)
+          call read_in_real(QnirTOT_0,iError)
+          QnirTOT_0 = QnirTOT_0/86400.0
+
+          if (iError /= 0) then
+            write(*,*) "Error reading #IR_HEATING in UAM.in"
+            write(*,*) "Order is p_0, p_1, b, Q0"
+            IsDone = .true.
+          endif
+          
 
         case ("#END")
            IsDone = .true.

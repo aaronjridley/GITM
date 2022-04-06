@@ -52,6 +52,7 @@ module ModGITM
   real, allocatable :: Temperature(:,:,:,:)
   real, allocatable :: Pressure(:,:,:,:)
   real, allocatable :: NDensity(:,:,:,:)
+  real, allocatable :: reactionrate(:,:,:,:,:)
   real, allocatable :: eTemperature(:,:,:,:)
   real, allocatable :: ITemperature(:,:,:,:)
   real, allocatable :: IPressure(:,:,:,:)
@@ -65,6 +66,7 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
   real, allocatable :: VerticalVelocity(:,:,:,:,:)
 
   real, allocatable :: NDensityS(:,:,:,:,:)
+  real, allocatable :: NDensityS_start(:,:,:,:,:)
 
   real, allocatable :: IDensityS(:,:,:,:,:)
   real, allocatable :: IRIDensity(:,:,:,:,:)
@@ -122,7 +124,7 @@ real, allocatable :: SpeciesDensityOld(:,:,:,:,:)
   ! JMB:  07/13/2017
   ! 2nd Order Viscosity Terms
   real, dimension(1:nLons, 1:nLats, 0:nAlts+1, 3) :: &
-       Viscosity
+       Viscosity = 0.0
   ! Added this for the Vertical Winds.  Calculated in calc_sources
   ! and used in add_sources
   real, dimension(1:nLons, 1:nLats, 0:nAlts+1, 1:nSpecies) :: &
@@ -216,6 +218,8 @@ contains
        nSpecies, nBlocksMax))
     allocate(NDensityS(-1:nLons+2, -1:nLats+2, -1:nAlts+2, &
        nSpeciesTotal, nBlocksMax))
+    allocate(NDensityS_start(-1:nLons+2, -1:nLats+2, -1:nAlts+2, &
+       nSpeciesTotal, nBlocksMax))
     allocate(IDensityS(-1:nLons+2, -1:nLats+2, -1:nAlts+2, &
        nIons, nBlocksMax))
     allocate(IRIDensity(-1:nLons+2, -1:nLats+2, -1:nAlts+2, &
@@ -254,6 +258,7 @@ contains
     allocate(PhotoEFluxU(nLons,nLats,nAlts,nPhotoBins,nBlocks))
     allocate(PhotoEFluxD(nLons,nLats,nAlts,nPhotoBins,nBlocks))
     allocate(PhotoEFluxTotal(nLons,nLats,nAlts,nBlocks,2))
+    allocate(reactionrate(nLons,nLats,nAlts,nBlocks,4))
   end subroutine init_mod_gitm
   !=========================================================================
   subroutine clean_mod_gitm
@@ -290,6 +295,7 @@ contains
     deallocate(LogNS)
     deallocate(VerticalVelocity)
     deallocate(NDensityS)
+    deallocate(ndensitys_start)
     deallocate(IDensityS)
     deallocate(IRIDensity)
     deallocate(Gamma)
@@ -323,6 +329,7 @@ contains
     deallocate(PhotoEFluxU)
     deallocate(PhotoEFluxD)
     deallocate(PhotoEFluxTotal)
+    deallocate(reactionrate)
   end subroutine clean_mod_gitm
   !=========================================================================
 end module ModGITM

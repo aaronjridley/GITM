@@ -10,6 +10,16 @@ module ModInputs
 
   implicit none
 
+!  real :: p_0 = 1985 !for these 3 parameters, see Gilli et al.,2021                    
+  real :: p_0 = 2100 !testing new parameters
+  real :: p_1 = 0.1
+  real :: b_exponent =  1.362 !this one is actually in Gilli et al., 2016         
+
+  !real :: QnirTOT_0 = 15.92/86400.0 !K/day -> K/sec   
+!  real :: QnirTOT_0 = 17.0/86400.0 !testing new parameters
+  real ::  QnirTOT_0 = 17.0/86400.0
+
+
   logical :: iRhoOutputList=.true.
   logical :: iNeutralDensityOutputList(nSpeciesTotal)=.true.
   logical :: iNeutralWindOutputList(3)=.true.
@@ -18,6 +28,7 @@ module ModInputs
   logical :: iTemperatureOutputList(3)=.true.
 
   integer                   :: useDART = 0 !alexey, default is to not use DART
+  logical :: useNightsideIons = .False.
 
   integer, parameter        :: iCharLen_     = 400
 
@@ -154,7 +165,7 @@ module ModInputs
 
   logical :: UseTopography = .false.
   real :: AltMinUniform = 0.0
-  real :: AltMinIono=80.0 ! in km
+  real :: AltMinIono=70.0 ! in km
 
   real :: TempMax = 1000.0
   real :: TempMin =  200.0
@@ -311,7 +322,6 @@ module ModInputs
   ! AGB: Setting physical limits for ionospheric dynamics
   real :: MaxVParallel = 100.0         
   real :: MaxEField = 0.1
-
   !\
   ! Methods for completing chemistry
   !/
@@ -386,6 +396,9 @@ module ModInputs
   real, dimension(7) :: Ls_a
   real, dimension(7) :: Ls_tau
   real, dimension(7) :: Ls_phi
+
+  real :: HorizontalVelocityBC = -100.0 !This is for Venus. Cloud top (70 km) EW wind BC.
+                                        !Negative is needed for westward flow.
 	  
   DATA Ls_a / 0.007, 0.006, 0.004, 0.004, 0.002, 0.002, 0.002 /
   DATA Ls_tau / 2.2353, 2.7543, 1.1177, 15.7866, 2.1354, 2.4694, 32.8493 /

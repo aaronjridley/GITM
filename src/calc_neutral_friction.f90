@@ -46,7 +46,7 @@ subroutine calc_neutral_friction(DtIn,oVel, EddyCoef_1d, NDensity_1d, NDensityS_
 
   do iAlt = 1, nAlts
 
-     Vel = oVel(iAlt,1:nSpecies)
+     Vel= oVel(iAlt,1:nSpecies)
      CoefMatrix = 0.0
 
      mms = 0.0
@@ -76,7 +76,8 @@ subroutine calc_neutral_friction(DtIn,oVel, EddyCoef_1d, NDensity_1d, NDensityS_
            ! (2) Additionally, the Dij's are in cm^2/s, thus the 1.0e-04 factor
            TempDij = (1.0e-04)*&              ! Scales the Dij from cm^2/s -> m^2/s
               (   Diff0(iSpecies,jSpecies)*( Temp(iAlt)**DiffExp(iSpecies,jSpecies) )   ) / &
-              (   NDensity_1d(iAlt)*(1.0e-06) )     ! Converts to #/cm^-3
+              (   NDensity_1d(iAlt))     ! BP: Removing incorrect conversion
+                                          !     to cm3
 
            CoefMatrix(iSpecies, jSpecies) = &
                 kTOverM * denscale * NDensityS_1d(iAlt, jSpecies) / &

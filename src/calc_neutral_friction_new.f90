@@ -113,7 +113,8 @@ subroutine calc_neutral_friction(oVel, EddyCoef_1d, NDensity_1d, NDensityS_1d, &
               TempDij = (1.0e-04) * &       ! Scales the Dij from cm^2/s -> m^2/s
                    (Diff0(iSpecies,jSpecies)*&
                    (Temp(iAlt)**DiffExp(iSpecies,jSpecies) )   ) / &
-                   ( NDensity_1d(iAlt)*(1.0e-06) )     ! Converts to #/cm^-3
+                   ( NDensity_1d(iAlt) )     ! Removing incorrect conversion to
+                                             ! cm3
 
               if ( UseBoquehoAndBlelly) then
                  CoefMatrix(iSpecies, jSpecies) = &

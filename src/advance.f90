@@ -25,9 +25,11 @@ subroutine advance
   implicit none
 
   integer, external :: jday
-
-  integer :: iBlock, iAlt, iLat, iLon,ispecies, iError
+  
+  integer :: iBlock, iAlt, iLat, iLon,ispecies, iError, iiAlt
   real*8 :: DTime
+  real :: dummyVar
+
 
   if(RCMRFlag) then
      if(RCMROutType == 'F107') then
@@ -51,12 +53,15 @@ subroutine advance
   if (UsePerturbation) call user_perturbation
 
   if (.not. UseStatisticalModelsOnly) then
+     !write(*,*) "IDensityS before:", IDensityS(1,1,-1,ie_,1)
 
      call advance_vertical_all
+     !write(*,*) "IDensityS after:", IDensityS(1,1,-1,ie_,1)
      if (DoCheckForNans) then
         call check_for_nans_ions("After Vertical")
         call check_for_nans_neutrals("After Vertical")
         call check_for_nans_temps("After Vertical")
+        !call check_for_nans_euv("After Vertical")
      endif
      call add_sources 
      if (DoCheckForNans) then
@@ -71,6 +76,9 @@ subroutine advance
         call check_for_nans_temps("After Horizontal")
      endif
 
+  
+
+  !!!!!!!!!!delete all this above when done !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   else
 
      Dt = DtStatisticalModels

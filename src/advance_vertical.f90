@@ -68,9 +68,11 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   !!!! CHANGE !!!!
 
   Temp    = Temperature(iLon,iLat,:,iBlock)*TempUnit(iLon,iLat,:)
-  do iSpecies = 1, nSpecies 
-     LogNS1(:,iSpecies)  = log(NDensityS(iLon,iLat,:,iSpecies,iBlock))
-     VertVel(:,iSpecies) = VerticalVelocity(iLon,iLat,:,iSpecies,iBlock)
+  do iSpecies = 1, nSpecies
+     !if (iSpecies .ne. iO_) then
+       LogNS1(:,iSpecies)  = log(NDensityS(iLon,iLat,:,iSpecies,iBlock))
+       VertVel(:,iSpecies) = VerticalVelocity(iLon,iLat,:,iSpecies,iBlock)
+     !endif
   enddo
 
   cMax1   = cMax_GDB(iLon,iLat,:,iUp_,iBlock)
@@ -78,7 +80,8 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   do iDim = 1, 3 
      IVel(:,iDim) = IVelocity(iLon,iLat,:,iDim,iBlock)
   enddo
-
+  
+  !write(*,*) "1", IDensityS(1,1,-1,ie_,iBlock)
   do iSpecies = 1, nIons-1 !Advect
      if (UseImprovedIonAdVection) then
         LogINS(:,iSpecies)  = IDensityS(iLon,iLat,:,iSpecies,iBlock)
@@ -86,7 +89,8 @@ subroutine advance_vertical(iLon,iLat,iBlock)
         LogINS(:,iSpecies)  = log(IDensityS(iLon,iLat,:,iSpecies,iBlock))
      endif
   enddo
-
+   
+  !write(*,*) "2", IDensityS(1,1,-1,ie_,iBlock)
   MeanMajorMass_1d = MeanMajorMass(iLon,iLat,:)
   gamma_1d=gamma(ilon,ilat,:,iBlock)     
 
@@ -110,18 +114,24 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   SpeciesDensityOld(iLon,iLat,:,1:nSpeciesTotal,iBlock) = NDensityS(iLon,iLat,:,:,iBlock)
   SpeciesDensityOld(iLon,iLat,:,nSpeciesTotal+1:nSpeciesAll,iBlock) = &
        IDensityS(iLon,iLat,:,1:nIons-1,iBlock)
-
   
+  !if (iLon .eq. 3 .and. iLat .eq. 4 .and. iProc .eq. 1) then
+  !  write(*,*) "Pre-solver iDensityS", IDensityS(iLon,iLat,iAlt,2,1)
+  !  write(*,*) "Pre-solver LogINS", LogINS(45:52,2)
+  !endif
 ! Old Version
  ! call advance_vertical_1d
-
   if (UseAUSMSolver) then
      call advance_vertical_1d_ausm
   else
      ! Default case
      call advance_vertical_1d_rusanov
   endif
-  
+
+  !if (iLon .eq. 3 .and. iLat .eq. 4 .and. iProc .eq. 1) then
+  !  write(*,*) "Post-solver iDensityS", IDensityS(iLon,iLat,iAlt,2,1)
+  !  write(*,*) "Post-solver LogINS", LogINS(45:52,2)
+  !endif
 
    Rho(iLon,iLat,:,iBlock)                  = exp(LogRho)
 
@@ -132,22 +142,31 @@ subroutine advance_vertical(iLon,iLat,iBlock)
   !!!! CHANGE !!!!
   Temperature(iLon,iLat,:,iBlock)          = Temp/TempUnit(iLon,iLat,:)
 
-  do iSpecies = 1, nSpecies 
-     LogNS(iLon,iLat,:,iSpecies,iBlock)              = LogNS1(:,iSpecies)
-     VerticalVelocity(iLon,iLat,:,iSpecies,iBlock) = VertVel(:,iSpecies)
+  do iSpecies = 1, nSpecies
+     !if (iSpecies .ne. iO_) then
+       LogNS(iLon,iLat,:,iSpecies,iBlock)              = LogNS1(:,iSpecies)
+       VerticalVelocity(iLon,iLat,:,iSpecies,iBlock) = VertVel(:,iSpecies)
+     !endif
   enddo
 
-  do iSpecies = nSpecies+1, nSpecies 
-     LogNS(iLon,iLat,:,iSpecies,iBlock)              = LogNS1(:,iSpecies)
+  do iSpecies = nSpecies+1, nSpecies
+     !if (iSpecies .ne. iO_) then
+        LogNS(iLon,iLat,:,iSpecies,iBlock)              = LogNS1(:,iSpecies)
+     !endif
+     
   enddo
 
   nDensity(iLon,iLat,:,iBlock) = 0.0
   do iSpecies = 1, nSpecies
-     nDensityS(iLon,iLat,:,iSpecies,iBlock) = exp(LogNS1(:,iSpecies))
-     nDensity(iLon,iLat,:,iBlock) = nDensity(iLon,iLat,:,iBlock) + &
-          nDensityS(iLon,iLat,:,iSpecies,iBlock)
+     !if (iSpecies .ne. iO_) then
+       nDensityS(iLon,iLat,:,iSpecies,iBlock) = exp(LogNS1(:,iSpecies))
+       nDensity(iLon,iLat,:,iBlock) = nDensity(iLon,iLat,:,iBlock) + &
+            nDensityS(iLon,iLat,:,iSpecies,iBlock)
+     !endif
+    
   enddo
 
+  
   if (UseIonAdvection) then
 
      do iIon = 1, nIons-1 !Advect
@@ -155,21 +174,28 @@ subroutine advance_vertical(iLon,iLat,iBlock)
            IDensityS(iLon,iLat,:,iIon,iBlock) = LogINS(:,iIon)
            ! Put in a floor on ion densities....
            do iAlt = 1,nAlts
-              if (IDensityS(iLon,iLat,iAlt,iIon,iBlock) < 1) then
-                 IDensityS(iLon,iLat,iAlt,iIon,iBlock) = 1.0
+              if (IDensityS(iLon,iLat,iAlt,iIon,iBlock) < 1.0e-24) then
+                 IDensityS(iLon,iLat,iAlt,iIon,iBlock) = 1.0e-24
               endif
            enddo
         else
            IDensityS(iLon,iLat,:,iIon,iBlock) = exp(LogINS(:,iIon))
+           do iAlt = 1,nAlts
+              if (IDensityS(iLon,iLat,iAlt,iIon,iBlock) < 1.0e-24) then
+                 IDensityS(iLon,iLat,iAlt,iIon,iBlock) = 1.0e-24
+              endif
+           enddo
            ! Put in a floor on ion densities....
-           IDensityS(iLon,iLat,nAlts+2,iO2P_,iBlock) = 1.0
+           !IDensityS(iLon,iLat,nAlts+2,iIon,iBlock) = 1.0e-24
         endif
      enddo
 
      !\
      ! New Electron Density
      !/
+     !if (iLon .eq. 1 .and. iLon .eq. 1) then
      IDensityS(iLon,iLat,:,ie_,iBlock) = 0.0
+     !endif
      do iIon = 1, nIons-1
         IDensityS(iLon,iLat,:,ie_,iBlock) = &
              IDensityS(iLon,iLat,:,ie_,iBlock) + &

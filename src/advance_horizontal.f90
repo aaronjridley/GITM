@@ -7,7 +7,8 @@ subroutine advance_horizontal(iBlock)
   use ModPlanet, only : nSpecies, nIonsAdvect
   use ModGITM
   use ModInputs
-  use ModSources, only : HorizontalTempSource
+  use ModSources, only : HorizontalTempSource, GradientPressure, &
+                         HorizontalAdvectionTemperature
   
   implicit none
 
@@ -35,6 +36,9 @@ subroutine advance_horizontal(iBlock)
   real :: NewVertVel_CV(nLons,nLats, nSpecies)
   real :: NewINum_CV(nLons,nLats, nIonsAdvect)
 
+  !BP: Need a variable here to let it return
+  real :: GradientPressureAtSomeAltitude(nLons,nLats)
+  real :: HorizontalGradientTemperatureAtSomeAltitude(nLons,nLats)
   ! Vertical derivative of current variable (needed for topography only)
   real :: dVarDAlt_C(nLons,nLats) 
 
@@ -117,7 +121,18 @@ subroutine advance_horizontal(iBlock)
 
 !!! 1st Update Step
      call horizontal_solver
+     !BP: Add 1/6 k1
+     GradientPressure(1:nLons,1:nLats,iAlt,iBlock) = 0.0
+     HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) = 0.0
+
+     GradientPressure(1:nLons, 1:nLats,iAlt,iBlock) = &
+       GradientPressure(1:nLons,1:nLats,iAlt,iBlock) + &
+       (1.0/6.0)*GradientPressureAtSomeAltitude(1:nLons,1:nLats)
      
+     HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) = &
+        HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) + &
+        (1.0/6.0)*HorizontalGradientTemperatureAtSomeAltitude(1:nLons,1:nLats)
+
      K1Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
      K1Vel_CD     = NewVel_CD(1:nLons,1:nLats,1:3) - &
                    Vel_CD(1:nLons,1:nLats,1:3)
@@ -160,6 +175,15 @@ subroutine advance_horizontal(iBlock)
 !!! 2nd Update Step
      call horizontal_solver
      
+     !BP: Add 2/6 k2
+     GradientPressure(1:nLons, 1:nLats,iAlt,iBlock) = &
+       GradientPressure(1:nLons,1:nLats,iAlt,iBlock) + &
+       (2.0/6.0)*GradientPressureAtSomeAltitude(1:nLons,1:nLats)
+
+     HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) = &
+        HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) + &
+        (2.0/6.0)*HorizontalGradientTemperatureAtSomeAltitude(1:nLons,1:nLats)
+
      K2Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
      K2Vel_CD     = NewVel_CD(1:nLons,1:nLats,1:3) - &
                    Vel_CD(1:nLons,1:nLats,1:3)
@@ -202,7 +226,16 @@ subroutine advance_horizontal(iBlock)
 
 !!! 3rd Update Step
      call horizontal_solver
+
+     !BP: Add 2/6 k3                           
+     GradientPressure(1:nLons, 1:nLats,iAlt,iBlock) = &
+       GradientPressure(1:nLons,1:nLats,iAlt,iBlock) + &
+       (2.0/6.0)*GradientPressureAtSomeAltitude(1:nLons,1:nLats)
      
+     HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) = &
+        HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) + &
+        (2.0/6.0)*HorizontalGradientTemperatureAtSomeAltitude(1:nLons,1:nLats)
+    
      K3Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
      K3Vel_CD     = NewVel_CD(1:nLons,1:nLats,1:3) - &
                    Vel_CD(1:nLons,1:nLats,1:3)
@@ -248,6 +281,15 @@ subroutine advance_horizontal(iBlock)
      K4Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
      K4Vel_CD     = NewVel_CD(1:nLons,1:nLats,1:3) - &
                    Vel_CD(1:nLons,1:nLats,1:3)
+     !BP: Add 1/6 k4
+     GradientPressure(1:nLons, 1:nLats,iAlt,iBlock) = &
+       GradientPressure(1:nLons,1:nLats,iAlt,iBlock) + &
+       (1.0/6.0)*GradientPressureAtSomeAltitude(1:nLons,1:nLats)
+ 
+     HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) = &
+        HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) + &
+        (1.0/6.0)*HorizontalGradientTemperatureAtSomeAltitude(1:nLons,1:nLats)
+
      K4Num_CV     = NewNum_CV(1:nLons,1:nLats,1:nSpecies) - &
                    Num_CV(1:nLons,1:nLats,1:nSpecies)
      K4VertVel_CV = NewVertVel_CV(1:nLons,1:nLats,1:nSpecies) - &
@@ -336,18 +378,18 @@ subroutine advance_horizontal(iBlock)
 
      if (UseIonAdvection) then
 
-        if (minval(NewINum_CV) < 1.0e2) then
+        if (minval(NewINum_CV) < 1.0e-24) then
 !           write(*,*) "Negative Ion Density after horizontal advection!!"
 !           write(*,*) "Correcting...."
            do iLon = 1, nLons
               do iLat = 1, nLats
                  do iIon = 1, nIonsAdvect
-                    if (NewINum_CV(iLon, iLat, iIon) < 1.0e2) then
+                    if (NewINum_CV(iLon, iLat, iIon) < 1.0e-24) then
 !                       write(*,*) "Location : ", &
 !                            Longitude(iLon,iBlock)*180/pi, &
 !                            Latitude(iLon,iBlock)*180/pi, &
 !                            Altitude(iAlt)/1000.0, iIon
-                       NewINum_CV(iLon, iLat, iIon) = 1.0e2
+                       NewINum_CV(iLon, iLat, iIon) = 1.0e-24
                     endif
                  enddo
               enddo
@@ -592,6 +634,10 @@ contains
                + Dt * (&
                DiffLonVel_CD(iLon,iLat,iEast_)+DiffLatVel_CD(iLon,iLat,iEast_))
 
+          !BP: Gradient Pressure                                                              
+           GradientPressureAtSomeAltitude(iLon,iLat) = -(GradLonTemp_C(iLon,iLat) + &
+               GradLonRho_C(iLon,iLat)*Temp_C(iLon,iLat)/Rho_C(iLon,iLat))
+
 
           ! dv_theta/dt = -(V grad V + (1/rho) grad P)_theta
           ! (1/rho) grad p = grad T + T/rho grad rho 
@@ -648,14 +694,19 @@ contains
           endif
 
           ! dT/dt = -(V.grad T + (gamma - 1) T div V
-
+          !BP: This is the horizontal advection term we should move to output_common.f90
           NewTemp_C(iLon,iLat) = NewTemp_C(iLon,iLat) - Dt * ( &
                (gamma_c(iLon,iLat)-1) * Temp_C(iLon,iLat) &
                * DivVel_C(iLon,iLat) &
                + GradLatTemp_C(iLon,iLat)*Vel_CD(iLon,iLat,iNorth_) & 
                + GradLonTemp_C(iLon,iLat)*Vel_CD(iLon,iLat,iEast_)) & 
                + Dt * (DiffLonTemp_C(iLon,iLat)+DiffLatTemp_C(iLon,iLat))
-
+          HorizontalGradientTemperatureAtSomeAltitude(iLon,iLat) = - Dt * ( &
+               (gamma_c(iLon,iLat)-1) * Temp_C(iLon,iLat) &
+               * DivVel_C(iLon,iLat) &
+               + GradLatTemp_C(iLon,iLat)*Vel_CD(iLon,iLat,iNorth_) &
+               + GradLonTemp_C(iLon,iLat)*Vel_CD(iLon,iLat,iEast_)) &
+               + Dt * (DiffLonTemp_C(iLon,iLat)+DiffLatTemp_C(iLon,iLat))
        end do
     end do
 

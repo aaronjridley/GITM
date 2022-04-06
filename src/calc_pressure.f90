@@ -10,7 +10,7 @@ subroutine calc_pressure
 
   implicit none
 
-  integer :: iSpecies, iBlock, iAlt
+  integer :: iSpecies, iBlock, iAlt, iLon, iLat
 
   call report("calc_pressure",2)
 
@@ -21,9 +21,23 @@ subroutine calc_pressure
   enddo
 
   Pressure    = Temperature * Rho
+  do iBlock = 1,nBlocks
+    do iLon = 1,nLons
+      do iLat = 1,nLats
+        do iAlt = 1,nAlts
+           if (Pressure(iLon,iLat,iAlt,iBlock) < 0.0) then
+              write(*,*) "Pressure: ", pressure(iLon,iLat,iAlt,iBlock)
+              write(*,*) "Temperature: ", temperature(iLon,iLat,iAlt,iBlock)
+              write(*,*) "Rho: ", Rho(iLon,iLat,iAlt,iBlock)
+              call stop_gitm("negative pressure found...calc_pressure.f90")
+           endif
+        enddo
+      enddo
+    enddo
+  enddo
 
   IPressure = 0.0
-  do iSpecies = 1, nIons-1
+  do iSpecies = 1, nIonsAdvect
      IPressure(:,:,:,1:nBlocks) = IPressure(:,:,:,1:nBlocks) + &
           IDensityS(:,:,:,iSpecies,1:nBlocks) * &
           Boltzmanns_Constant * ITemperature(:,:,:,1:nBlocks)

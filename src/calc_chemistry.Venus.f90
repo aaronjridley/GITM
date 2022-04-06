@@ -102,10 +102,29 @@ subroutine calc_chemistry(iBlock)
               ionlo = IonLosses(iIon)/(Ions(iIon)+1.0e-6)
               Ions(iIon) = (Ions(iIon) + ionso * DtSub) / &
                    (1 + DtSub * ionlo)
+
+              !BP: Set ions below 80 km to zero because it's building up somehow
+              !if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 < 81.0) then
+              !   Ions(iIon) = 1.0
+              !endif
+                 
               ! sum for e-
               Ions(ie_) = Ions(ie_) + Ions(iIon)
+
+              !if (Ions(ie_) > 1e15) then
+              !   write(*,*) "Electrons", Ions(ie_)
+              !   write(*,*) "iIon", iIon
+              !   write(*,*) "species: ", cIons(iIon)
+              !   write(*,*) "Ions(iIon): ", Ions(iIon)
+              !   write(*,*) "ionso", ionsources(iIon)
+              !   write(*,*) "ionlo", ionlosses(iIon)
+
+              !   write(*,*) "O Balance in calc_chemistry"
+              !   write(*,*) "Ions(o+)", ions(1)
+              !   write(*,*) "Sources:", ionsources(1)
+              !   write(*,*) "Losses:", ionlosses(1)
+              !endif
            enddo
-           
            
            do iNeutral = 1, nSpeciesTotal
 

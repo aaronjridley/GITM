@@ -1,4 +1,5 @@
 
+
 subroutine calc_rates(iBlock)
 
 ! ----------------------------------------------------------------------------
@@ -27,7 +28,7 @@ subroutine calc_rates(iBlock)
 
   integer, intent(in) :: iBlock
 
-  integer :: iAlt, iIon, iSpecies, iError, iiAlt, iLat,iLon
+  integer :: iAlt, iIon, iSpecies, iError, iiAlt, iLat,iLon, i, j
 
   real, dimension(nLons, nLats, nAlts) :: &
        Tn, Ti, TWork1, TWork2, TWork3, NO2
@@ -38,7 +39,7 @@ subroutine calc_rates(iBlock)
   real :: ScaleHeight(nLons, nLats)
 
   real :: e2
-
+  
 ! ------------------------------------------------------------------------------
 ! cpktkm.F add-ons
   integer :: is
@@ -47,6 +48,9 @@ subroutine calc_rates(iBlock)
   real, dimension(-1:nLons+2, -1:nLats+2, -1:nAlts+2) :: &
        po, pco, pco2, pn2, cpmix, ktmix, kmmix, &
        ttot,cokm,co2kt,cokt,tt,co2km
+  real :: Viscosity_O, Viscosity_CO2, Viscosity_N2, mu_i, mu_j, phi_ij, denominator
+  real, dimension(1:nLons,1:nLats,1:nAlts, 3) :: mu
+  real, dimension(3) :: m, n
 
 ! ------------------------------------------------------------------------------
 
@@ -184,7 +188,7 @@ trouble = .false.
 
 !write(*,*) '==> calc_rates:  Before MeanIonMass Calculation.'
 
-  invNe = 1/Ne
+  invNe = 1/(Ne + 1.0)
   do iIon = 1, nIons-1
      MeanIonMass = MeanIonMass + &
           MassI(iIon) * IDensityS(:,:,:,iIon,iBlock) 
@@ -299,7 +303,7 @@ trouble = .false.
 
   if (iDebugLevel > 4) write(*,*) "=====> Before cp and kappatemp", iblock
 
-  do iAlt = 0, nAlts+2
+  do iAlt = 0, nAlts+1
 
 ! -------------------------------------------------------------------------------
 !
@@ -336,15 +340,14 @@ trouble = .false.
 ! Simplified from Yue's
 ! Prandtl = 10. Small to Start!
 !
-     !BP: Not sure this is needed with the parameterization
-     !do iLat = 1, nLats
-     !   do iLon = 1, nLons
-     !         KappaTemp(iLon,iLat,iAlt,iBlock) = &
-     !              KappaTemp(iLon,iLat,iAlt,iBlock) + &
-     !              KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) * cp(iLon,iLat,iAlt,iBlock) * &
-     !              Rho(iLon,iLat,iAlt,iBlock)/10.
-     !   enddo
-     !enddo
+     do iLat = 1, nLats
+        do iLon = 1, nLons
+              KappaTemp(iLon,iLat,iAlt,iBlock) = &
+                   KappaTemp(iLon,iLat,iAlt,iBlock) + &
+                   KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) * cp(iLon,iLat,iAlt,iBlock) * &
+                   Rho(iLon,iLat,iAlt,iBlock)/10.
+        enddo
+     enddo
 ! -------------------------------------------------------------------------------
 
 !   Earth GITM formulation for Molecular Viscosity (mks)
@@ -355,8 +358,63 @@ trouble = .false.
 !   * Scaling of Molecular Viscosity for spun-up stability
 !    ViscCoef(:,:,iAlt) =  kmmix(1:nLons,1:nLats,iAlt)*10.0
 !   * No scaling of molecular vciscosity
-     ViscCoef(1:nLons,1:nLats,iAlt) =  kmmix(1:nLons,1:nLats,iAlt)
+     ViscCoef(1:nLons,1:nLats,iAlt) =  kmmix(1:nLons,1:nLats,iAlt) 
+     ViscCoef(1:nLons,1:nLats,iAlt)  =  ViscCoef(1:nLons,1:nLats,iAlt)  + 10.0* &   
+                 Rho(1:nLons,1:nLats,iAlt,iBlock)* &
+                 KappaEddyDiffusion(1:nLons,1:nLats,iAlt,iBlock)
 
+
+     !Values from Banks and Kockarts (1/10 is needed to convert to kg & meters)
+     Viscosity_O = (3.90e-6)/10 
+     Viscosity_N2 = (3.43e-6)/10
+ 
+     !This is a scaling of m_i and d_i from the N2 viscosity. 
+     !I could not find a good parameterization for CO2 viscosity.                    
+     Viscosity_CO2 = Viscosity_N2 * 1.52  
+     
+     !1 = CO2, 2 = N2, 3 = O
+     !this is the molecular mass
+     m(1) = 44.01/1000.0/Avogadros_Number !g/mol -> kg
+     m(2) = 28.01/1000.0/Avogadros_Number
+     m(3) = 15.99/1000.0/Avogadros_Number
+
+     !mu(:,:,iAlt,1) = Viscosity_CO2 * &
+     !        Temperature(1:nLons,1:nLats,iAlt,iBlock) * &
+     !        TempUnit(1:nLons,1:nLats,iAlt)
+
+     !mu(:,:,iAlt,2) = Viscosity_N2 * &
+     !        Temperature(1:nLons,1:nLats,iAlt,iBlock) *&
+     !        TempUnit(1:nLons,1:nLats,iAlt)
+     
+     !mu(:,:,iAlt,3) = Viscosity_O * &
+     !        Temperature(1:nLons,1:nLats,iAlt,iBlock) *&
+     !        TempUnit(1:nLons,1:nLats,iAlt)
+
+
+     !do iLon = 1,nLons
+     !  do iLat = 1,nLats
+     !    n(1) = NDensityS(iLon,iLat,iAlt,iCO2_,iBlock)
+     !    n(2) = NDensityS(iLon,iLat,iAlt,iN2_,iBlock)
+     !    n(3) = NDensityS(iLon,iLat,iAlt,iO_,iBlock)
+     !    ViscCoef(iLon,iLat,iAlt) = 0.0
+     !    do i = 1,3
+     !      mu_i = mu(iLon,iLat,iAlt,i)
+     !      denominator = 0.0
+     !      do j = 1,3
+     !        mu_j = mu(iLon,iLat,iAlt,j)
+
+     !        phi_ij = (1 + ((mu_i/mu_j)**0.5) * (m(j)/m(i))**0.25)**2 / &
+     !                 (2 * 2**(0.5) * (1 + m(i)/m(j))**0.5)
+
+     !        denominator = denominator + n(j) * phi_ij
+     !      enddo
+     !      ViscCoef(iLon,iLat,iAlt) = ViscCoef(iLon,iLat,iAlt) + &
+     !                                 mu_i * n(i)/denominator
+     !    enddo
+     !  enddo
+     !enddo
+
+     !ViscCoef(1:nLons,1:nLats,iAlt) = Viscosity_O
 !  * Benchmark: Jan.-March 2013
 !    ViscCoef(1:nLons,1:nLats,iAlt)  =  ViscCoef(1:nLons,1:nLats,iAlt)  + 500.0*&
 !                          Rho(1:nLons,1:nLats,iAlt,iBlock)*KappaEddyDiffusion(1:nLons,1:nLats,iAlt,iBlock)
@@ -364,8 +422,8 @@ trouble = .false.
 !    ViscCoef(1:nLons,1:nLats,iAlt)  =  ViscCoef(1:nLons,1:nLats,iAlt)  + 250.0*&
 !                          Rho(1:nLons,1:nLats,iAlt,iBlock)*KappaEddyDiffusion(1:nLons,1:nLats,iAlt,iBlock)
 !  * Rescaled as KappaEddyDiffusion is Doubled plus new Testing : September 2017
-     ViscCoef(1:nLons,1:nLats,iAlt)  =  ViscCoef(1:nLons,1:nLats,iAlt)  + 200.0*&
-                           Rho(1:nLons,1:nLats,iAlt,iBlock)*KappaEddyDiffusion(1:nLons,1:nLats,iAlt,iBlock)
+     !ViscCoef(1:nLons,1:nLats,iAlt)  =  ViscCoef(1:nLons,1:nLats,iAlt)  + 200.0*&
+     !                      Rho(1:nLons,1:nLats,iAlt,iBlock)*KappaEddyDiffusion(1:nLons,1:nLats,iAlt,iBlock)
 
 !     Visc_3D(:,:,iAlt,iBlock) =  kmmix(1:nLons,1:nLats,iAlt)
 
@@ -403,8 +461,6 @@ subroutine calc_collisions(iBlock)
   !\
   ! Need to get the neutral, ion, and electron temperature
   !/
-
-
   
   Tn = Temperature(:,:,:,iBlock)*TempUnit(:,:,:)
   Ti = ITemperature(:,:,:,iBlock)
@@ -436,6 +492,8 @@ subroutine calc_collisions(iBlock)
   if (iDebugLevel > 4) write(*,*) "=====> vin",iblock
 
   Collisions(:,:,:,iVIN_) = 2.6e-15 * (mnd + Ne)/sqrt(MeanMajorMass/AMU)
+
+  !write(*,*) "Ne ", Ne(3,3,3)
 
   !BP (3/31/2021) Adding in IonCollision rates. These aren't computed at all
   ! and make ion velocities infinity without them. Wonder what's going on

@@ -28,7 +28,7 @@ subroutine add_sources
      endif
      IsFirstTime = .false.
   endif
-
+  
   do iBlock = 1, nBlocks
 
      ! All the physics is left out or added in in calc_GITM_sources.  If
@@ -48,40 +48,51 @@ subroutine add_sources
 
      ! JMB:  07/13/2017.
      ! 2nd order conduction update:  Separately add Conduction to this
-     ! because Conduction now spans(0:nAlts+1)
+     ! because Conduction now spans(0:nAlts+1)  
 
-     !write(*,*) "LowAtmosRadRate", LowAtmosRadRate(:,:,nAlts-3,iBlock)
-     !write(*,*) "RadCooling", RadCooling(:,:,nAlts-3,iBlock)*TempUnit(:,:,nAlts-3)
-     !write(*,*) "EuvHeating in add_sources.f90", EuvHeating(:,:,nAlts-8,iBlock)*TempUnit(:,:,nAlts-8)*86400.0 
-     !write(*,*) "PhotoElectronHeating", PhotoElectronHeating(:,:,nAlts-3,iBlock)*TempUnit(:,:,nAlts-3)
-     !write(*,*) "AuroralHeating", AuroralHeating
-     !write(*,*) "JouleHeating", JouleHeating
-     !write(*,*) "ElectronHeating", ElectronHeating(:,:,nAlts-3)
+     !do iLon = 1,nLons
+     !  do iLat = 1,nLats
+     !    do iAlt = 1,nAlts
+     !      if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 < 110.0) then
+     !        if (QnirTOT(iLon,iLat,iAlt,iBlock) > RadCooling(iLon,iLat,iAlt,iBlock)) then
+     !          RadCooling(iLon,iLat,iAlt,iBlock) = QnirTOT(iLon,iLat,iAlt,iBlock)
+     !        endif
+     !      endif
+     !    enddo
+     !  enddo
+     !enddo 
 
      Temperature(1:nLons, 1:nLats, 1:nAlts, iBlock) = &
           Temperature(1:nLons, 1:nLats, 1:nAlts, iBlock) + Dt * ( &
-          LowAtmosRadRate(1:nLons, 1:nLats, 1:nAlts, iBlock) &
-          /TempUnit(1:nLons,1:nLats,1:nAlts)&
+          !LowAtmosRadRate(1:nLons, 1:nLats, 1:nAlts, iBlock) &
+          !/TempUnit(1:nLons,1:nLats,1:nAlts)&
           - RadCooling(1:nLons, 1:nLats, 1:nAlts, iBlock) &
           + EuvHeating(1:nLons, 1:nLats, 1:nAlts, iBlock) &
-          + PhotoElectronHeating(1:nLons, 1:nLats, 1:nAlts, iBlock) &
-          + AuroralHeating &
-          + JouleHeating &
-          + ElectronHeating &
+          !+ PhotoElectronHeating(1:nLons, 1:nLats, 1:nAlts, iBlock) &
+          !+ AuroralHeating &
+          !+ JouleHeating &
+          !+ ElectronHeating &
           + QnirTOT(1:nLons, 1:nLats, 1:nAlts, iBlock) &
           ) &
-          !+ ChemicalHeatingRate &
-          + UserHeatingRate(1:nLons, 1:nLats, 1:nAlts, iBlock)
+          + ChemicalHeatingRate 
+          !+ UserHeatingRate(1:nLons, 1:nLats, 1:nAlts, iBlock)
       
-     Temperature(1:nLons, 1:nLats, 0:nAlts+1, iBlock) = &
-          Temperature(1:nLons, 1:nLats, 0:nAlts+1, iBlock) + &
-          + Conduction(1:nLons,1:nLats,0:nAlts+1)
-
-     if (minval(temperature(1:nLons,1:nLats,1:nAlts,iBlock)*TempUnit(1:nLons,1:nLats,1:nAlts)) &
-         < 100.0) then
-       !write(*,*) "2: Low Temperature : ",iBlock, &                                           
-       !            minval(temperature(1:nLons,1:nLats,1:nAlts,iBlock)*&                       
-       !            TempUnit(1:nLons,1:nLats,1:nAlts))     
+     Temperature(1:nLons, 1:nLats, 0:nAlts, iBlock) = &
+          Temperature(1:nLons, 1:nLats, 0:nAlts, iBlock) + &
+          + Conduction(1:nLons,1:nLats,0:nAlts)
+     !do iLon = 1,nLons
+     !  do iLat = 1,nLats
+     !    if (longitude(iLon,iBlock)*180.0/pi > 79.0 .and. &
+     !        longitude(iLon,iBlock)*180.0/pi < 83.0 .and. &
+     !        latitude(iLat,iBlock)*180.0/pi > 0.0 .and. &
+     !        latitude(iLat,iBlock)*180.0/pi < 2.0 .and. &
+     !        mod(iTimeArray(6),5) .eq. 0) then
+     !      write(*,*) "Temperature after update: ", Temperature(8,1,27,iBlock)*TempUnit(8,1,27)
+     !    endif
+     !  enddo
+     !enddo
+     if (minval(temperature(1:nLons,1:nLats,1:nAlts,iBlock)* &
+                TempUnit(1:nLons,1:nLats,1:nAlts)) < 100.0) then 
        do iLon = 1, nLons
          do iLat = 1, nLats
            do iAlt = 1, nAlts
@@ -92,36 +103,6 @@ subroutine add_sources
          enddo
        enddo
      endif
-
-     !do while (minval(temperature(1:nLons, 1:nLats, 1:nAlts, iBlock)) < 0.0)
-     !   write(*,*) "Negative Temperature Found!!!  Correcting!!!"
-     !   do iLon = 1, nLons
-     !      do iLat = 1, nLats
-     !         iAlt = 1
-     !         if (temperature(iLon, iLat, iAlt, iBlock) < 0.0) &
-      !             temperature(iLon, iLat, iAlt, iBlock) = &
-      !             temperature(iLon, iLat, iAlt-1, iBlock)
-      !        do iAlt = 2, nAlts
-      !           if (temperature(iLon, iLat, iAlt, iBlock) < 0.0) then
-      !              temperature(iLon, iLat, iAlt, iBlock) = &
-      !                   (temperature(iLon, iLat, iAlt-1, iBlock) +  &
-      !                   temperature(iLon, iLat, iAlt+1, iBlock))/2.0
-      !
-      !              write(*,*) "Sources : ", &
-      !                   temperature(iLon, iLat, iAlt, iBlock), &
-      !                   EuvHeating(iLon, iLat, iAlt, iBlock) * dt, &
-      !                   RadCooling(iLon, iLat, iAlt, iBlock) * dt, &
-      !                   AuroralHeating(iLon, iLat, iAlt) * dt, &
-      !                   JouleHeating(iLon, iLat, iAlt) * dt, &
-      !                   Conduction(iLon, iLat, iAlt), &
-      !                   ChemicalHeatingRate(iLon, iLat, iAlt)
-      !              call stop_gitm('Negative Temperature Found')
-      !
-      !           endif
-      !        enddo
-      !     enddo
-      !  enddo
-     !enddo
 
      !-------------------------------------------
      ! This is an example of a user output:
@@ -142,7 +123,7 @@ subroutine add_sources
        Velocity(1:nLons, 1:nLats, 0:nAlts+1, iDir, iBlock) = &
             Velocity(1:nLons, 1:nLats, 0:nAlts+1, iDir, iBlock) + &
             Viscosity(1:nLons,1:nLats, 0:nAlts+1,iDir)
-     enddo 
+     enddo
 
      !! To turn off IonDrag, turn UseIonDrag=.false. in UAM.in
      !! To turn off NeutralFriction, turn UseNeutralFriction=.false. in UAM.in
@@ -157,7 +138,7 @@ subroutine add_sources
         VerticalVelocity(1:nLons, 1:nLats, 0:nAlts+1, iSpecies, iBlock) +&
                 VerticalViscosityS(1:nLons,1:nLats,0:nAlts+1,iSpecies)
 
-     enddo
+     enddo    
 
      if (DoCheckForNans) call check_for_nans_ions('before e-temp')
 
@@ -212,7 +193,6 @@ subroutine add_sources
              NDensityS(1:nLons, 1:nLats, 1:nAlts, iSpecies, iBlock) / &
              Rho(1:nLons, 1:nLats, 1:nAlts, iBlock)
      enddo
-
   enddo
 
 end subroutine add_sources

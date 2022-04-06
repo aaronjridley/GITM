@@ -41,7 +41,8 @@ subroutine timescales
                          RP_hours)
 
     !Convert to a 0 - 24 scale instead of the 0 - VenusHoursPerDay                     
-    geo_lst = 24*geo_lst/RP_hours  
+    geo_lst = 24*geo_lst/RP_hours
+    write(*,*) "Current LST", geo_lst
 
     do iAlt = 1, nAlts
       gravity = surfaceGravity * (R_Venus /(R_Venus + Altitude_GB(iLon,iLat,iAlt,iBlock)))**2
@@ -198,6 +199,7 @@ subroutine fill_photo
 
   real,parameter ::  sfn2p = 1.40, sfop = 1.60, sfco2p = 1.50
   ! --------------------------------------------------------------------
+  
   photoabs           = 0.0
   photoion            = 0.0
   photodis            = 0.0
@@ -205,12 +207,12 @@ subroutine fill_photo
   NWH = Num_WaveLengths_High
 
   photoabs               = 0.0
-  photoabs(:,iCO2_)  = PhotoAbs_CO2
-  photoabs(:,iCO_)    = PhotoAbs_CO
-  photoabs(:,iO_)      = PhotoAbs_O
-  photoabs(:,iN2_)    = PhotoAbs_N2
-  photoabs(:,iO2_)    = PhotoAbs_O2
-  photoabs(58,iCO2_) = 0.0! timing fix (DP: Nov. 2011)
+  photoabs(1:NWH,iCO2_)  = PhotoAbs_CO2
+  photoabs(1:NWH,iCO_)    = PhotoAbs_CO
+  photoabs(1:NWH,iO_)      = PhotoAbs_O
+  photoabs(1:NWH,iN2_)    = PhotoAbs_N2
+  photoabs(1:NWH,iO2_)    = PhotoAbs_O2
+  !photoabs(58,iCO2_) = 0.0! timing fix (DP: Nov. 2011)
 
  ! ---------------------------------------------------------------------
   !  Specific Photoionization Cross Sections (nIons-1)
@@ -258,12 +260,16 @@ subroutine fill_photo
   !Brandon Ponder (3/8/2021)
   !Write out the cross-sections
   open(unit=61, file='gitm_cross_sections.txt', action='write', status="unknown")
-
+  
   do i = 1,nWavelengths
-     write(61,*) (shortWavelengths(i) + longWavelengths(i))/2, &
-                 photoabsorptioncrosssection(i, iCO2_), &
-                 photodissociationcrosssection(i,iCO2_), &
-                 photoionizationcrosssection(i,iCO2P_) !use ion index
+     write(61,"(ES8.2,1X,"// &
+              "ES8.2,1X,"// &
+              "ES8.2,1X,"// &
+              "ES8.2)") &
+       (shortWavelengths(i) + longWavelengths(i))/2, &
+       photoabsorptioncrosssection(i, iCO2_), &
+       photodissociationcrosssection(i,iCO2_), &
+       photoionizationcrosssection(i,iCO2P_) !use ion index
   end do
   
   close(61)
@@ -281,7 +287,9 @@ subroutine init_heating_efficiency
 
   ! HeatingEfficiency_CB  = 0.18
   ! HeatingEfficiency_CB  = 0.19
-  HeatingEfficiency_CB  = 0.20
+  !HeatingEfficiency_CB  = 0.20
+  HeatingEfficiency_CB = 0.02  !5% direct heating + chemical heating
+  !this cannot be zero or it will segmentation fault
   eHeatingEfficiency_CB = 0.0
 
   !  call init_radcool
@@ -331,7 +339,7 @@ subroutine calc_planet_sources(iBlock)
 
   !\ -------------------------------------------------------------------
   ! CO2 NLTE Cooling Formulation from Miguel Lopez-Valverde (2017)
-  !/
+  !
   !/ Cooling ON
   if (useRadCooling) call nlte_tcool(iBlock)
 
@@ -353,14 +361,18 @@ subroutine calc_planet_sources(iBlock)
          RadCoolingRate(1:nLons,1:nLats,1:nAlts,iBlock)/&
          (TempUnit(1:nLons,1:nLats,1:nAlts))
 
+    RadCoolingRate_untouched(1:nLons,1:nLats,1:nAlts,iBlock) = &
+         RadCoolingRate_untouched(1:nLons,1:nLats,1:nAlts,iBlock)/&
+         (TempUnit(1:nLons,1:nLats,1:nAlts))
+
     UserData2d(1:nLons,1:nLats,1,1,iBlock) = &
          RadCoolingRate(1:nLons,1:nlats,1,iBlock)
-  endif
-
+  else
   !/ Cooling OFF (zeroed out)
-  !RadCooling = 0.0
-  !RadCoolingRate = 0.0
-
+    RadCooling = 0.0
+    RadCoolingRate = 0.0
+  endif
+ 
   !\ -------------------------------------------------------------------
   ! O(63 micron) Cooling Formulation from Kockarts (1970)
   !/
@@ -517,10 +529,6 @@ subroutine calc_planet_sources(iBlock)
 
   call end_timing("calc_planet_sources")
   
-  if (iTimeArray(3) .eq. 21 .and. iTimeArray(4) &
-      .eq. 12 .and. iTimeArray(5) .eq. 1) then 
-    call timescales
-  endif
 end subroutine calc_planet_sources
 
 !---------------------------------------------------------+
@@ -632,13 +640,15 @@ subroutine nlte_tcool(iBlock)
   !  -----------------------------------------------------------------
 
   use ModInputs
-  use ModSources, only: RadCoolingRate
+  use ModSources, only: RadCoolingRate, radcoolingrate_untouched
   use ModPlanet
   use ModGITM
   use ModUserGITM
   use ModConstants, only:  Boltzmanns_Constant, Speed_Light, &
        Planck_Constant, Avogadros_Number
   use ModIndicesInterfaces
+  use ModTime, only: iTimeArray
+  use ModEUV, only: sza
 
   implicit none
 
@@ -678,8 +688,8 @@ subroutine nlte_tcool(iBlock)
   real :: refCooling = 0.0
   integer :: jAlt
   real :: alpha
-  real :: pMerge = 0.5 !Pa
-
+  real :: pMerge = 0.2 !Pa
+  real :: A = 0.0
 
   !  -----------------------------------------------------------------
   ! Repository for MGITM fields into 2-D arrays (not needed)
@@ -697,6 +707,11 @@ subroutine nlte_tcool(iBlock)
 
   real,dimension(1:nLons,1:nLats,1:nAlts) ::    &
        TN2,P,vmrco2,vmro,vmrn2,vmrco,q15umco2_gcm,mnd,mmean,cpm,zht
+
+  logical :: useExtrapolation = .True.
+  logical :: notAlreadyFound
+  integer :: iExtrapolate, nIndexFound
+  real :: x1, x2, bIntercept
 
   !  Mars GITM real temperature (on its grid)  ----------------------
 
@@ -855,6 +870,7 @@ subroutine nlte_tcool(iBlock)
             zld(i) = - dble ( alog(pl(i)) )
                                 !write (*,*) i, zld(i), q15umco2_nltot(i)
          enddo
+         
          do i=3,nl_cts_real
             indice = (nl-2) + i
             zld(indice) = - dble ( alog(pl_cts(i)) )
@@ -935,56 +951,148 @@ subroutine nlte_tcool(iBlock)
   !-------------------------------------------------------------
 
   !-------------------------------------------------------------
-  
+
+  RadCoolingRate_untouched = RadCoolingRate
+
+     !BP: Preventing RadCooling from working outside of the pressure bounds
+     !do iAlt = 1, nAlts
+     !  do iLon = 1, nLons
+     !    do iLat = 1, nLats
+     !       if(pressure(iLon,iLat,iAlt,iBlock) < ptop_atm .or. &
+     !            pressure(iLon,iLat,iAlt,iBlock) > 0.001) then
+     !          RadCoolingRate(iLon,iLat,iAlt,iBlock) = 0.0
+     !         
+     !       endif
+     !    enddo
+     !  enddo
+     !enddo
+     
   !BP (7/7/2020)
   !Hotfix to Venus RadCooling that produces positive "cooling rates (~250,000 K/day)
-  !below 85 km. Making it zero until we implement a better cooling scheme in the 
+  !below 85 km. Making it zero until we implement a better cooling scheme in the
   !LTE region like Newtonian cooling or something else
-  do iAlt = 1, nAlts
-    if (Altitude_GB(1,1,iAlt,iBlock)/1000.0 < 85.0) then
-      RadCoolingRate(1:nLons,1:nLats,iAlt,iBlock) = 0.0
-    endif
-  enddo
+  where (RadCoolingRate .lt. 0.0) 
+    RadCoolingRate = 0.0
+  endwhere
 
+ 
+
+  !do iAlt = 1, nAlts
+  !  if (Altitude_GB(1,1,iAlt,iBlock)/1000.0 < 85.0) then
+  !    RadCoolingRate(1:nLons,1:nLats,iAlt,iBlock) = 0.0
+  !  endif
+  !enddo
+
+  !Before the loop, convert to energy units. After the loop, convert back...
+
+
+  !need to loop through whole grid, but with altitude on the innermost loop
+  if (useExtrapolation) then
+     do iLat = 1,nLats
+        do iLon = 1,nLons
+           notAlreadyFound = .True.
+           do iAlt = 1,nAlts
+              !(1) Find first non-zero cooling because that we want to extrapolate
+              !    from this location two scale heights above it
+              !(2) Linear extrapolate to 0 K/day at 70 km
+
+              !Finding first non-zero entry
+              if (RadCoolingRate(iLon,iLat,iAlt,iBlock) .ne. 0 .and. notAlreadyFound) then
+                 nIndexFound = iAlt + 1 !begin extrapolation at same index
+                 notAlreadyFound = .False.
+                 exit
+              endif
+           enddo
+        
+           x1 = RadCoolingRate(iLon,iLat,nIndexFound,iBlock)
+           !x1 = x1 * rho(iLon,iLat,nIndexFound,iBlock) * cp(iLon,iLat,nIndexFound,iBlock)
+
+           !x2 = x2 * rho(iLon,iLat,1,iBlock) * cp(iLon,iLat,1,iBlock)
+           !write(*,*) "Cooling at x1", x1
+           !write(*,*) "Altitude at y1", Altitude_GB(iLon,iLat,nIndexFound,iBlock)/1000.0
+           !bIntercept = 70.0 - &
+           !             (Altitude_GB(iLon,iLat,nIndexFound,iBlock) - 70.0)/(x1 - x2)*x2
+       
+           !A = (Altitude_GB(iLon,iLat,nIndexFound,iBlock) - 70.0)/(x1 - x2) 
+
+           do iExtrapolate = 1, nIndexFound
+              !RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &
+              !     -(x1-x2)*(Altitude_GB(iLon,iLat,iExtrapolate,iBlock)/1000.0 - 70.0) / &
+              !     (70.0 - Altitude_GB(iLon,iLat,nIndexFound,iBlock)/1000.0)
+
+              !RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &                              ! 
+!                   -(x1-x2)*(Altitude_GB(iLon,iLat,iExtrapolate,iBlock)/1000.0 - bIntercept) !/ (Altitude_GB(iLon,iLat,nIndexFound,iBlock)/1000.0 - 70.0)  
+
+              !RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &
+              !     -10**((Altitude_gb(iLon,iLat,iExtrapolate,iBlock)/1000.0 - 70.0)/A)/ & 
+              !     altitude_gb(iLon,iLat,iExtrapolate,iBlock)/1000.0/3.3333
+              RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &
+                x1 / (1 + ABS(altitude_gb(iLon,iLat,iExtrapolate,iBlock)/1000.0 - &
+                              altitude_gb(iLon,iLat,nIndexFound,iBlock)/1000.0))
+              
+              !RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &
+              !  RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) / &
+              !  rho(iLon,iLat,iExtrapolate,iBlock) / &
+              !  cp(iLon,iAlt,iExtrapolate,iBlock)
+           enddo
+
+           !Blending one point.
+           RadCoolingRate(iLon,iLat,nIndexFound + 1, iBlock) = &
+             (RadCoolingRate(iLon,iLat,nIndexFound+2,iBlock) + &
+             RadCoolingRate(iLon,iLat,nIndexFound,iBlock))/2.0
+        enddo
+     enddo
+  endif
+              
+           
+  
   !Newtonian cooling
+  !Should find the cooling rate and scale it based on the current temperature.
+  !Is this working correctly though?
+  if (useNewtonianCooling) then
   do iAlt = 1, nAlts
     do iLon = 1, nLons
       do iLat = 1, nLats
-        if (RadCoolingRate(iLon,iLat,iAlt,iBlock) .le. 0.0) then
-          RadCoolingRate(iLon,iLat,iAlt,iBlock) = 0.0
-        endif
-      !Altitudes above 0.01 Pa, NLTE effects dominate                                   
+      !Altitudes above 0.01 Pa, NLTE effects dominate
       !Blend below these altitudes according to the Gilli 2016 paper 
         if (Pressure(iLon,iLat,iAlt,iBlock) > 0.01) then
-          !Find the cooling amount
-          do jAlt = 1,31
+          !Find the cooling amount from Sub100kmGlobalAverageCooling
+          do jAlt = 1,size(referenceAltitude2)
             if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 .le. referenceAltitude2(jAlt+1) .and. &
                 Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 .ge. referenceAltitude2(jAlt)) then
-              refCooling = -newtonianCoolingRate(jAlt)
+               refCooling = -newtonianCoolingRate(jAlt)
+               !this makes it positive, which is what we want.It is also
+               !already in K/sec which was converted in ModVenus.f90
+               
               exit
             endif
           enddo
             
           !Scale the cooling appropriately
-          do jAlt = 1, 56
+          !Reference temperatures from Haus.
+          do jAlt = 1, size(referenceAltitude1)
             if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 .le. referenceAltitude1(jAlt+1) .and. &
                 Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 .ge. referenceAltitude1(jAlt)) then
+               
               !Altitudes above 0.01 Pa, NLTE effects dominate
-              !Blend below these altitudes according to the Gilli 2016 paper
-
-              alpha = 1/(1 + Pressure(iLon,iLat,iAlt,iBlock)/pMerge)**4
-              RadCoolingRate(iLon,iLat,iAlt,iBlock) = &
-                  alpha*RadCoolingRate(iLon,iLat,iAlt,iBlock) + &
+               !Blend below these altitudes according to the Gilli 2016 paper
+               !This also scales the LTE cooling portion based on the current temperature
+              if (cos(sza(iLon,iLat,iBlock)) > 0.0) then
+                alpha = 1/(1 + Pressure(iLon,iLat,iAlt,iBlock)/pMerge)**4
+                RadCoolingRate(iLon,iLat,iAlt,iBlock) = &
+                  2.0 * alpha*RadCoolingRate(iLon,iLat,iAlt,iBlock) + &
                   (1 - alpha)*refCooling*Temperature(iLon,iLat,iAlt,iBlock)*&
-                  TempUnit(iLon,iLat,iAlt)/ReferenceTemperature(jAlt)
-              exit
+                  TempUnit(iLon,iLat,iAlt)/ReferenceTemperature(jAlt) * &
+                  cos(sza(iLon,iLat,iBlock))
+                exit
+              endif
             endif
           enddo
         endif
       enddo
     enddo
   enddo
-
+  endif
 end subroutine nlte_tcool
 !---------------------------------------------------------
 
@@ -4022,6 +4130,7 @@ subroutine NLTEdlvr11_ZGRID (n_gcm, &
       do i=1,nzy_cts
          zy_cts(i) = zl_cts(1) + (i-1) * deltazy_cts
       enddo
+
       nzy_cts_real = (nl_cts_real - 1)*4 + 1
       call interhuntlimits ( py_cts,zy_cts,nzy_cts, 1,nzy_cts_real, &
                 p_gcm, z_gcm, n_gcm,   2) ! [atm]
@@ -8129,7 +8238,7 @@ subroutine ERRORS (ierr,varerr)
 !     thus previous calls to interdp or interdp2 could be easily replaced
 !     JAN 98 	MALV 		Version for mz1d
 !     ***********************************************************************
-
+      
       implicit none
 
 !     Arguments
@@ -8385,23 +8494,27 @@ subroutine ERRORS (ierr,varerr)
          endif
          call huntdp ( z,n, zaux, j )
          if ( j.eq.0 .or. j.eq.n ) then
-	    write (*,*) ' HUNT/ Limits input grid:', z(1),z(n)
-	    write (*,*) ' HUNT/ location in new grid:', zz(i)
-            stop ' INTERHUNTDP3/ Interpolat error. zz out of limits.'
-         endif
+	    !write (*,*) ' HUNT/ Limits input grid:', z(1),z(n)
+            !write (*,*) ' HUNT/ location in new grid:', zz(i)
 
-                                ! Perform interpolation
-         factor = (zz(i)-z(j))/(z(j+1)-z(j))
-         if (opt.eq.1) then
-	    y1(i) = x1(j) + (x1(j+1)-x1(j)) * factor
-	    y2(i) = x2(j) + (x2(j+1)-x2(j)) * factor
-	    y3(i) = x3(j) + (x3(j+1)-x3(j)) * factor
-         else
-	    y1(i) = dexp( dlog(x1(j)) + dlog(x1(j+1)/x1(j)) * factor )
-	    y2(i) = dexp( dlog(x2(j)) + dlog(x2(j+1)/x2(j)) * factor )
-	    y3(i) = dexp( dlog(x3(j)) + dlog(x3(j+1)/x3(j)) * factor )
-         end if
-
+            !BP: Hotfix
+            !Do not stop code, just set zz to the max and continue. 
+            !stop ' INTERHUNTDP3/ Interpolat error. zz out of limits.'
+            zz(i) = z(1)
+            j=1
+            !write(*,*) "Setting zz to:", zz(i)
+          endif
+          ! Perform interpolation
+          factor = (zz(i)-z(j))/(z(j+1)-z(j))
+          if (opt.eq.1) then
+	     y1(i) = x1(j) + (x1(j+1)-x1(j)) * factor
+	     y2(i) = x2(j) + (x2(j+1)-x2(j)) * factor
+	     y3(i) = x3(j) + (x3(j+1)-x3(j)) * factor
+          else
+	     y1(i) = dexp( dlog(x1(j)) + dlog(x1(j+1)/x1(j)) * factor )
+	     y2(i) = dexp( dlog(x2(j)) + dlog(x2(j+1)/x2(j)) * factor )
+	     y3(i) = dexp( dlog(x3(j)) + dlog(x3(j+1)/x3(j)) * factor )
+          end if
  1    continue
 
       end subroutine interhuntdp3veces

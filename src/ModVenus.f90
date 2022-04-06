@@ -10,7 +10,7 @@ module ModPlanet
 ! Modified (06/12/08) : SWB :   ordering to species revised
 ! Modified (06/12/08) : SWB :   nSpecies = 6; nSpeciesTotal = 11
 ! Modified (04/21/17) : SWB :   nEmissions = 10; iENOUV = 1
-! Majors (6):  COntrol the Pressures Gradients and winds
+! Majors (6):  Control the Pressures Gradients and winds
   integer, parameter :: nSpecies = 8
   integer, parameter :: iCO2_    = 1
   integer, parameter :: iCO_     = 2
@@ -36,7 +36,7 @@ module ModPlanet
   integer, parameter  :: iNOP_  = 5
   integer, parameter  :: ie_    = 6
   integer, parameter  :: nIons  = ie_
-  integer, parameter  :: nIonsAdvect = 1
+  integer, parameter  :: nIonsAdvect = 2
   integer, parameter  :: nSpeciesAll = 16 !Ions plus neutrals
 
   character (len=20) :: cSpecies(nSpeciesTotal)
@@ -139,6 +139,8 @@ module ModPlanet
   integer, parameter :: i7774_ = 9
   integer, parameter :: i8446_ = 10
   integer, parameter :: i3726_ = 11
+
+  logical :: useNewtonianCooling = .False.
  
 !  real :: KappaTemp0 = 2.22e-4
 
@@ -214,7 +216,8 @@ module ModPlanet
 !       (/nSpecies,nSpecies/) )
 
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !BP: These tables are actually cm2/sec. Do they get converted to m2?
  real, parameter, dimension(nSpecies, nSpecies) :: Diff0 = 1.0e17 * reshape( (/ &
      !----------------------------------------------------------------+
      ! i=C02      CO      O        N2      O2      Ar    He       N4S
@@ -222,10 +225,10 @@ module ModPlanet
        0.0000, 0.7762, 0.2219,  0.6580,  0.5770, 1.1920, 2.4292, 0.2219,&  ! CO2
        0.7762, 0.0000, 0.9466,  0.9280,  0.8300, 0.6625,1159.55, 0.9466,&  ! CO
        0.2219, 0.9466, 0.0000,  0.9690,  0.9690, 0.5510, 3.4346, 0.9690, &  ! O
-       0.6580, 0.9280, 0.9690,  0.0000,  0.7150, 0.6640,1159.55, 0.9690,&  ! N2
+       0.6580, 0.9280, 0.9690,  0.0000,  0.7150, 0.6640, 2.9400, 0.9690,&  ! N2
        0.5770, 0.8300, 0.9690,  0.7150,  0.0000, 0.7170, 3.2070, 0.9690,&  ! O2
        1.1920, 0.6625, 0.5510,  0.6640,  0.7170, 0.0000,1000.00, 0.5510, &  ! Ar
-       2.4292,1159.55, 3.4346,1159.550,  3.2070,1000.00, 0.0000, 3.34346, &  ! He
+       2.4292,1159.55, 3.4346,  2.9400,  3.2070,1000.00, 0.0000, 3.34346, &  ! He
        0.2219, 0.9466, 0.9690,  0.9690,  0.9690, 0.5510, 3.4346, 0.0000 /), &  ! N4S
        (/nSpecies,nSpecies/) )
 
@@ -233,15 +236,15 @@ module ModPlanet
   ! These are s-exponents from B&K (1973) formulation: T**s
    real, parameter, dimension(nSpecies, nSpecies) :: DiffExp = reshape( (/ &
      !----------------------------------------------------------+
-     ! i=C02      CO      O     N2     O2     Ar     He
+     ! i=C02      CO      O     N2     O2     Ar     He   N4S
      !----------------------------------------------------------+
-       0.000,  0.750,  0.750, 0.752, 0.749, 0.750, 0.720, 0.750,&  ! CO2
+       0.000,  0.750,  0.750, 0.758, 0.749, 0.750, 0.720, 0.750,&  ! CO2
        0.750,  0.000,  0.750, 0.710, 0.724, 0.750, 0.524, 0.750,&  ! CO
        0.750,  0.750,  0.000, 0.774, 0.774, 0.841, 0.749, 0.750,&  ! O
-       0.752,  0.710,  0.774, 0.000, 0.750, 0.752, 0.524, 0.774,&  ! N2
+       0.758,  0.710,  0.774, 0.000, 0.750, 0.752, 0.718, 0.774,&  ! N2
        0.749,  0.724,  0.774, 0.750, 0.000, 0.736, 0.710, 0.774,&  ! O2
        0.750,  0.750,  0.841, 0.752, 0.736, 0.000, 0.524, 0.841,&  ! Ar
-       0.720,  0.524,  0.749, 0.524, 0.710, 0.524, 0.000, 0.749,&  ! He
+       0.720,  0.524,  0.749, 0.718, 0.710, 0.524, 0.000, 0.749,&  ! He
        0.750,  0.750,  0.750, 0.774, 0.774, 0.841, 0.749, 0.000 /), &     ! O
        (/nSpecies,nSpecies/) )
 
@@ -470,8 +473,8 @@ module ModPlanet
       real :: XLTEFACTOR(L_NLTE),XLTEPRESSURE(L_NLTE)
 
 !BP: For Newtonian Cooling 
-      real, dimension(56) :: referenceTemperature, referenceAltitude1
-      real, dimension(31) :: newtonianCoolingRate, referenceAltitude2
+      real, dimension(61) :: referenceTemperature, referenceAltitude1
+      real, dimension(36) :: newtonianCoolingRate, referenceAltitude2
 
       real :: ModCoolingRateVenus
 !  These are for the Gauss-split 0.95 case
@@ -616,8 +619,9 @@ real*4 :: dummyalbedo(24,36), dummyti(24,36)
 !       Ptop_atm and Pbot_atm to Mars:  Domain of calculation applicability?
         !BP: Updates for Venus (units: bars)
         !real, parameter  ::  Ptop_atm = 1.e-10, Pbottom_atm = 3.2e-2
-        real, parameter :: ptop_atm = 0.1e-5, pbottom_atm = 1320.e-5
-
+        !real, parameter :: ptop_atm = 0.1e-5, pbottom_atm = 1320.e-5
+        real, parameter :: ptop_atm = 0.1e-5, pbottom_atm = 1985.e-5
+        
         real*8,parameter ::  rf19 = 1.d0, rf20 = 1.d0, rf21a = 1.d0, &
                              rf21b = 1.d0, rf21c = 1.d0, rf33bc = 1.d0
 
@@ -882,10 +886,10 @@ contains
 
     !write(*,*) 'Reading in the Mars_input.txt'
 
-    open(UNIT = 67, FILE = 'UA/DataIn/ALBEDO_ASCII', &
-         STATUS='OLD', ACTION = 'READ')
-    read(67,*) dummyalbedo
-    close(UNIT = 67)
+    !open(UNIT = 67, FILE = 'UA/DataIn/ALBEDO_ASCII', &
+    !     STATUS='OLD', ACTION = 'READ')
+    !read(67,*) dummyalbedo
+    !close(UNIT = 67)
 
     open(UNIT = 68, FILE = 'UA/DataIn/THERMAL_ASCII', &
          STATUS='OLD', ACTION = 'READ')
@@ -900,7 +904,7 @@ contains
          ES10.3, 1X, ES10.3, 1X,  ES10.3)
 
     InNDensityS(:,:) = 1.0e+3
-    InIDensityS(:,:) = 1.0e+3
+    InIDensityS(:,:) = 1.0e-24
     
     do iiAlt = 1,54
 
@@ -921,7 +925,7 @@ contains
             InIDensityS(iiAlt,ie_)
 
     end do
-
+    InIDensityS(:,:) = 1.0e-24
     InNDensityS = Alog(inNDensityS)
     close(Unit = UnitTmp_)
     
@@ -1727,7 +1731,7 @@ contains
 
     !Reference temperature .csv file is temperature vs. Altitude                             
     !Figure 4 in Haus et al. 2015                                                        
-    do iiAlt = 1,56
+    do iiAlt = 1,size(referenceAltitude1)
       read(UnitTmp_,*) referenceTemperature(iiAlt), referenceAltitude1(iiAlt)
     enddo
 
@@ -1738,7 +1742,7 @@ contains
     open(UNIT = UnitTmp_, FILE = 'DataIn/Sub100kmGlobalAverageCooling.csv', &
          STATUS='OLD', ACTION = 'READ')
 
-    do iiAlt = 1,31
+    do iiAlt = 1,size(referenceAltitude2)
       read(UnitTmp_,*) newtonianCoolingRate(iiAlt), referenceAltitude2(iiAlt)
     enddo
 

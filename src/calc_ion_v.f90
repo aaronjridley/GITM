@@ -42,6 +42,7 @@ subroutine calc_ion_v(iBlock)
   !   When you put E-par into ion momentum eqn, you can simply add grad(Pe) to grad(Pi).
   
   Pressure_G = IPressure(:,:,:,iBlock)+ePressure(:,:,:,iBlock)
+
   call UAM_Gradient_GC(Pressure_G, LocalPressureGradient, iBlock)
 
   ! We store this for output to files:
@@ -123,19 +124,43 @@ subroutine calc_ion_v(iBlock)
 
   if (maxval(blocal) == 0) then
 
+     !IVelocity(:,:,:,iUp_,iBlock) = &
+     !     LocalNeutralWinds(:,:,:,iUp_) + &
+     !     (LocalGravity(:,:,:)*iRho - &
+     !     LocalPressureGradient(:,:,:,iUp_)) / &
+     !     RhoNu
+
+     !IVelocity(:,:,:,iEast_,iBlock) = &
+     !     LocalNeutralWinds(:,:,:,iEast_) - &
+     !     LocalPressureGradient(:,:,:,iEast_) / RhoNu
+
+     !IVelocity(:,:,:,iNorth_,iBlock) = &
+     !     LocalNeutralWinds(:,:,:,iNorth_) - &
+     !     LocalPressureGradient(:,:,:,iNorth_) / RhoNu
+
+     !BP: New ion equation
      IVelocity(:,:,:,iUp_,iBlock) = &
-          LocalNeutralWinds(:,:,:,iUp_) + &
-          (LocalGravity(:,:,:)*iRho - &
-          LocalPressureGradient(:,:,:,iUp_)) / &
-          RhoNu
+          1/(1 + nu_in*dt) * &
+          (IVelocity(:,:,:,iUp_,iBlock) + &
+          dt*(-LocalPressureGradient(:,:,:,iUp_)/iRho + &
+          LocalGravity(:,:,:) + &
+          nu_in*LocalNeutralWinds(:,:,:,iUp_)))
 
+     !Gravity not needed
      IVelocity(:,:,:,iEast_,iBlock) = &
-          LocalNeutralWinds(:,:,:,iEast_) - &
-          LocalPressureGradient(:,:,:,iEast_) / RhoNu
+          1/(1 + nu_in*dt) * &
+          (IVelocity(:,:,:,iEast_,iBlock) + &
+          dt*(-LocalPressureGradient(:,:,:,iEast_)/iRho + &
+          nu_in*LocalNeutralWinds(:,:,:,iEast_)))
 
+     !Gravity not needed
      IVelocity(:,:,:,iNorth_,iBlock) = &
-          LocalNeutralWinds(:,:,:,iNorth_) - &
-          LocalPressureGradient(:,:,:,iNorth_) / RhoNu
+          1/(1 + nu_in*dt) * &
+          (IVelocity(:,:,:,iNorth_,iBlock) + &
+          dt*(-LocalPressureGradient(:,:,:,iNorth_)/iRho + &
+          nu_in*LocalNeutralWinds(:,:,:,iNorth_)))
+
+     
   else
 
      UDotB = sum(LocalNeutralWinds(:,:,:,:) * BLocal, dim=4)/ &
@@ -248,8 +273,8 @@ subroutine calc_ion_v(iBlock)
 
   endif
 
-  IVelocity(:,:,:,:,iBlock) = min( 3000.0, IVelocity(:,:,:,:,iBlock))
-  IVelocity(:,:,:,:,iBlock) = max(-3000.0, IVelocity(:,:,:,:,iBlock))
+  IVelocity(:,:,:,:,iBlock) = min( 100.0, IVelocity(:,:,:,:,iBlock))
+  IVelocity(:,:,:,:,iBlock) = max(-100.0, IVelocity(:,:,:,:,iBlock))
 
   call end_timing("Ion Forcing")
 
