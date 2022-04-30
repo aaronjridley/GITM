@@ -1,5 +1,5 @@
-! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
-! Full license can be found in LICENSE
+!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
+!  For more information, see http://csem.engin.umich.edu/tools/swmf
 
 module ModSphereInterface
 
@@ -50,14 +50,9 @@ module ModSphereInterface
   integer :: cells_alt
 
   !! number of blocks in each direction
-  integer            :: blks_long, &
-       blks_lat
-
-  real                :: radius, &
-       thickness
-  real                :: theta_min, &
-       theta_max, &
-       theta_range
+  integer            :: blks_long, blks_lat
+  real                :: radius, thickness
+  real                :: theta_min, theta_max, theta_range
 
   real, dimension(-1:nLons+2,-1:nLats+2,nAlts) :: x,y,z,theta,phi
 
@@ -74,7 +69,6 @@ module ModSphereInterface
      private
      type (AB_ITER) :: iter     
   end type UAM_ITER
-
 
 contains
 
@@ -276,8 +270,10 @@ contains
     call AB_1blk3_gc_add_size(nLons,nLats,nAlts,2,size)
 
     ! Ion Species
-    if (UseIonAdvection) &
-         call AB_1blk4_gc_add_size(nLons,nLats,nAlts,nIons,2,size)
+    if (UseIonAdvection) then
+       call AB_1blk4_gc_add_size(nLons,nLats,nAlts,nIons,2,size)
+       call AB_1blk4_gc_add_size(nLons,nLats,nAlts,3,2,size)
+    endif
 
   end subroutine size_vars_1blk
 
@@ -289,6 +285,9 @@ contains
     real, dimension(:),intent(out) :: out_array
     integer :: p, i
 
+    real, dimension(-1:nLons+2, -1:nLats+2, nAlts, nIons) :: ionsTmp
+    real, dimension(-1:nLons+2, -1:nLats+2, nAlts, 3) :: iVelTmp
+    
     p=1 ! start packing at position 1 in out_array
 
     call AB_1blk3_gc_pack(nLons,nLats,nAlts,2, &
@@ -312,10 +311,18 @@ contains
     call AB_1blk3_gc_pack(nLons,nLats,nAlts,2, &
          eTemperature(:,:,1:nAlts,index),dir,pole,p,out_array)
 
-    if (UseIonAdvection) &
-         call AB_1blk4_gc_pack(nLons,nLats,nAlts,nIons,2, &
-         IDensityS(:,:,1:nAlts,:,index),dir,pole,p,out_array)
-
+    if (UseIonAdvection) then
+       ionsTmp = IDensityS(:,:,1:nAlts,1:nIons,index)
+       call AB_1blk4_gc_pack(nLons,nLats,nAlts,nIons,2, &
+            ionsTmp,dir,pole,p,out_array)
+       if (NonMagnetic) then
+          iVelTmp = IVelocity(:,:,1:nAlts,:,index)
+       else
+          iVelTmp = IVelocityPar(:,:,1:nAlts,:,index)
+       endif
+       call AB_1blk4_gc_pack(nLons,nLats,nAlts,3,2, &
+            iVelTmp,dir,pole,p,out_array)
+    endif
   end subroutine pack_vars_1blk
 
   subroutine unpack_vars_1blk(index,dir,in_array)
@@ -346,10 +353,18 @@ contains
     call AB_1blk3_gc_unpack(nLons,nLats,nAlts,2, &
          eTemperature(:,:,1:nAlts,index),dir,p,in_array)
 
-    if (UseIonAdvection) &
-         call AB_1blk4_gc_unpack(nLons,nLats,nAlts,nIons,2, &
-         IDensityS(:,:,1:nAlts,:,index),dir,p,in_array)
-
+    if (UseIonAdvection) then
+       call AB_1blk4_gc_unpack(nLons,nLats,nAlts,nIons,2, &
+            IDensityS(:,:,1:nAlts,1:nIons,index),dir,p,in_array)
+       if (NonMagnetic) then
+          call AB_1blk4_gc_unpack(nLons,nLats,nAlts,3,2, &
+               IVelocity(:,:,1:nAlts,:,index),dir,p,in_array)
+       else
+          call AB_1blk4_gc_unpack(nLons,nLats,nAlts,3,2, &
+               IVelocityPar(:,:,1:nAlts,:,index),dir,p,in_array)
+       endif
+    endif
+    
   end subroutine unpack_vars_1blk
 
   subroutine size_vars_nblk(size)
@@ -370,18 +385,21 @@ contains
     call AB_array3_gc_add_size(nLons,nLats,nAlts,2,size)
     call AB_array3_gc_add_size(nLons,nLats,nAlts,2,size)
 
-    if (UseIonAdvection) &
-         call AB_array4_gc_add_size(nLons,nLats,nAlts,nIons,2,size)
-
+    if (UseIonAdvection) then
+       call AB_array4_gc_add_size(nLons,nLats,nAlts,nIons,2,size)
+       call AB_array4_gc_add_size(nLons,nLats,nAlts,3,2,size)
+    endif
+    
   end subroutine size_vars_nblk
 
   subroutine pack_vars_nblk(index,dir,pole,out_array)
     integer, intent(in) :: dir,index
     logical, intent(in) :: pole
     real, dimension(:),intent(out) :: out_array
-    integer :: p,i, iIon
+    integer :: p, i, iIon, iComp
     real :: tmpI(-1:nLons+2, -1:nLats+2, 1:nAlts, 1:nIons)
     real :: tmpN(-1:nLons+2, -1:nLats+2, 1:nAlts, 1:nSpecies)
+    real :: tmpV(-1:nLons+2, -1:nLats+2, 1:nAlts, 3)
 
     p=1 ! start packing at position 1 in out_array
 
@@ -414,6 +432,17 @@ contains
        enddo
        call AB_array4_gc_pack(nLons,nLats,nAlts,nIons,2, &
             tmpI,dir,pole,p,out_array)
+       if (NonMagnetic) then
+          do iComp = 1, 3
+             tmpV(:,:,:,iComp) = IVelocity(:,:,1:nAlts,iComp,index)
+          enddo
+       else
+          do iComp = 1, 3
+             tmpV(:,:,:,iComp) = IVelocityPar(:,:,1:nAlts,iComp,index)
+          enddo
+       endif
+       call AB_array4_gc_pack(nLons,nLats,nAlts,3,2, &
+            tmpV,dir,pole,p,out_array)
     endif
   end subroutine pack_vars_nblk
 
@@ -421,9 +450,10 @@ contains
   subroutine unpack_vars_nblk(index,dir,in_array)
     integer, intent(in) :: index,dir
     real, dimension(:), intent(in) :: in_array
-    integer :: p,i, iIon
+    integer :: p, i, iIon, iComp
     real :: tmpI(-1:nLons+2, -1:nLats+2, 1:nAlts, 1:nIons)
     real :: tmpN(-1:nLons+2, -1:nLats+2, 1:nAlts, 1:nSpecies)
+    real :: tmpV(-1:nLons+2, -1:nLats+2, 1:nAlts, 3)
 
     p=1 ! start unpacking at position 1 in in_array
 
@@ -453,8 +483,6 @@ contains
          eTemperature(:,:,1:nAlts,index),dir,p,in_array)
 
     if (UseIonAdvection) then
-!       call AB_array4_gc_unpack(nLons,nLats,nAlts,nIons,2, &
-!            IDensityS(:,:,1:nAlts,:,index),dir,p,in_array)
        do iIon = 1, nIons
           tmpI(:,:,:,iIon) = IDensityS(:,:,1:nAlts,iIon,index)
        enddo
@@ -462,6 +490,23 @@ contains
             tmpI,dir,p,in_array)
        do iIon = 1, nIons
           IDensityS(:,:,1:nAlts,iIon,index) = tmpI(:,:,:,iIon)
+       enddo
+
+       do iComp = 1, 3
+          if (NonMagnetic) then
+             tmpV(:,:,:,iComp) = IVelocity(:,:,1:nAlts,iComp,index)
+          else
+             tmpV(:,:,:,iComp) = IVelocityPar(:,:,1:nAlts,iComp,index)
+          endif
+       enddo
+       call AB_array4_gc_unpack(nLons, nLats, nAlts, 3, 2, &
+            tmpV, dir, p, in_array)
+       do iComp = 1, 3
+          if (NonMagnetic) then
+             IVelocity(:,:,1:nAlts,iComp,index) = tmpV(:,:,:,iComp)
+          else
+             IVelocityPar(:,:,1:nAlts,iComp,index) = tmpV(:,:,:,iComp)
+          endif
        enddo
     endif
 

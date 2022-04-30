@@ -1,5 +1,5 @@
-! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
-! Full license can be found in LICENSE
+!  Copyright (C) 2002 Regents of the University of Michigan, portions used with permission 
+!  For more information, see http://csem.engin.umich.edu/tools/swmf
 
 subroutine exchange_messages_sphere
 
@@ -40,15 +40,39 @@ subroutine exchange_messages_sphere
         Velocity(:,-1:0,:,iEast_,iBlock) = &
              -Velocity(:,-1:0,:,iEast_,iBlock)
 
+        if (NonMagnetic) then
+           IVelocity(:,-1:0,:,iNorth_,iBlock) = &
+                -IVelocity(:,-1:0,:,iNorth_,iBlock)
+           IVelocity(:,-1:0,:,iEast_,iBlock) = &
+                -IVelocity(:,-1:0,:,iEast_,iBlock)
+        else
+           IVelocityPar(:,-1:0,:,iNorth_,iBlock) = &
+                -IVelocityPar(:,-1:0,:,iNorth_,iBlock)
+           IVelocityPar(:,-1:0,:,iEast_,iBlock) = &
+                -IVelocityPar(:,-1:0,:,iEast_,iBlock)
+        endif
+        
      endif
 
      if (Latitude(nLats+1,iBlock) > pi/2.0) then
 
         Velocity(:,nLats+1:nLats+2,:,iNorth_,iBlock) = &
              -Velocity(:,nLats+1:nLats+2,:,iNorth_,iBlock)
-
         Velocity(:,nLats+1:nLats+2,:,iEast_,iBlock) = &
              -Velocity(:,nLats+1:nLats+2,:,iEast_,iBlock)
+
+        if (NonMagnetic) then
+           IVelocity(:,nLats+1:nLats+2,:,iNorth_,iBlock) = &
+                -IVelocity(:,nLats+1:nLats+2,:,iNorth_,iBlock)
+           IVelocity(:,nLats+1:nLats+2,:,iEast_,iBlock) = &
+                -IVelocity(:,nLats+1:nLats+2,:,iEast_,iBlock)
+        else
+           IVelocityPar(:,nLats+1:nLats+2,:,iNorth_,iBlock) = &
+                -IVelocityPar(:,nLats+1:nLats+2,:,iNorth_,iBlock)
+           IVelocityPar(:,nLats+1:nLats+2,:,iEast_,iBlock) = &
+                -IVelocityPar(:,nLats+1:nLats+2,:,iEast_,iBlock)
+        endif
+           
 
      endif
 
