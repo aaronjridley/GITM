@@ -255,11 +255,11 @@ module ModInputs
   logical :: IncludeCowling         = .false.
   real    :: DynamoLonAverage       = 10.0
 
-  logical :: UseImprovedIonAdvection = .false.
-  logical :: UseNighttimeIonBCs = .false.
+  logical :: UseImprovedIonAdvection = .true.
+  logical :: UseNighttimeIonBCs = .true.
   real :: MinTEC = 2.0
-  logical :: UseImplicitFieldAlignedMomentum = .false.
-  real    :: DivIonVelCoef = 1.0
+  logical :: UseImplicitFieldAlignedMomentum = .true.
+  real :: DivIonVelCoef = 1.0
 
   logical :: UseGitmBCs = .false.
   character(len=iCharLen_) :: GitmBCsDir
