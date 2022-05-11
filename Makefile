@@ -61,6 +61,7 @@ LIB:
 	cd $(GLDIR)     ; make LIBPREV=${GITM}/${ABDIR}/libSphere.a   LIBADD
 	cd $(MAINDIR)   ; make LIBPREV=${GITM}/${GLDIR}/libUPTOGL.a   LIB
 	cd srcInterface ; make LIBPREV=${GITM}/${MAINDIR}/libUA.a     LIB
+	make POST
 
 nompirun:
 	make GITM
