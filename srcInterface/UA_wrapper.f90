@@ -411,17 +411,17 @@ contains
        NameVarIn_V, iBlock)
 
     use ModNumConst, only:cPi
-    use CON_coupler, ONLY: Grid_C, IE_
+    use CON_coupler, ONLY: Grid_C, IE_, ncell_id
+    use ModGITM, ONLY: iProcGITM=>iProc
+    use ModEIE_Interface
     
   ! This gets called for each variable- external loop over all variable names.
   ! Namevar = Pot, Ave, and Tot.
   ! iBlock = 1:North, 2:South.
 
   ! Variables and what they do:
-  ! IEi_HavenLats = nLatsIE
-  ! IEi_HavenMlt  = nMltIE
-  !
-  use ModEIE_Interface  !!!!! changed from use ModIE_Interface - MB
+  ! EIEi_HavenLats = nLatsIE
+  ! EIEi_HavenMlt  = nMltIE
 
   implicit none
 
@@ -432,7 +432,7 @@ contains
 
   logical :: IsInitialized = .false.
   
-  integer :: i,j,ii, iVar, iError
+  integer :: i,j,ii, iVar, iError, nCells_D(2)
 
   logical :: DoTest, DoTestMe
   character (len=*), parameter :: NameSub='UA_put_from_ie'
@@ -443,16 +443,39 @@ contains
      ! Gather information on size/shape of IE grid.
      ! Note that this is built for Ridley Serial, which stores its grid
      ! using "iSize - 1".  The +1 here compensates for that.
-     iSizeIeHemi = Grid_C(IE_) % nCoord_D(1) + 1
-     jSizeIeHemi = Grid_C(IE_) % nCoord_D(2) + 1
-     
+     nCells_D = ncell_id(IE_)
+     iSizeIeHemi = nCells_D(1) + 1
+     jSizeIeHemi = nCells_D(2) + 1
+
      ! Build IE grid within UA infrastructure:
      call EIE_InitGrid(iSizeIeHemi, jSizeIeHemi, 2, iError)
      call EIE_FillLats(90.0-(Grid_C(IE_) % Coord1_I)*180.0/cPi,iError)
      call EIE_FillMltsOffset((Grid_C(IE_) % Coord2_I)*180.0/cPi,iError)
      IsInitialized = .true.
+
+     ! Initial values for coupling:
+     EIEr3_HavePotential = 0.0
+     EIEr3_HaveAveE      = 0.0
+     EIEr3_HaveEFlux     = 0.0
   end if
 
+  ! Debug: print basic coupling info:
+  if(DoTest .and. (iProcGITM==0)) then
+     write(*,*)NameSub//' coupling info:'
+     write(*,*) 'UA/GITM: IE grid set to nLats x nLons = ', &
+          iSizeIeHemi, jSizeIeHemi
+     write(*,'(a, 2i5)')' UA EIE nLats, nLons = ', EIEi_HavenLats, EIEi_HavenMlts
+     write(*,*)'Buffer shape information:'
+     write(*,'(a, 3i5)') ' iSizeIn, jSizeIn, nVarIn = ', iSizeIn, jSizeIn, nVarIn
+     write(*,*)'Shape of Buffer_IIV = ', shape(Buffer_IIV)
+     write(*,*)'ncell_id(IE_) = ', ncell_id(IE_)
+     write(*,*)'iSizeIeHemi, jSizeIeHemi = ', iSizeIeHemi, jSizeIeHemi
+  end if
+  
+  ! Debug statement: print max/mins of transferred variables.
+  if(DoTest .and. (iProcGITM==0)) write(*,*) &
+       'UA WRAPPER: Max/min of received variables (iBlock=',iBlock,'):'
+  
   ! Put each variable where it belongs based on the name.x
   do iVar=1, nVarIn
      select case(NameVarIn_V(iVar))
@@ -466,7 +489,10 @@ contains
               EIEr3_HavePotential(j,i,iBlock) = Buffer_IIV(ii,j, iVar)
            enddo
         enddo
-
+        if(DoTest .and. (iProcGITM==0)) write(*,'(a, 2(e12.5,1x))') 'UA pot: ', &
+             maxval(EIEr3_HavePotential(:,:,iBlock)),   &
+             minval(EIEr3_HavePotential(:,:,iBlock))
+        
      ! Precipitation/average energy:
      case('ave')
         do i = 1, EIEi_HavenLats
@@ -476,7 +502,10 @@ contains
               EIEr3_HaveAveE(j,i,iBlock) = Buffer_IIV(ii,j, iVar)
            enddo
         enddo
-
+        if(DoTest .and. (iProcGITM==0)) write(*,'(a, 2(e12.5,1x))') 'UA ave: ', &
+             maxval(EIEr3_HaveAveE(:,:,iBlock)),   &
+             minval(EIEr3_HaveAveE(:,:,iBlock))
+        
      ! Precipitation/Total energy flux:
      case('tot')
         do i = 1, EIEi_HavenLats
@@ -489,7 +518,10 @@ contains
                    Buffer_IIV(ii,j,iVar) / (1.0e-7 * 100.0 * 100.0)
            enddo
         enddo
-
+        if(DoTest .and. (iProcGITM==0)) write(*,'(a, 2(e12.5,1x))') 'UA tot: ', &
+             maxval(EIEr3_HaveEFlux(:,:,iBlock)),   &
+             minval(EIEr3_HaveEFlux(:,:,iBlock))
+        
      case default
         call CON_stop(NameSub//' invalid NameVarIn='//NameVarIn_V(iVar))
 
