@@ -54,8 +54,6 @@ module ModInputs
   logical :: UseIMF = .true.
   logical :: UseHpi = .true.
 
-  logical :: UseIRHeating      = .false.
-  
   !!! Xing Meng Nov 2018 to use ISR E field in a local region + Weimer elsewhere
   logical :: UseRegionalAMIE = .false.
   logical :: UseTwoAMIEPotentials = .false.
@@ -78,7 +76,8 @@ module ModInputs
   logical :: UseOvationSMEWave = .false.
   logical :: UseOvationSMEIon  = .false.
   
-  logical :: UseAeModel        = .false.
+  logical :: UseAeModel = .false.
+  logical :: UseFtaModel = .false.
 
   logical :: UseFangEnergyDeposition = .false.
   
@@ -88,9 +87,6 @@ module ModInputs
   ! This is true because FR&E is default.
   logical :: NormalizeAuroraToHP = .true.
 
-  logical :: xxx
-
-  
   logical :: UseCusp = .false.
   real :: CuspAveE = 0.1
   real :: CuspEFlux = 2.0
@@ -259,11 +255,11 @@ module ModInputs
   logical :: IncludeCowling         = .false.
   real    :: DynamoLonAverage       = 10.0
 
-  logical :: UseImprovedIonAdvection = .false.
-  logical :: UseNighttimeIonBCs = .false.
+  logical :: UseImprovedIonAdvection = .true.
+  logical :: UseNighttimeIonBCs = .true.
   real :: MinTEC = 2.0
-  logical :: UseImplicitFieldAlignedMomentum = .false.
-  real    :: DivIonVelCoef = 1.0
+  logical :: UseImplicitFieldAlignedMomentum = .true.
+  real :: DivIonVelCoef = 1.0
 
   logical :: UseGitmBCs = .false.
   character(len=iCharLen_) :: GitmBCsDir
@@ -275,7 +271,8 @@ module ModInputs
   logical :: UseOCooling       = .true.
   logical :: UseConduction     = .true.
   logical :: UseTurbulentCond = .true.
-
+  logical :: UseIRHeating      = .false.
+  
   logical :: UseDiffusion      = .false.
   logical :: UseVerAdvectionT  = .true.
 

@@ -4,7 +4,7 @@
 
 SHELL=/bin/sh
 
-# Fortran language related part of Makefile.conf: Makefile.Darwin.gfortran
+# Fortran language related part of Makefile.conf: Makefile.Linux.gfortran
 #
 #	Space Weather Modeling Framework (SWMF) 
 #	GNU gfortran (gfortran) Fortran 90/95 Compiler
@@ -28,9 +28,6 @@ SEARCH = -J${INCLDIR} ${INCL_EXTRA}
 
 DEBUGFLAG = -C -g -fbacktrace -ffpe-trap=invalid,zero,overflow -fcheck=all
 DEBUG     = 
-
-## To profile the code with shark and view source code, set the DEBUG command below.
-#DEBUG     = -gstabs+
 
 OPT0 = -O0
 OPT1 = -O1
@@ -70,9 +67,7 @@ BLAS  = lapack.o blas.o
 	${COMPILE.f90} ${Cflag3} $<
 
 .F90.o:
-	cpp -C -P -DsysDarwin -DcompGFORTRAN -lang-c $*.F90 | grep -v '^#' > $*.f95
-	${COMPILE.f90} -o $*.o ${Cflag3} $*.f95
-	rm -f $*.f95
+	${COMPILE.f90} -DsysLinux -DcompGFORTRAN ${Cflag3} $<
 
 .f.o:
 	${COMPILE.f77} ${Cflag3} -ffixed-line-length-132 $<
@@ -88,5 +83,3 @@ clean:
 
 
 # keep this line
-
-

@@ -116,22 +116,6 @@ subroutine add_sources
      call calc_electron_temperature(iBlock)
      
      !-------------------------------------------------------------------------
-     ! New Source Term for the ion density:
-     !-------------------------------------------------------------------------
-
-     if (UseImprovedIonAdvection) then
-     
-        do iIon = 1, nIonsAdvect
-           change = dt * DivIVelocity(:,:,:,iBlock)
-           IDensityS(1:nLons,1:nLats,1:nAlts,iIon,iBlock) = &
-                IDensityS(1:nLons,1:nLats,1:nAlts,iIon,iBlock) / (1 + change)
-        enddo
-        
-        if (DoCheckForNans) call check_for_nans_ions('After divergence')
-
-     endif
-
-     !-------------------------------------------------------------------------
      ! Bulk Quantities (rho, number den, vertical velocity, electron den)
      !-------------------------------------------------------------------------
 
