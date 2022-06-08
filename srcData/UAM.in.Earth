@@ -95,12 +95,22 @@ Used by Fuller-Rowell and Evans model:
 
 or
 
+# the hemispheric power is not really available after 2013
 NOAAHPI_INDICES
 power file
 
-New auroral model from Wu and Ridley:
-#AEMODEL
-F		Use New AE Model of the aurora developed at UM
+New auroral model from Wu and Ridley, which is driven by AU/AL/AE
+#FTAMODEL
+T                 Use FTA model of the aurora
+
+Can download AU/AL/AE indices from SuperMAG and use them here:
+SME_INDICES
+sme_2010.txt      SME Filename
+none              onset time delay file
+
+This is for OVATION-PRIME:
+#NEWELLAURORA
+F                 Use Newell Ovation model of the aurora
 
 #FANGENERGY
 T		Use Fang 2010 and 2013 energy deposition
@@ -145,7 +155,7 @@ This is for amie-like inputs:
 none		northern hemisphere amie file
 none		southern hemisphere amie file
 
-Low-latitude dynamo (only run with higher res):
+Low-latitude dynamo (only run with higher res). Turn on for higher res sims:
 #DYNAMO
 F		UseDynamo
 45.0		DynamoHighLatBoundary
@@ -263,14 +273,18 @@ T               UseIonPressureGradient
 T               UseIonGravity
 T               UseNeutralDrag
 
+#CHEMISTRY
+T		UseIonChemistry
+T		UseIonAdvection
+T		UseNeutralChemistry
+
+
 #USEIMPROVEDIONADVECTION
 T   		UseImprovedIonAdvection
 T               UseNighttimeIonBCs
 2.0
 
-#CHEMISTRY
-T		UseIonChemistry
-T		UseIonAdvection
-T		UseNeutralChemistry
+#USEIMPLICITIONMOMENTUM
+T
 
 #END
