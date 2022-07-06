@@ -1,0 +1,190 @@
+
+#DEBUG
+0                 debug level
+0                 cpu to watch
+10.0              dt between normal code output to stdout
+F                 usebarriers - forces the code to stop and wait more often
+
+#RESTART
+F                 no descriptor
+
+#GRID
+10                nBlocksLongitude
+20                nBlocksLatitude
+-90.000000        min latitude to model (deg)
+90.000000         max latitude to model (deg)
+0.000000          min longitude to model (deg)
+0.000000          max longitude to model (0 = whole earth) (deg)
+
+#MSISOBC
+T                 no descriptor
+0.0               no descriptor
+
+#DIFFUSION
+T                 no descriptor
+50.0              Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
+0.01000           Total Eddy Diffusion applied at alts below this pressures level
+0.00500           No Eddy Diffusion at altitudes above this pressure level
+
+#PHOTOELECTRON
+0.00              Efficiency of photoelectron heating
+
+#NEUTRALHEATING
+0.05              Efficiency of photoelectron heating
+
+#THERMALCONDUCTION
+5.6e-4            Thermal conductivity (o2)
+7.6e-4            Thermal conductivity (o)
+0.72              Thermal conductivity (^s)
+
+#TIMESTART
+2010              year
+04                month
+01                day
+00                hour
+00                minute
+00                second
+
+#TIMEEND
+2010              year
+05                month
+01                day
+00                hour
+00                minute
+00                second
+
+#CFL
+0.8               percentage of maximum allowable time-step to take
+
+#LIMITER
+mc                only limiter available
+2.0               Beta=1.6 seems to be more stable than 2.0
+
+#STATISTICALMODELSONLY
+F                 if you want to run with msis and iri only (i.e. not GITM)
+1800.0            time step to take if you run with msis and iri
+
+#LOGFILE
+1.0               dt for output to a log file
+
+#SAVEPLOTS
+7200              dt for restarts
+1                 number of plot types
+3DALL             plot type
+1800              dt for plot type 3DALL
+
+#ELECTRODYNAMICS
+60.0              how often to update potential
+60.0              how often to update aurora and euv
+
+#KP
+1.0               no descriptor
+
+#ALTITUDE
+100.0             minimum altitude to use
+600.0             maximum altitude to use (ignored unless the following is F)
+T                 use stretched grid
+
+#INITIAL
+T                 initialize thermosphere using MSIS
+T                 initialize ionosphere using IRI
+100.0             if msis is false, then this is the temperature at the base
+1000.0            if msis is false, then this is the temperature at the top
+5.0e17            if msis is false, then this is the N(species1) at the base
+7.0e18            if msis is false, then this is the N(species2) at the base
+3.0e19            if msis is false, then this is the N(species3) at the base
+
+#APEX
+T                 Use apex magnetic coordinate system
+
+#AMIEFILES
+none              no descriptor
+none              no descriptor
+
+#TIDES
+F                 UseMSISFlat
+T                 UseMSISTides
+F                 UseGSWMTides
+F                 UseWACCMTides
+
+#AUSMSOLVER
+T                 Use AUSM+-up Solvers
+
+#USEIMPLICITIONMOMENTUM
+T
+
+#USEIMPROVEDIONADVECTION
+T                 no descriptor
+T                 no descriptor
+2.0               no descriptor
+
+#DYNAMO
+T                 UseDynamo
+45.0              Dynamo magnetic latitude boundary
+500               nIterations
+1.0               Max Residual
+F                 Include Cowling Conductances
+40.0              Longitude Averaging
+
+#F107
+74.1              data from UA/DataIn/f107_adjusted.txt
+78.1              81 day average of f107
+
+#NGDC_INDICES
+DataIn/f107.txt   no descriptor
+
+#FANGENERGY
+T                 Use Fang 2010 energy deposition
+
+#NOAAHPI_INDICES
+power_2010.txt    no descriptor
+
+#MHD_INDICES
+imf20100401.dat   imf input file
+
+#EUV_DATA
+T                 Use FISM Solar Flux Data (daily)
+UA/DataIn/FISM/fismflux_daily_2010.dat   FISM Filename
+
+#THERMO
+T                 UseSolarHeating
+T                 UseJouleHeating
+T                 UseAuroralHeating
+T                 UseNOCooling
+T                 UseOCooling
+T                 UseConduction
+T                 UseTurbulentConduction
+F                 UseUpdatedTurbulentConduction
+1.0               EddyScalingFactor
+
+#FORCING
+T                 UsePressureGradient
+T                 UseIonDrag
+T                 UseNeutralDrag
+T                 UseViscosity
+T                 UseCoriolis
+T                 UseGravity
+
+#IONFORCING
+T                 no descriptor
+T                 no descriptor
+T                 no descriptor
+T                 no descriptor
+
+#CHEMISTRY
+T                 UseIonChemistry
+T                 UseIonAdvection
+T                 UseNeutralChemistry
+
+#SME_INDICES
+sme_2010.txt      SME Filename
+none              onset time delay file
+
+#FTAMODEL
+T                 Use FTA model of the aurora
+
+#NEWELLAURORA
+F                 Use Newell Ovation model of the aurora
+
+#END
+
