@@ -5,7 +5,7 @@
 #PBS -l ncpus=4
 #PBS -l mem=8GB
 #PBS -l wd
-#PBS -m ae
+#PBS -m abe
 #PBS -M atishnal.chand@adfa.edu.au
 #PBS -j oe
 module remove openmpi
