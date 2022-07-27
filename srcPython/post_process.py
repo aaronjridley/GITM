@@ -290,9 +290,13 @@ def do_loop(user, server, dir, IsRemote):
 
     if (IsRemote):
         DidWork = test_if_remote_exists(user, server, dir)
+        if (not DidWork):
+            return DidWork
 
     if (IsRemote and DidWork):
         DidWork = transfer_log_files(user, server, dir)
+        if (not DidWork):
+            return DidWork
 
     # Post process GITM files:
     print('Post Processing GITM files...')
@@ -342,5 +346,6 @@ if __name__ == '__main__':  # main code block
     
     while DidWork:
         DidWork = do_loop(user, server, dir, IsRemote)
-        print('Sleeping ... ', args.sleep, ' sec.')
-        time.sleep(args.sleep)
+        if (DidWork):
+            print('Sleeping ... ', args.sleep, ' sec.')
+            time.sleep(args.sleep)
