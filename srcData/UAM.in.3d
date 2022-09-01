@@ -101,7 +101,7 @@ power file
 
 New auroral model from Wu and Ridley, which is driven by AU/AL/AE
 #FTAMODEL
-T                 Use FTA model of the aurora
+F                 Use FTA model of the aurora
 
 Can download AU/AL/AE indices from SuperMAG and use them here:
 SME_INDICES
