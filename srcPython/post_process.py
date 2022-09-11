@@ -36,8 +36,8 @@ def parse_args_post():
                         help = 'how long to sleep between loops',
                         default = 300, type = int)
 
-    parser.add_argument('-v',
-                        help = 'Run with verbose turned on',
+    parser.add_argument('-q',
+                        help = 'Run with verbose turned off',
                         action = 'store_true')
     
     parser.add_argument('-norm',
@@ -190,10 +190,12 @@ def post_process_gitm():
 
     command = \
         'cd UA ; ' + \
-        'chmod a+rx data ; ' + \
-        './pGITM > .post_process ; ' + \
-        'chmod a+r data/*.bin ; ' + \
-        'cd ..'
+        'chmod a+rx data ; '
+    if (IsVerbose):
+        command = command + './pGITM ; '
+    else:
+        command = command + './pGITM > .post_process ; '
+    command = command + 'chmod a+r data/*.bin ; cd ..'
     DidWork = run_command(command)
 
     return DidWork
@@ -216,8 +218,9 @@ def transfer(filelist, user, server, dir, DoRemove):
             DidWork = run_command(chmod)
             files = files + ' ' + file
             
-        rsync = 'rsync -rav ' + files + ' ' + remote + \
-            ' >> ' + outfile + ' 2>&1'
+        rsync = 'rsync -rav ' + files + ' ' + remote
+        if (not IsVerbose):
+            rsync = rsync + ' >> ' + outfile + ' 2>&1'
         DidWork = run_command(rsync)
         
     if (DoRemove):
@@ -234,6 +237,9 @@ def transfer(filelist, user, server, dir, DoRemove):
                 if (DoRm):
                     command = '/bin/rm -f ' + file
                     DidWork = run_command(command)
+                    # Systems reject ssh commands if too many happen in
+                    # too short of time, so sleep in between the commands. 
+                    time.sleep(5)
             else:
                 if (IsVerbose):
                     print('Remote file (' + test_file + ') does not exist!')
@@ -324,7 +330,7 @@ if __name__ == '__main__':  # main code block
 
     file = args.file
 
-    IsVerbose = args.v
+    IsVerbose = not args.q
     if (args.norm):
         DoRm = False
 
