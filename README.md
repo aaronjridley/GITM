@@ -10,7 +10,7 @@ on linux and mac osx as well as ifort on NASA's Pleiades computer.
 
 ## Quick Start:
 
-1. git clone https://github.com/aaronjridley/GITM
+1. git clone https://github.com/GITMCode/GITM
 
 2. cd GITM
 
@@ -112,7 +112,7 @@ cd GITM/run/UA/data
 
 ## Contributing:
 
-1. Please feel free to e-mail the development team to suggest ideas.
+1. Please feel free to e-mail the development team to suggest ideas. 
 
 2. Please feel free to open an issue on github.  The development team
 gets these issues and will review them.  We can then reach out to you
