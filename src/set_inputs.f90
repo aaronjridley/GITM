@@ -919,13 +919,13 @@ subroutine set_inputs
            call read_in_logical(UseMarsEddy, iError)
 
            !Verify multiple of these are not 'T' simultaneously
-           if (UseFlatEddy .eq. .True. .and. UseMahieuxEddy .eq. .True.) then
+           if (UseFlatEddy .eqv. .True. .and. UseMahieuxEddy .eqv. .True.) then
              write(*,*) "Only one of UseFlatEddy/UseMahieuxEddy/UseMarsEddy can be 'T' at one time" 
              iError = 1
-           else if (UseFlatEddy .eq. .True. .and. UseMarsEddy .eq. .True.) then
+           else if (UseFlatEddy .eqv. .True. .and. UseMarsEddy .eqv. .True.) then
               write(*,*) "Only one of UseFlatEddy/UseMahieuxEddy/UseMarsEddy can be 'T' at one time"
               iError = 1
-           else if (UseMahieuxEddy .eq. .True. .and. UseMarsEddy .eq. .True.) then
+           else if (UseMahieuxEddy .eqv. .True. .and. UseMarsEddy .eqv. .True.) then
               write(*,*) "Only one of UseFlatEddy/UseMahieuxEddy/UseMarsEddy can be 'T' at one time"
               iError = 1
            endif

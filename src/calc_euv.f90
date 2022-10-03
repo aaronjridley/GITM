@@ -694,7 +694,7 @@ subroutine calc_scaled_euv
      iMin = minloc(tDiff)
      if (iMin(1) .eq. 0) iMin(1) = 1
      
-     Timed_Flux(nWavelengths-num_wavelengths_high:nWavelengths) = SeeFlux(1:num_wavelengths_high,iMin(1))
+     Timed_Flux(nWavelengths-num_wavelengths_high+1:nWavelengths) = SeeFlux(1:num_wavelengths_high,iMin(1))
 
      if (CurrentTime .ge. FlareTimes(iFlare) .and. CurrentTime-dt .le. FlareTimes(iFlare)) then
 
@@ -710,7 +710,7 @@ subroutine calc_scaled_euv
            if (Seetime(iMin(1)+1) .lt. FlareTimes(iFlare) .or. FlareTimes(iFlare) .eq. 0) then
               if (CurrentTime .lt. SeeTime(FlareStartIndex)) then
                  !We may not be to the point where the flare has begun in the SEE data yet...
-                 Timed_Flux(nWavelengths-num_wavelengths_high:nWavelengths) = SeeFlux(:,FlareStartIndex)
+                 Timed_Flux(nWavelengths-num_wavelengths_high+1:nWavelengths) = SeeFlux(:,FlareStartIndex)
               else
                  if (CurrentTime .le. FlareEndTime) then
                     !Exponentially interpolate between last seetime and next seetim 
