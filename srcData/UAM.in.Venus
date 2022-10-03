@@ -7,25 +7,31 @@ F		usebarriers - forces the code to stop and wait more often
 #RESTART
 F
 
+#AUSMSOLVER
+F               Use AUSM+-up Solvers
+
 #GRID
-2		lons
-2		lats
+8		lons
+10		lats
 -90.0		minimum latitude to model
 90.0		maximum latitude to model
 0.0		longitude to model (ignored in everything but 1D)
 0.0		LonEnd
 
 #DIFFUSION
-T
+T               UseDiffusion
+F		UseFlatEddy (UseFlat, UseMahieux, and UseMars cannot be used simultaneously)
+T		UseMahieuxEddy (ignores the pressure bounds and EDC)
+F		UseMarsEddy (if all false, defaults to Earth case)
 900.0		Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
 0.0058		Total Eddy Diffusion applied at alts below this pressures level (bigger number)
-0.0025		No Eddy Diffusion at altitudes above this pressure level
+0.0030		No Eddy Diffusion at altitudes above this pressure level
 
 #THERMALDIFFUSION
 2.22e-4		Thermal conductivity (code use kappa = number * T**0.75)
 
 #CPUTIMEMAX
-86000.0		Maximum amount of cputime to use before stopping the code
+574000.0	Maximum amount of cputime to use before stopping the code
 
 #TIMESTART
 2009	        year
@@ -39,8 +45,8 @@ T
 2009	        year
 03		month
 01		day
-00		hour
-05		minute
+04		hour
+00		minute
 00		second
 
 #CFL
@@ -64,6 +70,7 @@ F		if you want to run with msis and iri only (i.e. not GITM)
 300.0		dt for output
 3DTHM
 300.0
+
 
 #ELECTRODYNAMICS
 60.0		how often to update potential
@@ -123,9 +130,14 @@ F		 UseAuroralHeating
 F		 UseNOCooling
 T		 UseOCooling
 T		 UseConduction
-F		 UseTurbulentConduction
-T		 UseIRHeating
+T		 UseTurbulentConduction
 T		 UseRadCooling
+
+#IRHEATING
+T		UseIRHeating
+F		UseGilli
+F		UseRoldan
+
 
 #VERTICALSOURCES
 200.0		MaximumVerticalVelocity
@@ -136,14 +148,15 @@ F               UseStressHeating
 #EUV_DATA
 T		UseEUVData
 UA/DataIn/fismdaily.dat
+UA/DataIn/fism_extraBins_20090301.txt
 
 #EDDYVELOCITY
 F               UseBoquehoAndBlelly
-T               UseEddyCorrection
+F               UseEddyCorrection
 
 #FORCING
 T		UsePressureGradient
-F		UseIonDrag
+T		UseIonDrag
 T		UseNeutralDrag
 T		UseViscosity
 T		UseCoriolis
@@ -173,5 +186,11 @@ F		UseNighttimeIonBCs
 
 #NANCHECK
 T
+
+#HORIZONTALVELOCITYBC
+-100.0
+
+#USENIGHTSIDEIONS
+T	! For Venus. Use nightside OP_ at top boundary
 
 #END
