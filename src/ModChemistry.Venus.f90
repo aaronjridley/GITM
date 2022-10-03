@@ -21,7 +21,7 @@
     real :: Ions(nIons),Neutrals(nSpeciesTotal), eDensity
     real :: rtN2P_e, rtNOP_e, rtCO2P_e, rtO2P_e  ! DR rates
     real :: te, ti, tn
-    real :: rtCO2_N2P, rtO_N2P, rtN2_OP, rtN4S_O, rtN4S_NO,  &
+    real :: rtCO2_N2P, rtO_N2P, rtN2_OP, rtN4S_O,  &
           rtN2D_O2                             ! Bi-molecular
     real :: rtO_O_CO2, rtO_CO_CO2, rtO_O2_CO2, rtO_N4S_CO2  ! Tri-molecular
     real :: rtO_O_CO, rtO_CO_CO !Added by BP (7/23/2021)
@@ -31,9 +31,10 @@
           rtN2D_CO, rtN2D_O, rtN2D_N2, rtN4S_CO2, rtNO_O2P, rtNO_N2D, &
           rtCO2P_O,rtCO2P_NO,rtCO2_N,rtCO2P_N2D,rtCOP_O,rtCOP_NO,&
           rtCOP_O2,rtCOP_CO2,rtO2P_N2D,rtO2P_N2D2,rtO2P_NO,rtO2P_N2,&
-          rtN2P_N,rtN2P_CO,rtN2P_O2,rtN2P_O,rtN2P_NO,rtNP_CO2,&
+          rtN2P_N,rtN2P_CO,rtN2P_O2,rtN2P_O,rtN2P_NO, rtN2P_CO2, &
+          rtN2P_O_to_NOP, rtN2P_O_to_OP, rtNP_CO2,&
           rtCO2_NP,rtOP_O2,rtOP_N2D,rtN4S_O2,rtN2D_NO,rtN2D_e,&
-          rtNOP_e2,rtCO2P_N,rtCO2P_O2,rtO2P_N4S
+          rtNOP_e2,rtCO2P_N,rtCO2P_O2,rtO2P_N4S, rtN4S_NO
 
   real :: tr05, tr104, expt1, expt2, rr_opn2
   real :: rt300te, rt300tn, rttn300
@@ -143,7 +144,8 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
            rtN2P_CO = 7.6e-11*1.e-6 
            rtN2P_O2 = 5.1e-11*(300/Ti)**1.16*1.e-6 
            rtN2P_O = 7.0e-12*(300/Ti)**.23*1.e-6 
-           rtN2P_NO = 3.6e-10*1.e-6 
+           rtN2P_NO = 3.6e-10*1.e-6
+           rtN2P_CO2 = 9.00e-10*(300/Ti)**0.23*1.0e-6 
            rtNP_CO2 = 2.02e-10*1.e-6 
            rtCO2_NP = 9.18e-10*1.e-6 
            rtOP_O2 = 1.6e-11*(300/Ti)**.52*1.e-6 
@@ -152,8 +154,13 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
            rtN2D_NO = 6.7e-11*1.e-6 
            rtN2D_e = 3.86e-10*(Te/300)**.81*1.e-6 
            rtO2P_N4S = 1.0e-10*1.e-6
-           rtO_O_CO = 3.4e-33*exp(-2180/Tn)*1.e-6 !confirm w/ Steve that these are cm^3
+           rtO_O_CO = 3.4e-33*exp(-2180/Tn)*1.e-6 
            rtO_CO_CO = 6.5e-33*exp(-2180/Tn)*1.e-6
+
+           rtN2P_O_to_NOP = 1.33e-10 * (300/Ti)**0.44*1.e-6 !(for Ti < 1500)
+           rtN2P_O_to_OP  = 7.00e-12 * (300/Ti)**0.23*1.e-6 !(for Ti < 1500)
+           rtN4S_NO = 3.4e-11 * 1.e-6
+
          end subroutine calc_reaction_rates
 
          subroutine calc_chemical_sources(iLon,iLat,iAlt,iBlock,IonSources, &
@@ -259,7 +266,7 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
 
            NeutralLosses(iO_) = NeutralLosses(iO_) + Reaction
            IonSources(iOP_) = IonSources(iOP_) + Reaction
-           reactionrate(iLon,iLat,iAlt,iBlock,1) = Reaction
+
            !No chemical heating included in the Earth GITM code for
            !this ionization
 
@@ -282,6 +289,7 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
 
            ChemicalHeatingSub = ChemicalHeatingSub + &
                 Reaction * 1.33
+           reactionrate(iLon,iLat,iAlt,iBlock,1) = Reaction
 
            ! -----------------------------------------------------------
            ! CO2+ + O ==> O+ + CO2  Fast 
@@ -296,7 +304,7 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
            IonLosses(iCO2P_) = IonLosses(iCO2P_) + Reaction
            NeutralSources(iCO2_) = NeutralSources(iCO2_) + Reaction
            IonSources(iOP_) = IonSources(iOP_) + Reaction
-           reactionrate(iLon,iLat,iAlt,iBlock,2) = Reaction
+
            ! -----------------------------------------------------------
            ! CO2 + O+ ==> O2+ + CO + 1.21 eV Fast
            ! See Gu et al., 2020 paper for 1.21 eV, but may be 0.65 eV to KE
@@ -316,11 +324,11 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
            IonLosses(iOP_) = IonLosses(iOP_) + Reaction
            NeutralSources(iCO_) = NeutralSources(iCO_) + Reaction
            IonSources(iO2P_) = IonSources(iO2P_) + Reaction
-           reactionrate(iLon,iLat,iAlt,iBlock,3) = Reaction
 
            ChemicalHeatingSub = ChemicalHeatingSub + &
                 Reaction * 1.21
-
+           
+           reactionrate(iLon,iLat,iAlt,iBlock,2) = Reaction
            ! -----------------------------------------------------------
            ! O2+ + e- ==> 2O
            ! -----------
@@ -372,7 +380,7 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
            ChemicalHeatingSub = &
                ChemicalHeatingSub + &
                Reaction * avgHeat
-
+           reactionrate(iLon,iLat,iAlt,iBlock,3) = Reaction
            !nu = 3-10 is a large fractional population ~0.2. How to handle heating?
 
 
@@ -459,7 +467,7 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
 
            ! -----------------------------------------------------------                  
            ! O + O + CO ==> CO2 + O
-           ! need a variable declaration for rtO_O_CO     
+           !      
            ! -----------------------------------------------------------                  
            Reaction = rtO_O_CO*Neutrals(iO_)*Neutrals(iO_)*Neutrals(iCO_)
 
@@ -470,7 +478,7 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
 
            ! -----------------------------------------------------------      
            ! O + 2CO ==> CO2 + CO                                             
-           ! need a variable declaration for rtO_CO_CO                   
+           !                    
            ! -----------------------------------------------------------
            Reaction = rtO_CO_CO*Neutrals(iO_)*Neutrals(iCO_)*Neutrals(iCO_) 
            NeutralLosses(iO_) = NeutralLosses(iO_) + Reaction
@@ -484,12 +492,13 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
            ! New code added by S. W. Bougher (170427)
            ! -----------------------------------------------------------
            !BP: Add this back in once done...
-           Reaction = rtN4S_O*Neutrals(iN4S_)*Neutrals(iO_)
+           !if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 > 112.0) then
+             Reaction = rtN4S_O*Neutrals(iN4S_)*Neutrals(iO_)
 
-           NeutralLosses(iN4S_) = NeutralLosses(iN4S_) + Reaction
-           NeutralLosses(iO_) = NeutralLosses(iO_) + Reaction
-           NeutralSources(iNO_) = NeutralSources(iNO_) + Reaction
-
+             NeutralLosses(iN4S_) = NeutralLosses(iN4S_) + Reaction
+             NeutralLosses(iO_) = NeutralLosses(iO_) + Reaction
+             NeutralSources(iNO_) = NeutralSources(iNO_) + Reaction
+           !endif
 !          Total NO (delta plus gamma band system) mission (190-260 nm)
 !          Initially Should be ph/m3.sec units  (check)
 !          Convert to ph/cm3.sec units  
@@ -527,51 +536,53 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
            ! N2D + CO2  ==> NO + CO
            ! -----------------------------------------------------------
            !BP: Add this back in when done...
-           Reaction = rtN2D_CO2*Neutrals(iN2D_)*Neutrals(iCO2_)
+           if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 > 100.0) then
+             Reaction = rtN2D_CO2*Neutrals(iN2D_)*Neutrals(iCO2_)
 
-           NeutralLosses(iN2D_) = NeutralLosses(iN2D_) + Reaction
-           NeutralLosses(iCO2_) = NeutralLosses(iCO2_) + Reaction
-           NeutralSources(iNO_) = NeutralSources(iNO_) + Reaction
-           NeutralSources(iCO_) = NeutralSources(iCO_) + Reaction           
+             NeutralLosses(iN2D_) = NeutralLosses(iN2D_) + Reaction
+             NeutralLosses(iCO2_) = NeutralLosses(iCO2_) + Reaction
+             NeutralSources(iNO_) = NeutralSources(iNO_) + Reaction
+             NeutralSources(iCO_) = NeutralSources(iCO_) + Reaction           
+           endif
 
            ! -----------------------------------------------------------
            ! O2+ + N4S ==> NO+ + O
            ! -----------------------------------------------------------
-           !BP: Add this back
-           !Reaction = rtO2P_N4S * Neutrals(iN4S_) * Ions(iO2P_)
-           !NeutralLosses(iN4S_) = NeutralLosses(iN4S_) + Reaction
-           !IonLosses(iO2P_) = IonLosses(iO2P_) + Reaction
+           Reaction = rtO2P_N4S * Neutrals(iN4S_) * Ions(iO2P_)
+           NeutralLosses(iN4S_) = NeutralLosses(iN4S_) + Reaction
+           IonLosses(iO2P_) = IonLosses(iO2P_) + Reaction
            !write(*,*) "Losses from O2+ and N", Reaction
-           !NeutralSources(iO_) = NeutralSources(iO_) + Reaction
-           !IonSources(iNOP_) = IonSources(iNOP_) + Reaction
+           NeutralSources(iO_) = NeutralSources(iO_) + Reaction
+           IonSources(iNOP_) = IonSources(iNOP_) + Reaction
 
            ! -----------------------------------------------------------
            ! O2+ + NO ==> NO+ + O2
            ! -----------------------------------------------------------
-           !BP: Adding this (although it's not too important)
-           !    to try to reduce the O2+ which is blowing up
-           !BP: Add this back in after done with tests
-           !Reaction = rtO2P_NO * Neutrals(iNO_) * Ions(iO2P_)
-           !IonLosses(iO2P_) = IonLosses(iO2P_) + Reaction
-           !write(*,*) "Losses from O2+ and NO", Reaction
-           !NeutralLosses(iNO_) = NeutralLosses(iNO_) + Reaction
-           !IonSources(iNOP_) = IonSources(iNOP_) + Reaction
-           !NeutralSources(iO2_) = NeutralSources(iO2_) + Reaction
+           !BP: Adding this as an important loss term for NO below
+           !    125 km.
+           Reaction = rtO2P_NO * Neutrals(iNO_) * Ions(iO2P_)
+           IonLosses(iO2P_) = IonLosses(iO2P_) + Reaction
+           NeutralLosses(iNO_) = NeutralLosses(iNO_) + Reaction
+           IonSources(iNOP_) = IonSources(iNOP_) + Reaction
+           NeutralSources(iO2_) = NeutralSources(iO2_) + Reaction
 
            ! -----------------------------------------------------------
            ! O2+ + N2 ==> NO+ + NO
            ! -----------------------------------------------------------
            !BP: Adding this to try to reduce the O2+ which is blowing up
-           !BP: Add back in...
-           !Reaction = rtO2P_N2 * Neutrals(iN2_) * Ions(iO2P_)
+           !BP: According to Earth's calc_chemistry.f90, this
+           !    was causing a crash. Removing to see if this 
+           !    helps with the issues we are having at Venus.
 
-           !IonLosses(iO2P_) = IonLosses(iO2P_) + Reaction
+           Reaction = rtO2P_N2 * Neutrals(iN2_) * Ions(iO2P_)
+
+           IonLosses(iO2P_) = IonLosses(iO2P_) + Reaction
            !write(*,*) "Losses from O2+ and N2", Reaction
-           !NeutralLosses(iN2_) = NeutralLosses(iN2_) + Reaction
+           NeutralLosses(iN2_) = NeutralLosses(iN2_) + Reaction
 
-           !IonSources(iNOP_) = IonSources(iNOP_) + Reaction
-           !NeutralSources(iNO_) = NeutralSources(iNO_) + Reaction
-           
+           IonSources(iNOP_) = IonSources(iNOP_) + Reaction
+           NeutralSources(iNO_) = NeutralSources(iNO_) + Reaction
+
             ! -----------------------------------------------------------
             ! NO+ + e- ==> O + N2D 
             ! g = 0.78
@@ -580,25 +591,25 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
               ! NO+ + e -> O + N(2D) + 0.38 eV  (0.78)
               ! -----------
             ! -----------------------------------------------------------
-            !BP: Temporarily removing
-            !Reaction = rtNOP_e * Ions(ie_) * Ions(iNOP_) 
-            !IonLosses(iNOP_) = IonLosses(iNOP_) + Reaction
-            !NeutralSources(iN2D_) = NeutralSources(iN2D_) + Reaction
-            !NeutralSources(iO_) = NeutralSources(iO_) + Reaction
+           
+            Reaction = rtNOP_e * Ions(ie_) * Ions(iNOP_) 
+            IonLosses(iNOP_) = IonLosses(iNOP_) + Reaction
+            NeutralSources(iN2D_) = NeutralSources(iN2D_) + Reaction
+            NeutralSources(iO_) = NeutralSources(iO_) + Reaction
 
-            !ChemicalHeatingSub = &
-            !       ChemicalHeatingSub + &
-            !       Reaction * (0.38 * 0.78) + Reaction * (2.75 * 0.22)
+            ChemicalHeatingSub = &
+                   ChemicalHeatingSub + &
+                   Reaction * (0.38 * 0.78) + Reaction * (2.75 * 0.22)
             
             ! -----------------------------------------------------------
             ! NO+ + e- ==> O + N4S 
             ! (1-g) = 0.22
             ! -----------------------------------------------------------
 
-            !Reaction = rtNOP_e2 * Ions(ie_) * Ions(iNOP_) 
-            !IonLosses(iNOP_) = IonLosses(iNOP_) + Reaction
-            !NeutralSources(iN4S_) = NeutralSources(iN4S_) + Reaction
-            !NeutralSources(iO_) = NeutralSources(iO_) + Reaction 
+            Reaction = rtNOP_e2 * Ions(ie_) * Ions(iNOP_) 
+            IonLosses(iNOP_) = IonLosses(iNOP_) + Reaction
+            NeutralSources(iN4S_) = NeutralSources(iN4S_) + Reaction
+            NeutralSources(iO_) = NeutralSources(iO_) + Reaction 
 
             !Chemical heating taken care of in reaction above
 
@@ -608,21 +619,107 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
             !  NeutralLosses(iO_) = 0.0
             !endif
 
+            ! ----------------------------------------------------------- 
+            ! N2+ + CO2 -> N2 + CO2+
+            ! some loss for N2+, i don't know if this is a major reaction
+            ! Any exothermicity?
+            ! ----------------------------------------------------------- 
+            
+            Reaction = rtN2P_CO2 * Ions(iN2P_) * Neutrals(iCO2_)
+            IonLosses(iN2P_) = IonLosses(iN2P_) + Reaction
+            NeutralLosses(iCO2_) = NeutralLosses(iCO2_) + Reaction
+            NeutralSources(iN2_) = NeutralSources(iN2_) + Reaction
+            IonSources(iCO2P_) = IonSources(iCO2P_) + Reaction           
+ 
+            ! -----------------------------------------------------------   
+            ! N2+ + O2 -> N2 + O2+                                              
+            ! some loss for N2+, i don't know if this is a major reaction                   
+            ! ----------------------------------------------------------- 
+            Reaction = rtN2P_O2 * Ions(iN2P_) * Neutrals(iO2_)
+            IonLosses(iN2P_) = IonLosses(iN2P_) + Reaction
+            NeutralLosses(iO2_) = NeutralLosses(iO2_) + Reaction
+            NeutralSources(iN2_) = NeutralSources(iN2_) + Reaction
+            IonSources(iO2P_) = IonSources(iO2P_) + Reaction
+            
+            ! -----------------------------------------------------------           
+            ! N2+ + O -> NO+ + N(2D)                                                     
+            ! -----------------------------------------------------------         
+            Reaction = rtN2P_O_to_NOP * Ions(iN2P_) * Neutrals(iO_)
+            IonLosses(iN2P_) = IonLosses(iN2P_) + Reaction
+            NeutralLosses(iO_) = NeutralLosses(iO_) + Reaction
+            NeutralSources(iN2D_) = NeutralSources(iN2D_) + Reaction
+            IonSources(iNOP_) = IonSources(iNOP_) + Reaction
+
+            ! -----------------------------------------------------------         
+            ! N2+ + O -> O+ + N2                                    
+            ! ----------------------------------------------------------- 
+            Reaction = rtN2P_O_to_OP * Ions(iN2P_) * Neutrals(iO_)
+            IonLosses(iN2P_) = IonLosses(iN2P_) + Reaction
+            NeutralLosses(iO_) = NeutralLosses(iO_) + Reaction
+            NeutralSources(iN2_) = NeutralSources(iN2_) + Reaction
+            IonSources(iOP_) = IonSources(iOP_) + Reaction
+
+            ! ----------------------------------------------------------- 
+            ! N2+ + NO -> N2 + NO+                                             
+            ! -----------------------------------------------------------
+            Reaction = rtN2P_NO * Ions(iN2P_) * Neutrals(iNO_)
+            IonLosses(iN2P_) = IonLosses(iN2P_) + Reaction
+            NeutralLosses(iNO_) = NeutralLosses(iNO_) + Reaction
+            NeutralSources(iN2_) = NeutralSources(iN2_) + Reaction
+            IonSources(iNOP_) = IonSources(iNOP_) + Reaction
+
+            ! -----------------------------------------------------------  
+            ! N2+ + e -> 2N(2D) (see Fox and Sung, 2001 for references)                   
+            ! ----------------------------------------------------------- 
+            Reaction = rtN2P_e * Ions(ie_) * Ions(iN2P_)
+            IonLosses(iN2P_) = IonLosses(iN2P_) + Reaction
+            NeutralSources(iN2D_) = NeutralSources(iN2D_) + 2*Reaction
+
+            ! -----------------------------------------------------------            
+            ! N(2D) + NO -> N2 + O (see Fox and Sung, 2001 for references)          
+            ! BP: Adding an NO loss term to prevent build up < ~130 km
+            ! -----------------------------------------------------------  
+            Reaction = rtN2D_NO * Neutrals(iN2D_) * Neutrals(iNO_)
+            NeutralLosses(iN2D_) = NeutralLosses(iN2D_) + Reaction
+            NeutralLosses(iNO_) = NeutralLosses(iNO_)+ Reaction
+            NeutralSources(iN2_) = NeutralSources(iN2_) + Reaction
+            NeutralSources(iO_) = NeutralSources(iO_) + Reaction
+
+            ! -----------------------------------------------------------        
+            ! N(4S) + NO -> N2 + O (see Fox and Sung, 2001 for references)         
+            ! BP: Adding an NO loss term to prevent build up < ~130 km         
+            ! -----------------------------------------------------------          
+            Reaction = rtN4S_NO * Neutrals(iN2D_) * Neutrals(iNO_)
+            NeutralLosses(iN4S_) = NeutralLosses(iN4S_)+ Reaction
+            NeutralLosses(iNO_) = NeutralLosses(iNO_)+ Reaction
+            NeutralSources(iN2_) = NeutralSources(iN2_) + Reaction
+            NeutralSources(iO_) = NeutralSources(iO_) +Reaction
+
+            !Trying to get a little more Neutral O at the top of the model...
+            ! -----------------------------------------------------------        
+            ! O2+ + N(2D) -> NO+ + O (see Fox and Sung, 2001 for references) 
+            ! ----------------------------------------------------------- 
+            Reaction = rtO2P_N2D * Ions(iO2P_) * Neutrals(iN2D_)
+            IonLosses(iO2P_) = IonLosses(iO2P_) + Reaction
+            NeutralLosses(iN2D_) = NeutralLosses(iN2D_) + Reaction
+            IonSources(iNO_) = IonSources(iNO_) + Reaction
+            NeutralSources(iO_) = NeutralSources(iO_) + Reaction
+
             !reactionrate(iLon,iLat,iAlt,iBlock,3) = 0.0 
             !reactionrate(iLon,iLat,iAlt,iBlock,4) = 0.0 
 
-            NeutralSources(iCO2_) = 0.0
-            NeutralLosses(iCO2_) = 0.0
+            !NeutralSources(iCO2_) = 0.0
+            !NeutralLosses(iCO2_) = 0.0
             !NeutralSources(iO2_) = 0.0
             !NeutralLosses(iO2_) = 0.0
-            NeutralSources(iN2_) = 0.0
-            NeutralLosses(iN2_) = 0.0
-            NeutralSources(iN2D_) = 0.0
-            NeutralLosses(iN2D_) = 0.0
-            NeutralSources(iN4S_) = 0.0
-            NeutralLosses(iN4S_) = 0.0
-            NeutralSources(iNO_) = 0.0
-            NeutralLosses(iNO_) = 0.0
+            !NeutralSources(iN2_) = 0.0
+            !NeutralLosses(iN2_) = 0.0
+            !NeutralSources(iN2D_) = 0.0
+            !NeutralLosses(iN2D_) = 0.0
+            !NeutralSources(iN4S_) = 0.0
+            !NeutralLosses(iN4S_) = 0.0
+            !NeutralSources(iNO_) = 0.0
+            !NeutralLosses(iNO_) = 0.0
 
             !Temporarily adding these back in to test no chemistry, but 
             !allow for chemical heating
@@ -632,10 +729,10 @@ subroutine calc_reaction_rates(iLon,iLat,iAlt,iBlock)
             !NeutralLosses(iO_) = 0.0
             !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  
-            IonSources(iN2P_) = 0.0
-            IonLosses(iN2P_) = 0.0
-            IonSources(iNOP_) = 0.0
-            IonLosses(iNOP_) = 0.0
+            !IonSources(iN2P_) = 0.0
+            !IonLosses(iN2P_) = 0.0
+            !IonSources(iNOP_) = 0.0
+            !IonLosses(iNOP_) = 0.0
             !IonSources(iOP_) = 0.0
             !IonLosses(iOP_) = 0.0            
             

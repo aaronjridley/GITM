@@ -494,7 +494,7 @@ subroutine calc_GITM_sources(iBlock)
      !Outputs:  Q_IR (iLon, iLat, iAlt, iProc)                             
      !QnirTOT(:,:,:,:) = 0.0
 
-     if (.False. .and. isVenus) then
+     if (UseIRHeating .and. isVenus) then
        call start_timing("IR Heating")
        do iAlt = 1, nAlts
          do iLon = 1, nLons
@@ -509,44 +509,84 @@ subroutine calc_GITM_sources(iBlock)
                  sza(iLon,iLat,iBlock) < 0.0 .or. &
                  sza(iLon,iLat,iBlock) .ge. 89.0*pi/180.0) then
                QnirTOT(iLon,iLat,iAlt,iBlock) = 0.0
-             else if (RadCooling(iLon,iLat,iAlt,iBlock) .ne. 0.0) then
-               !BP: 
-               !Trying to add IR heating based on pressure grid to balance the 
-               !radcooling which is on a pressure grid. 
-               !From Gilli et al., 2021:
-               !(Venus upper atmosphere revealed by a GCM: II.
-               !Model validation with temperature and density measurements)
-               !p_0 = 1320 !Pascals
-               !p_1 = 0.008 !Pascals
-               !b = 1.362
-
-               !Q0 = K/s. Convert to J/s
-               ! - multiply by cp * rho               
-               mu_bar = ((1224 * cos(sza(iLon, iLat, iBlock))**2 + 1)/1225)**0.5
-               QnirTOT(iLon,iLat,iAlt,iBlock) = &
+             else
+               if (useGilli) then
+                 !BP: 
+                 !Trying to add IR heating based on pressure grid to balance the 
+                 !radcooling which is on a pressure grid. 
+                 !From Gilli et al., 2021:
+                 !(Venus upper atmosphere revealed by a GCM: II.
+                 !Model validation with temperature and density measurements)
+                 !p_0 = 1320 !Pascals
+                 !p_1 = 0.008 !Pascals
+                 !b = 1.362
+                 mu_bar = ((1224 * cos(sza(iLon, iLat, iBlock))**2 + 1)/1225)**0.5
+                 QnirTOT(iLon,iLat,iAlt,iBlock) = &
                     QnirTOT_0 * (0.72/SunPlanetDistance)**2 * &
                     (p_0/Pressure(iLon,iLat,iAlt,iBlock) * mu_bar)**0.5 * &
                     (1 + p_1/Pressure(iLon,iLat,iAlt,iBlock))**-b_exponent
                
+               else if (useRoldan) then
+                 call readVenusIRTable
+                 do iSza = 1, 11
+                   if (sza(iLon, iLat, iBlock) .le. sza_table(iSza+1) .and. &
+                     sza(iLon, iLat, iBlock) .ge. sza_table(iSza)) then
+                   exit
+                   endif
+                 enddo
+               
+                 do jAlt = 1,40
+                  if (Altitude_GB(iLon,iLat,iAlt,iBlock) .le. &
+                      altitude_table(jAlt+1) .and. &
+                      Altitude_GB(iLon,iLat,iAlt,iBlock) .ge. &
+                      altitude_table(jAlt)) then
+                   exit
+                  endif
+                 enddo
 
-               !BP: Must fix ModInputs QnirTOT_0 (currently in energy units)
-               !    This must also eventually be deleted if the waves do not
-               !    go away with this.
-               !QnirTOT(iLon,iLat,iAlt,iBlock) = QnirTOT(iLon,iLat,iAlt,iBlock) / &
-               !     cp(iLon,iLat,iAlt,iBlock) / &
-               !     Rho(iLon,iLat,iAlt,iBlock)
+                 r_sza = (sza(iLon, iLat, iBlock) - sza_table(iSza)) / &
+                       (sza_table(iSza+1) - sza_table(iSza))
 
-               !Given in K/s. No need for rho or cp because that             
-               !converts J/s -> K/s. Need TempUnit to normalize it to               
-               !GITM units                                                        
-               QnirTOT(iLon, iLat, iAlt, iBlock) = &
-                    QnirTOT(iLon, iLat, iAlt, iBlock)  &
-                    / TempUnit(iLon,iLat,iAlt)! &        
-                    ! / Rho(iLon,iLat,iAlt, iBlock) &       
-                    ! / cp(iLon,iLat,iAlt,iBlock)        
+                 m = (altitude_table(jAlt) - altitude_table(jAlt+1))/&
+                   (qIR_NLTE_table(jAlt,iSza) - qIR_NLTE_table(jAlt+1,iSza))
 
-               if (QnirTOT(iLon,iLat,iAlt,iBlock) < 0.0) then
-                 QnirTOT(iLon,iLat,iAlt,iBlock) = 0.0
+                 x03 = (Altitude_GB(iLon,iLat,iAlt,iBlock) - &
+                     (altitude_table(jAlt+1) - m*qIR_NLTE_table(jAlt+1,iSza))) / m
+                 m = (altitude_table(jAlt)- altitude_table(jAlt+1))/&
+                   (qIR_NLTE_table(jAlt,iSza+1) - qIR_NLTE_table(jAlt+1,iSza+1))
+
+                 x12 = (Altitude_GB(iLon,iLat,iAlt,iBlock) - &
+                     (altitude_table(jAlt+1) - m*qIR_NLTE_table(jAlt+1,iSza+1))) / m
+
+                 if (r_sza > 1.0) then
+                   write(*,*) "r is too big...", iLon, iLat, iAlt
+                   write(*,*) "GITM SZA:", sza(iLon, iLat, iBlock)
+                   write(*,*) "Table SZA:", sza_table(iSza), sza_table(iSza+1)
+                 endif
+
+                 if (x03 < 0.0 .or. x12 < 0.0) then
+                   write(*,*) "First interpolated value is negative...this is wrong."
+                   write(*,*) "x03", x03
+                   write(*,*) "x12", x12
+                 endif
+
+                 QnirTOT(iLon, iLat, iAlt, iBlock) = &
+                   x03*(1 - r_sza) + x12*r_sza      
+               endif
+               
+               if (UseGilli .or. UseRoldan) then
+                 !Given in K/s. No need for rho or cp because that             
+                 !converts J/s -> K/s. Need TempUnit to normalize it to           
+                 !GITM units  
+                 QnirTOT(iLon, iLat, iAlt, iBlock) = &
+                   QnirTOT(iLon, iLat, iAlt, iBlock)  &
+                   / TempUnit(iLon,iLat,iAlt)! &        
+                   ! / Rho(iLon,iLat,iAlt, iBlock) &       
+                   ! / cp(iLon,iLat,iAlt,iBlock)        
+
+                 if (QnirTOT(iLon,iLat,iAlt,iBlock) < 0.0) then
+                   QnirTOT(iLon,iLat,iAlt,iBlock) = 0.0
+                 endif
                endif
              endif
            enddo

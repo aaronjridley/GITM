@@ -870,6 +870,7 @@ end subroutine init_isochem
    !---------------------------------------------------------------------
 
    subroutine calc_eddy_diffusion_coefficient(iBlock)
+ subroutine calc_eddy_diffusion_coefficient(iBlock)
 
      use ModSizeGITM
      use ModGITM, only: pressure, NDensity
@@ -890,20 +891,22 @@ end subroutine init_isochem
      real :: KMin
 
      KappaEddyDiffusion(:,:,:,iBlock) = 0.0
+! KStandard
 !    KMax = 1000.0
-!    KMin = 100.0
+!    KMin = 500.0
 
 ! KHigh
-!     KMax = 10000.0
+!     KMax = 2000.0
 !     KMin = 500.0
 
 ! KModerate
-!     KMax = 5000.0
-!     KMin = 500.0
+!     KMax = 1500.0
+      KMax = 2000.0
+      KMin = 500.0
 
-! KStandard
-     KMax = 1000.0
-     KMin = 500.0
+! KLow
+!    KMax = 1200.0
+!    KMin = 500.0
 
      ! \
      ! First, find the altitude level corresponding to the asymptotic
@@ -925,7 +928,7 @@ end subroutine init_isochem
            do iAlt = 1, nAlts
 
               if (Pressure(iLon,iLat,iAlt,iBlock) > PEddyMax) then
-                 cycle    
+                 cycle
               else
                  if (First == 0) then
                     NEddyMax(iLon,iLat) = NDensity(iLon,iLat,iAlt,iBlock)
@@ -945,13 +948,12 @@ end subroutine init_isochem
      do iAlt = -1, nAlts+2
         do iLat = 1, nLats
            do iLon = 1, nLons
-
               ! Krasnopolsky et al. [2005] Helium modeling
 !              KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) =  &
-!                   (1.0e-04)*(1.8e+13)/sqrt( (1.0e-06)*NDensity(iLon,iLat,iAlt,iBlock)) 
+!                   (1.0e-04)*(1.8e+13)/sqrt( (1.0e-06)*NDensity(iLon,iLat,iAlt,iBlock))
 
               KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) =  &
-                   KMax* sqrt( NEddyMax(iLon,iLat) / NDensity(iLon,iLat,iAlt,iBlock)) 
+                   KMax* sqrt( NEddyMax(iLon,iLat) / NDensity(iLon,iLat,iAlt,iBlock))
               !
               !! \
               !! This gives an upper bound of Kmax
@@ -965,13 +967,9 @@ end subroutine init_isochem
 !             KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
 !                  max(100.0e+02, KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) )
              !
-
            enddo
         enddo
-
      enddo
-
-
    end subroutine calc_eddy_diffusion_coefficient
 
 

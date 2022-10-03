@@ -19,6 +19,10 @@ module ModInputs
 !  real :: QnirTOT_0 = 17.0/86400.0 !testing new parameters
   real ::  QnirTOT_0 = 17.0/86400.0
 
+  real :: FISM175180 = 0.0
+  real :: FISM180185 = 0.0
+  real :: FISM185190 = 0.0
+    
 
   logical :: iRhoOutputList=.true.
   logical :: iNeutralDensityOutputList(nSpeciesTotal)=.true.
@@ -61,6 +65,8 @@ module ModInputs
   logical :: UseHpi = .true.
 
   logical :: UseIRHeating      = .false.
+  logical :: UseRoldan         = .false.
+  logical :: UseGilli          = .false.
   logical :: UseRadCooling     = .false.
  
   !!! Xing Meng Nov 2018 to use ISR E field in a local region + Weimer elsewhere
@@ -278,6 +284,10 @@ module ModInputs
   logical :: UseTurbulentCond = .true.
 
   logical :: UseDiffusion      = .false.
+  logical :: UseFlatEddy       = .false.
+  logical :: UseMahieuxEddy    = .false.
+  logical :: UseMarsEddy       = .false.
+
   logical :: UseVerAdvectionT  = .true.
 
   logical :: UseCO2Cooling = .true.
@@ -348,6 +358,7 @@ module ModInputs
   
   logical                   :: UseEUVData =.false.
   character (len=iCharLen_) :: cEUVFile
+  character (len=iCharLen_) :: cFISM2File
 
   !\
   ! Eclipse Information

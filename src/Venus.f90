@@ -1,4 +1,4 @@
-!BP (8/24/2020): Compute the time scales for eddy diffusion, horizontal winds 
+!(8/24/2020): Compute the time scales for eddy diffusion, horizontal winds 
 !and vertical motion
 subroutine timescales
 
@@ -212,6 +212,7 @@ subroutine fill_photo
   photoabs(1:NWH,iO_)      = PhotoAbs_O
   photoabs(1:NWH,iN2_)    = PhotoAbs_N2
   photoabs(1:NWH,iO2_)    = PhotoAbs_O2
+  photoabs(1:NWH,iNO_)    = PhotoAbs_NO
   !photoabs(58,iCO2_) = 0.0! timing fix (DP: Nov. 2011)
 
  ! ---------------------------------------------------------------------
@@ -226,8 +227,9 @@ subroutine fill_photo
        BranchingRatio_CO2_to_CO2Plus(1:NWH)*sfco2p
   photoion(1:NWH,iN2P_)      = PhotoIon_N2(1:NWH)*  &
        BranchingRatio_N2_to_N2Plus(1:NWH)*sfn2p
-  photoion(1:NWH,iNOP_)     = PhotoIon_CO2(1:NWH)* &
-       BranchingRatio_CO2_to_OPlus(1:NWH)*sfco2p
+  !These don't exist for NO
+  !photoion(1:NWH,iNOP_)     = PhotoIon_NO(1:NWH)* &
+  !     BranchingRatio_NO_to_NOPlus(1:NWH)*sfnop
 
   PhotoIonFrom(iOP_) = iO_
   PhotoIonFrom(iO2P_) = iO2_
@@ -243,7 +245,7 @@ subroutine fill_photo
   photodis(1:NWH,iCO2_)  = PhotoAbs_CO2(1:NWH)-PhotoIon_CO2(1:NWH)
   photodis(1:NWH,iN2_)   = PhotoAbs_N2(1:NWH)-PhotoIon_N2(1:NWH)
   photodis(1:NWH,iO2_)   = PhotoAbs_O2(1:NWH)-PhotoIon_O2(1:NWH)
-
+  photodis(1:NWH,iNO_)   = PhotoAbs_NO(1:NWH)-PhotoIon_NO(1:NWH)
   do iWave = 1, nWavelengths
     if (photodis(iWave,iCO2_) < 0.0) then
        photodis(iWave,iCO2_) = 0.0
@@ -251,6 +253,8 @@ subroutine fill_photo
        photodis(iWave, iN2_) = 0.0
     else if (photodis(iWave,iO2_) < 0.0) then
        photodis(iWave, iO2_) = 0.0
+    else if (photodis(iWave,iNO_) < 0.0) then
+       photodis(iWave,iNO_) = 0.0
     endif
   enddo
 
@@ -258,7 +262,7 @@ subroutine fill_photo
   PhotoElecDiss = 0.0
 
   !Brandon Ponder (3/8/2021)
-  !Write out the cross-sections
+  !Write out the cross-sections for some species
   open(unit=61, file='gitm_cross_sections.txt', action='write', status="unknown")
   
   do i = 1,nWavelengths
@@ -267,11 +271,11 @@ subroutine fill_photo
               "ES8.2,1X,"// &
               "ES8.2)") &
        (shortWavelengths(i) + longWavelengths(i))/2, &
-       photoabsorptioncrosssection(i, iCO2_), &
-       photodissociationcrosssection(i,iCO2_), &
-       photoionizationcrosssection(i,iCO2P_) !use ion index
+       photoabsorptioncrosssection(i, iNO_), &
+       photodissociationcrosssection(i,iNO_), &
+       photoionizationcrosssection(i,iNOP_) !use ion index
   end do
-  
+   
   close(61)
 end subroutine fill_photo
 
@@ -288,7 +292,7 @@ subroutine init_heating_efficiency
   ! HeatingEfficiency_CB  = 0.18
   ! HeatingEfficiency_CB  = 0.19
   !HeatingEfficiency_CB  = 0.20
-  HeatingEfficiency_CB = 0.02  !5% direct heating + chemical heating
+  HeatingEfficiency_CB = 0.01  !1% direct heating + chemical heating
   !this cannot be zero or it will segmentation fault
   eHeatingEfficiency_CB = 0.0
 
@@ -1028,7 +1032,8 @@ subroutine nlte_tcool(iBlock)
               !     altitude_gb(iLon,iLat,iExtrapolate,iBlock)/1000.0/3.3333
               RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &
                 x1 / (1 + ABS(altitude_gb(iLon,iLat,iExtrapolate,iBlock)/1000.0 - &
-                              altitude_gb(iLon,iLat,nIndexFound,iBlock)/1000.0))
+                              altitude_gb(iLon,iLat,nIndexFound,iBlock)/1000.0)) + &
+                35.0/86400.0
               
               !RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &
               !  RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) / &
@@ -1130,9 +1135,9 @@ end subroutine init_isochem
    subroutine calc_eddy_diffusion_coefficient(iBlock)
 
      use ModSizeGITM
-     use ModGITM, only: pressure, NDensity
+     use ModGITM, only: pressure, NDensity, Altitude_GB, iProc
      use ModInputs, only: EddyDiffusionPressure0,EddyDiffusionPressure1, &
-          EddyDiffusionCoef
+          EddyDiffusionCoef, useMarsEddy, useMahieuxEddy, useFlatEddy
      use ModSources, only: KappaEddyDiffusion
 
      implicit none
@@ -1146,7 +1151,7 @@ end subroutine init_isochem
 
      real :: KMax
      real :: KMin
-
+     real :: m, b
      KappaEddyDiffusion(:,:,:,iBlock) = 0.0
 ! KStandard
 !    KMax = 1000.0
@@ -1165,73 +1170,121 @@ end subroutine init_isochem
 !    KMax = 1200.0
 !    KMin = 500.0
 
-     ! \
-     ! First, find the altitude level corresponding to the asymptotic
-     ! upper bound for Eddy Diffusion.
-     ! Call this upper limit, NEddyMax
+     if (useFlatEddy) then
+       KappaEddyDiffusion(:,:,:,iBlock) = EddyDiffusionCoef
 
-     ! This upper limit is set to 1.26e-09 bars
-     ! conversion to pascals -> 1 bar = 1e+05 pascals
-     ! Thus, PEddyMax -> 1.26e-04 pascals
-
-
-     PEddyMax = 1.26e-04  ! Pascals (SI Units)
-
-     do iLat = 1, nLats
-        do iLon = 1, nLons
-
-           First = 0
-
-           do iAlt = 1, nAlts
-
-              if (Pressure(iLon,iLat,iAlt,iBlock) > PEddyMax) then
-                 cycle
+     !See paper which fits eddy diffusion profile with SOIR and PV data
+     !Mahieux et al.,2021: https://www.sciencedirect.com/science/article/pii/S0019103521000786
+     else if (UseMahieuxEddy) then
+       Kmax = 20000 !@140 km
+       Kmin = 357 !below 110 km
+       do iLat = 1, nLats
+          do iLon = 1, nLons
+            do iAlt = 1,nAlts+1
+              if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 < 110.0) then
+                KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = KMin !should be 357 m^2/sec
+              else if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 .ge. 110.0 .and. &
+                       Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 < 120.0) then  
+                !Case where we go from 357 -> 750 m^2/s linearly
+                !357 @ 110km, 750 @ 120 km 
+                !y = mx + b
+                m = 10/(750 - KMin)           
+                b = 120 - m*750
+                KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
+                  (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 - b)/m
+              else if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 .ge. 120.0 .and. &
+                       Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 < 130.0) then
+                !This goes from 750 @ 120km to 40 @ 130km. 
+                m = 10/(40.0 - 750.0)
+                b = 130 - 40*m
+                KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
+                  (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 - b)/m
+                !if (iProc .eq. 0) then
+                !  write(*,*) "Altitude (km), K (m2/sec)", &
+                !   Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0, &
+                !  KappaEddyDiffusion(iLon,iLat,iAlt,iBlock), b, m
+                !endif
+              else if (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 .ge. 130.0 .and. &
+                       Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 < 140.0) then
+                !This goes from 40 @ 130km to KMax @ 140km.                                   
+                m = 10/(KMax - 40)
+                b = 140 - KMax*m
+                KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
+                  (Altitude_GB(iLon,iLat,iAlt,iBlock)/1000.0 - b)/m
               else
-                 if (First == 0) then
+                KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = KMax
+              endif
+            enddo
+          enddo
+       enddo
+     else if (UseMarsEddy) then
+       ! \
+       ! First, find the altitude level corresponding to the asymptotic
+       ! upper bound for Eddy Diffusion.
+       ! Call this upper limit, NEddyMax
+
+       ! This upper limit is set to 1.26e-09 bars
+       ! conversion to pascals -> 1 bar = 1e+05 pascals
+       ! Thus, PEddyMax -> 1.26e-04 pascals
+
+       PEddyMax = 1.26e-04  ! Pascals (SI Units)
+  
+       do iLat = 1, nLats
+          do iLon = 1, nLons
+             First = 0
+             do iAlt = 1, nAlts
+                if (Pressure(iLon,iLat,iAlt,iBlock) > PEddyMax) then
+                  cycle
+                else
+                  if (First == 0) then
                     NEddyMax(iLon,iLat) = NDensity(iLon,iLat,iAlt,iBlock)
                     First = 1
-                 endif
-              endif
+                  endif
+                endif
+             enddo
+          enddo
+       enddo
 
-           enddo
-
-        enddo
-     enddo
-
-     ! Now we have all the trigger densities as a function of Longitude and Latitude
-
-     ! Next, extend the profile downward as 1/sqrt(N) and put a lower bound of 100 m^2/s
-
-     do iAlt = -1, nAlts+2
-        do iLat = 1, nLats
-           do iLon = 1, nLons
-
+       ! Now we have all the trigger densities as a function of Longitude and Latitude
+       ! Next, extend the profile downward as 1/sqrt(N) and put a lower bound of 100 m^2/s
+       do iAlt = -1, nAlts+2
+          do iLat = 1, nLats
+             do iLon = 1, nLons
               ! Krasnopolsky et al. [2005] Helium modeling
-!              KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) =  &
-!                   (1.0e-04)*(1.8e+13)/sqrt( (1.0e-06)*NDensity(iLon,iLat,iAlt,iBlock))
-
-              KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) =  &
-                   KMax* sqrt( NEddyMax(iLon,iLat) / NDensity(iLon,iLat,iAlt,iBlock))
+                KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) =  &
+                     KMax* sqrt( NEddyMax(iLon,iLat) / NDensity(iLon,iLat,iAlt,iBlock))
               !
               !! \
               !! This gives an upper bound of Kmax
-              KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
-                   min(KMax, KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) )
+                KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
+                     min(KMax, KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) )
 
-             KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
-                  max(KMin, KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) )
-              !
-              !! This gives an lower bound of Kmin
-!             KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
-!                  max(100.0e+02, KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) )
-             !
+               KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = &
+                    max(KMin, KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) )
+             enddo
+          enddo
+       enddo
+     else 
+       !Copying from the Earth code...
+       !The Mars code (above) does something else. 
+       do iAlt = -1, nAlts+2
+         do iLat = 1, nLats
+           do iLon = 1, nLons
+             if (pressure(iLon,iLat,iAlt,iBlock) >EddyDiffusionPressure0) then
+              KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = EddyDiffusionCoef
+              
+             else if (pressure(iLon,iLat,iAlt,iBlock) > &
+                EddyDiffusionPressure1) then
 
+              KappaEddyDiffusion(iLon,iLat,iAlt,iBlock) = EddyDiffusionCoef * &
+                   (pressure(iLon,iLat,iAlt,iBlock) - &
+                   EddyDiffusionPressure1)/&
+                   (EddyDiffusionPressure0 - EddyDiffusionPressure1)
+             endif
            enddo
-        enddo
-
-     enddo
-
-
+         enddo
+       enddo
+     endif
    end subroutine calc_eddy_diffusion_coefficient
 
 

@@ -204,7 +204,7 @@ subroutine euv_ionization_heat(iBlock)
         enddo
 
         do iSpecies = 1, nSpecies
-          if (shortWavelengths(iWave) < 4.0e-6) then
+          if (shortWavelengths(iWave) < 1.0e-6) then
            EHeat = EHeat + &
                 Intensity*PhotonEnergy(iWave)* &
                 PhotoabsorptionCrossSection(iWave, iSpecies) * NeutralDensity(:,:,iSpecies)
@@ -212,7 +212,7 @@ subroutine euv_ionization_heat(iBlock)
            EHeat_bp = EHeat_bp + &
                 Intensity_bp*PhotonEnergy(iWave)* &
                 PhotoabsorptionCrossSection(iWave, iSpecies) * NeutralDensity(:,:,iSpecies)
-           else if (shortWavelengths(iWave) .ge. 4.0e-6) then
+           else if (shortWavelengths(iWave) .ge. 1.0e-6) then !this is 2.7 and 4.3
              IHeat = IHeat + &
                 Intensity*PhotonEnergy(iWave)* &
                 PhotoabsorptionCrossSection(iWave, iSpecies) * NeutralDensity(:,:,iSpecies)
@@ -740,17 +740,24 @@ subroutine calc_scaled_euv
      !multiply by dWavelength which is 5 nm.
 
      !2009 values
-     !Timed_Flux(60) = 6.9e-3 !W/m^2 (because of dWavelength!)
-     !Timed_Flux(61) = 1.03e-2
-     !Timed_Flux(62) = 1.46e-2
+     !Timed_Flux(5) = 6.9e-3 !W/m^2 (because of dWavelength!)
+     !Timed_Flux(4) = 1.03e-2
+     !Timed_Flux(3) = 1.46e-2
      
-     !this was backwards????
-     Timed_Flux(4) = 6.9e-3 !W/m^2 (because of dWavelength!)                   
-     Timed_Flux(3) = 1.03e-2                                                         
-     Timed_Flux(2) = 1.46e-2    
+     Timed_Flux(5) = fism175180 !W/m^2 (because of dWavelength!)                   
+     Timed_Flux(4) = fism180185 !180-185nm                                              
+     Timed_Flux(3) = fism185190 !185-190nm    
 
-     !IR wavelength
-     Timed_Flux(1) = 26530     
+     !IR wavelength: previously 80% and we were too hot by ~50 K at 105 km. 
+     !               trying 64% to see how this goes. 4.3 micron
+
+     if (UseIRHeating .and. .not. UseGilli .and. .not. UseRoldan) then
+       Timed_Flux(2) = 26530*0.64 !2.7 micron
+       Timed_Flux(1) = 26530*0.4 !temporary adjust to reduce peak heating, 4.3 micron     
+     else
+       Timed_Flux(1) = 0.0
+       Timed_Flux(2) = 0.0
+     endif
 
      !2002 values
      !Timed_Flux(60) = 7.9e-3 !W/m^2
@@ -1024,6 +1031,7 @@ subroutine Set_Euv(iError, StartTime, EndTime)
   use ModKind
   use ModEUV
   use ModInputs
+  use ModTime, only: iTimeArray
 
   implicit none
 
@@ -1037,7 +1045,15 @@ subroutine Set_Euv(iError, StartTime, EndTime)
   real (Real8_) :: TimeDelay, BufferTime = 180.0
 
   logical :: NotDone
+  logical :: timesMatch
   integer :: i, iline, ioerror, nline, nILine = 1, iErrortemp = 0
+  character(len = 10), dimension(30) :: date  
+  integer, dimension(30) :: fismYear = 0.0
+  integer, dimension(30) :: fismMonth = 0.0
+  integer, dimension(30) :: fismDay = 0.0
+  real, dimension(30) :: fism175180array = 0.0
+  real, dimension(30) :: fism180185array = 0.0
+  real, dimension(30) :: fism185190array = 0.0
 
   iError = 0
 
@@ -1058,6 +1074,7 @@ subroutine Set_Euv(iError, StartTime, EndTime)
   cline = ' '
 
   open(unit = iInputUnit_, file=cEUVFile, IOSTAT = iError)
+  
 
   if (iError /= 0) then
      write(*,*) "Error in opening EUV file  Is this set?"
@@ -1126,6 +1143,52 @@ subroutine Set_Euv(iError, StartTime, EndTime)
   nSeeTimes = iline - 1
 
   if (nSeeTimes .gt. 3) iError = 0
+
+  !Read another file with FISM data for bins 175-190nm.
+  open(unit = iInputUnit_, file=cFISM2File, IOSTAT = iError)
+  if (iError /= 0) then
+     write(*,*) "Error in opening fism_extraBins_YYYYmmdd.txt file  Is this set?"
+     write(*,*) "Code : ",iError,cFISM2File
+     call stop_gitm("Stopping in calc_euv -> set_euv")
+  endif
+
+  !four lines of header info
+  read(iInputUnit_, *)
+  read(iInputUnit_, *)
+  read(iInputUnit_, *)
+  read(iInputUnit_, *)
+  
+  !This is only if the run is 10 days. Needs to be 
+  !re-written in a correct fashion.
+  do iline = 1,10
+    read(iInputUnit_,*) date(iline), fism175180array(iLine), &
+                        fism180185array(iLine), &
+                        fism185190array(iLine)
+
+
+    read(date(iLine)(1:4), '(i4)') fismYear(iLine)
+    read(date(iLine)(6:7), '(i2)') fismMonth(iLine)
+    read(date(iLine)(9:10), '(i2)') fismDay(iLine)
+  enddo
+
+  close(iInputUnit_)
+
+  timesMatch = .False. 
+  do i = 1,size(fismYear)
+    if (iTimeArray(1) .eq. fismYear(i) .and. &
+        iTimeArray(2) .eq. fismMonth(i) .and. &
+        iTimeArray(3) .eq. fismDay(i)) then
+      timesMatch = .True.
+      
+      fism185190 = fism185190array(i)
+      fism180185 = fism180185array(i)
+      fism175180 = fism175180array(i)
+
+      exit
+    endif
+  enddo
+
+  if (.not. timesMatch) call stop_gitm("Check UA/DataIn/fism_extraBins_????????.txt.")
 
 end subroutine Set_Euv
 

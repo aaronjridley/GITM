@@ -653,16 +653,16 @@ contains
        write(iOutputUnit_,"(I7,A1,a)")  12, " ", "ChemicalHeatingRate"
        write(iOutputUnit_,"(I7,A1,a)")  13, " ", "DissociationHeatingRate"
        write(iOutputUnit_,"(I7,A1,a)")  14, " ", "Pressure"
-       write(iOutputUnit_,"(I7,A1,a)")  15, " ", "Neutral O Sources"
-       write(iOutputUnit_,"(I7,A1,a)")  16, " ", "CO2 + O+ ->"
-       write(iOutputUnit_,"(I7,A1,a)")  17, " ", "Neutral CO Sources"
+       write(iOutputUnit_,"(I7,A1,a)")  15, " ", "CO2P + O -> O2P + CO"
+       write(iOutputUnit_,"(I7,A1,a)")  16, " ", "CO2 + O+ -> O2P + CO"
+       write(iOutputUnit_,"(I7,A1,a)")  17, " ", "O2P + e -> 2O"
        write(iOutputUnit_,"(I7,A1,a)")  18, " ", "Neutral CO Losses"
        write(iOutputUnit_,"(I7,A1,a)")  19, " ", "Viscosity (m/s^2)"
        write(iOutputUnit_,"(I7,A1,a)")  20, " ", "Gravity (m/s^2)"
        write(iOutputUnit_,"(I7,A1,a)")  21, " ", "Ion Drag (m/s^2)"
        write(iOutputUnit_,"(I7,A1,a)")  22, " ", "GWAccel (m/s^2)"
        write(iOutputUnit_,"(I7,A1,a)")  23, " ", "Spherical Geometry (m/s^2)"
-       write(iOutputUnit_,"(I7,A1,a)")  24, " ", "Coriois (m/s^2)"
+       write(iOutputUnit_,"(I7,A1,a)")  24, " ", "Coriolis (m/s^2)"
        write(iOutputUnit_,"(I7,A1,a)")  25, " ", "Gradient Pressure (m/s^2)"
        write(iOutputUnit_,"(I7,A1,a)")  26, " ", "Solar Zenith Angle"
        write(iOutputUnit_,"(I7,A1,a)")  27, " ", "Horizontal Advection (Temperature)"
@@ -1370,13 +1370,33 @@ subroutine output_3dthm(iBlock)
           Gravity_GB(iiLon,iiLat,iiAlt,iBlock), &
           IonDrag(iiLon,iiLat,iiAlt,iEast_), &
           GWAccel(iiLon,iiLat,iiAlt,iEast_)/(dt + 1.0e-03), &
-          (Velocity(iiLon,iiLat,iiAlt,iNorth_,iBlock)**2 + &
-          Velocity(iiLon,iiLat,iiAlt,iEast_,iBlock)**2) &
-          / (RBody + Altitude_GB(iiLon,iiLat,iiAlt,iBlock)), &
-          Coriolis * Velocity(iiLon,iiLat,iiAlt,iEast_,iBlock), &
+          Velocity(iiLon,iiLat,iiAlt,iEast_,iBlock)* & 
+            (Velocity(iiLon,iiLat,iiAlt,iNorth_,iBlock) * tan(latitude(iiLat,iBlock)) - &
+            Velocity(iiLon,iiLat,iiAlt,iUp_,iBlock) * &
+            Velocity(iiLon,iiLat,iiAlt,iEast_,iBlock)) / &
+            (Altitude_GB(iiLon,iiLat,iiAlt,iBlock) + RBody), &
+          2 * OmegaBodyInput * &
+            (sin(latitude(iiLat,iBlock)) * Velocity(iiLon,iiLat,iiAlt,iNorth_,iBlock) - &
+             cos(latitude(iiLat,iBlock)) * Velocity(iiLon,iiLat,iiAlt,iUp_,iBlock)), &
           GradientPressure(iiLon,iiLat,iiAlt,iBlock), &
           SZA(iiLon,iiLat,iBlock)*180.0/pi, &
-          HorizontalAdvectionTemperature(iiLon,iiLat,iiAlt,iBlock)*86400.0
+          HorizontalAdvectionTemperature(iiLon,iiLat,iiAlt,iBlock)* &
+          TempUnit(iiLon,iiLat,iiAlt)*86400.0
+
+          if (Longitude(iiLon,iBlock)*180.0/pi > 81 + 90.0 .and. &
+              Longitude(iiLon,iBlock)*180.0/pi < 83 + 90.0 .and. &
+              latitude(iiLat,iBlock)*180.0/pi > 0.0 .and. &
+              latitude(iiLat,iBlock)*180.0/pi < 2.0 .and. &
+              Altitude_GB(iiLon,iiLat,iiAlt,iBlock)/1000.0 < 135. .and. &
+              Altitude_GB(iiLon,iiLat,iiAlt,iBlock)/1000.0 > 125. .and.&
+              iTimeArray(5) .eq. 30) then
+            write(*,*) "z, dt", Altitude_GB(iiLon,iiLat,iiAlt,iBlock)/1000.0, dt
+            write(*,*) "Viscosity", Viscosity(iiLon,iiLat,iiAlt, iEast_), Viscosity(iiLon,iiLat,iiAlt,iEast_)/(1.0e-3 + dt)*86400.0
+            write(*,*) "Velocity", Velocity(iiLon,iiLon,iiAlt,iEast_,iBlock)
+            write(*,*) "ViscCoef", ViscCoef(iiLat, iiLat, iiAlt)
+            write(*,*) "KappaEddyDiffusion", KappaEddyDiffusion(iiLon,iiLat,iiAlt,iBlock)
+            write(*,*) "Rho", Rho(iiLon,iiLat,iiAlt,iBlock)
+          endif
        enddo
     enddo
  enddo

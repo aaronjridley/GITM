@@ -66,16 +66,20 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
   LogINS(0,nIons) = alog(sum(exp(LogINS(0,1:nIons-1))))
   LogINS(1,nIons) = alog(sum(exp(LogINS(1,1:nIons-1))))
 
-  if (nSpecies >= iN4S_) then
 
-     dn = (LogNS(2,iN4S_) - LogNS(1,iN4S_))
-     if (dn >= 0) then
-        LogNS(0,iN4S_) = LogNS(1,iN4S_) - dn
-        LogNS(-1,iN4S_) = LogNS(0,iN4S_) - dn
-     else
-        LogNS(0,iN4S_) = LogNS(1,iN4S_) + dn
-        LogNS(-1,iN4S_) = LogNS(0,iN4S_) + dn
-     endif
+   !BP: Didn't break code, but it's a non-zero BC at the 
+   !    bottom of the model. 8/2/2022
+  if (nSpecies >= iN4S_) then
+    LogNS(0,iN4S_) = -4
+    LogNS(-1,iN4S_) = -4
+    !dn = (LogNS(2,iN4S_) - LogNS(1,iN4S_))
+    !if (dn >= 0) then
+    !   LogNS(0,iN4S_) = LogNS(1,iN4S_) - dn
+    !   LogNS(-1,iN4S_) = LogNS(0,iN4S_) - dn
+    !else
+    !   LogNS(0,iN4S_) = LogNS(1,iN4S_) + dn
+    !   LogNS(-1,iN4S_) = LogNS(0,iN4S_) + dn
+    !endif
 
      !Maybe just make this zero...
      if(VertVel(1,iN4S_) .gt. 0.0 )then
@@ -90,7 +94,8 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
   endif
  
   if (nSpecies >= iO_) then
-
+    LogNS(0,iO_) = -4
+    LogNS(-1,iO_) = -4
      !dn = (LogNS(2,iO_) - LogNS(1,iO_))
      !Make this a fixed bottom boundary
      !if (dn >= 0) then
@@ -156,12 +161,6 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
   LogRho(nAlts+1) = LogRho(nAlts) + dn
   LogRho(nAlts+2) = LogRho(nAlts+1) + dn
 
-  !if (iProc .eq. 1 .and. iLon1d .eq. 3 .and. iLat1d .eq. 4) then
-    !write(*,*) "Pre-BCs (LogINS): ", LogINS(45:52,2)
-    !write(*,*) "Pre-BCs (IDensityS): ", iDensityS(iLon1d,iLat1d,45:52,iBlock, 2)
-    !write(*,*) "Pre-BCs (IVel): ", IVel(45:52,iUp_) 
-  !endif
-
   ! Limit the slope of the ion density
   do iSpecies=1,nIons-1
      dn = (exp(LogINS(nAlts,iSpecies)) - exp(LogINS(nAlts-1,iSpecies)))
@@ -183,7 +182,7 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
   !If using O+ nightside Venus ions in ghost cells...
   if (useNightSideIons .and. isVenus) then
     if (abs(sza(iLon1d, iLat1d, iBlock1d))*180.0/pi > 90.0) then
-      LogINS(nAlts+1:nAlts+2,iOP_) = alog(5.0e9)
+      LogINS(nAlts+1:nAlts+2,iOP_) = alog(1.0e9)
     endif 
   endif
 

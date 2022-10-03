@@ -9,7 +9,7 @@ subroutine advance_horizontal(iBlock)
   use ModInputs
   use ModSources, only : HorizontalTempSource, GradientPressure, &
                          HorizontalAdvectionTemperature
-  
+  use ModTime, only: iStep  
   implicit none
 
   integer, intent(in) :: iBlock
@@ -132,6 +132,14 @@ subroutine advance_horizontal(iBlock)
      HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) = &
         HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) + &
         (1.0/6.0)*HorizontalGradientTemperatureAtSomeAltitude(1:nLons,1:nLats)
+
+     !if (istep > 10 .and. iAlt > 45) then
+     !  write(*,*) "iAlt:", iAlt
+     !  write(*,*) "Single altitude", HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock)*86400.0
+     !  if (iAlt .eq. 50) then
+     !    call stop_gitm("Debugging horizontal advection in advance_horizontal.f90")
+     !  endif
+     !endif
 
      K1Rho_C      = NewRho_C(1:nLons,1:nLats) - Rho_C(1:nLons,1:nLats)
      K1Vel_CD     = NewVel_CD(1:nLons,1:nLats,1:3) - &
@@ -289,6 +297,14 @@ subroutine advance_horizontal(iBlock)
      HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) = &
         HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock) + &
         (1.0/6.0)*HorizontalGradientTemperatureAtSomeAltitude(1:nLons,1:nLats)
+
+     !if (istep > 10 .and. iAlt > 45) then
+     !  write(*,*) "iAlt:", iAlt
+     !  write(*,*) "Single altitude", HorizontalAdvectionTemperature(1:nLons,1:nLats,iAlt,iBlock)*86400.0
+     !  if (iAlt .eq. 50) then
+     !    call stop_gitm("Debugging horizontal advection in advance_horizontal.f90")
+     !  endif
+     !endif
 
      K4Num_CV     = NewNum_CV(1:nLons,1:nLats,1:nSpecies) - &
                    Num_CV(1:nLons,1:nLats,1:nSpecies)

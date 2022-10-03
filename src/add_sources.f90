@@ -123,8 +123,7 @@ subroutine add_sources
        Velocity(1:nLons, 1:nLats, 0:nAlts+1, iDir, iBlock) = &
             Velocity(1:nLons, 1:nLats, 0:nAlts+1, iDir, iBlock) + &
             Viscosity(1:nLons,1:nLats, 0:nAlts+1,iDir)
-     enddo
-
+     enddo 
      !! To turn off IonDrag, turn UseIonDrag=.false. in UAM.in
      !! To turn off NeutralFriction, turn UseNeutralFriction=.false. in UAM.in
 

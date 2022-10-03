@@ -114,7 +114,8 @@ rundir:
 		ln -s restartOUT restartIN; \
 		ln -s ${UADIR}/src/pGITM .; \
 		ln -s ${UADIR}/srcData/* DataIn; rm -f DataIn/CVS; \
-		ln -s ${UADIR}/data/* DataIn;    rm -f DataIn/CVS
+		ln -s ${UADIR}/data/* DataIn;    rm -f DataIn/CVS; \
+                cp ${UADIR}/srcData/euv.csv .;            \
 	cd ${RUNDIR} ;                                   \
 		if [ -e ${BINDIR}/GITM.exe ]; then       \
 			ln -s ${BINDIR}/GITM.exe . ;     \

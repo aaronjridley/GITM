@@ -829,7 +829,6 @@ subroutine set_inputs
            call read_in_logical(UseOCooling, iError)
            call read_in_logical(UseConduction, iError)
            call read_in_logical(UseTurbulentCond, iError)
-           call read_in_logical(UseIRHeating, iError)
            call read_in_logical(UseRadCooling, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #THERMO:'
@@ -842,10 +841,36 @@ subroutine set_inputs
               write(*,*) "UseOCooling       (logical)"
               write(*,*) "UseConduction     (logical)"
               write(*,*) "UseTurbulentCond  (logical)"
-              write(*,*) "UseIRHeating	    (logical)"
               write(*,*) "UseRadCooling     (logical)"
               IsDone = .true.
            endif
+
+
+        case ("#IRHEATING")
+          call read_in_logical(UseIRHeating, iError)
+          call read_in_logical(UseGilli, iError)
+          call read_in_logical(UseRoldan, iError)
+          if (iError /= 0) then
+            write(*,*) 'Incorrect format for #IRHEATING:'
+            write(*,*) ''
+            write(*,*) '#IRHEATING'
+            write(*,*) "UseIRHeating   (logical)"
+            write(*,*) "UseGilli       (logical)"
+            write(*,*) "UseRoldan      (logical)"
+            IsDone = .true.
+          endif
+
+          if (UseGilli) then
+            call read_in_real(p_0,iError)
+            call read_in_real(p_1,iError)
+            call read_in_real(b_exponent,iError)
+            call read_in_real(QnirTOT_0,iError)
+            QnirTOT_0 = QnirTOT_0/86400.0
+            write(*,*) "Error reading #IRHEATING in UAM.in"
+            write(*,*) "with UseGilli=T"
+            write(*,*) "Order is p_0, p_1, b, Q0"
+            IsDone = .true.
+          endif
 
         case ("#THERMALDIFFUSION")
            call read_in_real(KappaTemp0, iError)
@@ -889,6 +914,22 @@ subroutine set_inputs
 
         case ("#DIFFUSION")
            call read_in_logical(UseDiffusion, iError)
+           call read_in_logical(UseFlatEddy, iError)
+           call read_in_logical(UseMahieuxEddy, iError)
+           call read_in_logical(UseMarsEddy, iError)
+
+           !Verify multiple of these are not 'T' simultaneously
+           if (UseFlatEddy .eq. .True. .and. UseMahieuxEddy .eq. .True.) then
+             write(*,*) "Only one of UseFlatEddy/UseMahieuxEddy/UseMarsEddy can be 'T' at one time" 
+             iError = 1
+           else if (UseFlatEddy .eq. .True. .and. UseMarsEddy .eq. .True.) then
+              write(*,*) "Only one of UseFlatEddy/UseMahieuxEddy/UseMarsEddy can be 'T' at one time"
+              iError = 1
+           else if (UseMahieuxEddy .eq. .True. .and. UseMarsEddy .eq. .True.) then
+              write(*,*) "Only one of UseFlatEddy/UseMahieuxEddy/UseMarsEddy can be 'T' at one time"
+              iError = 1
+           endif
+
            if (UseDiffusion .and. iError == 0) then
               call read_in_real(EddyDiffusionCoef,iError)
               call read_in_real(EddyDiffusionPressure0,iError)
@@ -1589,7 +1630,7 @@ subroutine set_inputs
         case ("#EUV_DATA")
            call read_in_logical(UseEUVData, iError)
            call read_in_string(cEUVFile, iError)
-
+           call read_in_string(cFISM2File, iError)
            if (UseEUVData) call Set_Euv(iError, CurrentTime, EndTime)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #EUV_DATA'
@@ -1597,6 +1638,7 @@ subroutine set_inputs
               write(*,*) '#EUV_DATA'
               write(*,*) 'UseEUVData            (logical)'
               write(*,*) 'cEUVFile              (string)'
+              write(*,*) 'cFISM2File            (string)'
            endif
  
         case ("#ECLIPSE")
@@ -1753,19 +1795,6 @@ subroutine set_inputs
               UseVariableInputs = .true.
            endif
 
-        case ("#IR_HEATING")
-          call read_in_real(p_0,iError)
-          call read_in_real(p_1,iError)
-          call read_in_real(b_exponent,iError)
-          call read_in_real(QnirTOT_0,iError)
-          QnirTOT_0 = QnirTOT_0/86400.0
-
-          if (iError /= 0) then
-            write(*,*) "Error reading #IR_HEATING in UAM.in"
-            write(*,*) "Order is p_0, p_1, b, Q0"
-            IsDone = .true.
-          endif
-          
 
         case ("#END")
            IsDone = .true.

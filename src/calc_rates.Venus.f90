@@ -151,8 +151,8 @@ trouble = .false.
 
 !write(*,*) '==> calc_rates:  Before NDensityS Statements.'
 
-  where(NDensityS(:,:,:,:,iBlock) < 1.0e3)
-    NDensityS(:,:,:,:,iBlock) = 1.0e3
+  where(NDensityS(:,:,:,:,iBlock) < 1)
+    NDensityS(:,:,:,:,iBlock) = 1
   end where
 
 !write(*,*) '==> calc_rates:  Before IDensityS Statements.'
@@ -372,60 +372,7 @@ trouble = .false.
      !I could not find a good parameterization for CO2 viscosity.                    
      Viscosity_CO2 = Viscosity_N2 * 1.52  
      
-     !1 = CO2, 2 = N2, 3 = O
-     !this is the molecular mass
-     m(1) = 44.01/1000.0/Avogadros_Number !g/mol -> kg
-     m(2) = 28.01/1000.0/Avogadros_Number
-     m(3) = 15.99/1000.0/Avogadros_Number
 
-     !mu(:,:,iAlt,1) = Viscosity_CO2 * &
-     !        Temperature(1:nLons,1:nLats,iAlt,iBlock) * &
-     !        TempUnit(1:nLons,1:nLats,iAlt)
-
-     !mu(:,:,iAlt,2) = Viscosity_N2 * &
-     !        Temperature(1:nLons,1:nLats,iAlt,iBlock) *&
-     !        TempUnit(1:nLons,1:nLats,iAlt)
-     
-     !mu(:,:,iAlt,3) = Viscosity_O * &
-     !        Temperature(1:nLons,1:nLats,iAlt,iBlock) *&
-     !        TempUnit(1:nLons,1:nLats,iAlt)
-
-
-     !do iLon = 1,nLons
-     !  do iLat = 1,nLats
-     !    n(1) = NDensityS(iLon,iLat,iAlt,iCO2_,iBlock)
-     !    n(2) = NDensityS(iLon,iLat,iAlt,iN2_,iBlock)
-     !    n(3) = NDensityS(iLon,iLat,iAlt,iO_,iBlock)
-     !    ViscCoef(iLon,iLat,iAlt) = 0.0
-     !    do i = 1,3
-     !      mu_i = mu(iLon,iLat,iAlt,i)
-     !      denominator = 0.0
-     !      do j = 1,3
-     !        mu_j = mu(iLon,iLat,iAlt,j)
-
-     !        phi_ij = (1 + ((mu_i/mu_j)**0.5) * (m(j)/m(i))**0.25)**2 / &
-     !                 (2 * 2**(0.5) * (1 + m(i)/m(j))**0.5)
-
-     !        denominator = denominator + n(j) * phi_ij
-     !      enddo
-     !      ViscCoef(iLon,iLat,iAlt) = ViscCoef(iLon,iLat,iAlt) + &
-     !                                 mu_i * n(i)/denominator
-     !    enddo
-     !  enddo
-     !enddo
-
-     !ViscCoef(1:nLons,1:nLats,iAlt) = Viscosity_O
-!  * Benchmark: Jan.-March 2013
-!    ViscCoef(1:nLons,1:nLats,iAlt)  =  ViscCoef(1:nLons,1:nLats,iAlt)  + 500.0*&
-!                          Rho(1:nLons,1:nLats,iAlt,iBlock)*KappaEddyDiffusion(1:nLons,1:nLats,iAlt,iBlock)
-!  * Rescaled as KappaEddyDiffusion is Doubled : August 2017
-!    ViscCoef(1:nLons,1:nLats,iAlt)  =  ViscCoef(1:nLons,1:nLats,iAlt)  + 250.0*&
-!                          Rho(1:nLons,1:nLats,iAlt,iBlock)*KappaEddyDiffusion(1:nLons,1:nLats,iAlt,iBlock)
-!  * Rescaled as KappaEddyDiffusion is Doubled plus new Testing : September 2017
-     !ViscCoef(1:nLons,1:nLats,iAlt)  =  ViscCoef(1:nLons,1:nLats,iAlt)  + 200.0*&
-     !                      Rho(1:nLons,1:nLats,iAlt,iBlock)*KappaEddyDiffusion(1:nLons,1:nLats,iAlt,iBlock)
-
-!     Visc_3D(:,:,iAlt,iBlock) =  kmmix(1:nLons,1:nLats,iAlt)
 
 
 ! -------------------------------------------------------------------------------
