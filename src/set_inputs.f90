@@ -866,10 +866,12 @@ subroutine set_inputs
             call read_in_real(b_exponent,iError)
             call read_in_real(QnirTOT_0,iError)
             QnirTOT_0 = QnirTOT_0/86400.0
-            write(*,*) "Error reading #IRHEATING in UAM.in"
-            write(*,*) "with UseGilli=T"
-            write(*,*) "Order is p_0, p_1, b, Q0"
-            IsDone = .true.
+            if (iError /= 0) then
+              write(*,*) "Error reading #IRHEATING in UAM.in"
+              write(*,*) "with UseGilli=T"
+              write(*,*) "Order is p_0, p_1, b, Q0"
+              IsDone = .true.
+            endif
           endif
 
         case ("#THERMALDIFFUSION")
@@ -919,14 +921,14 @@ subroutine set_inputs
            call read_in_logical(UseMarsEddy, iError)
 
            !Verify multiple of these are not 'T' simultaneously
-           if (UseFlatEddy .eqv. .True. .and. UseMahieuxEddy .eqv. .True.) then
-             write(*,*) "Only one of UseFlatEddy/UseMahieuxEddy/UseMarsEddy can be 'T' at one time" 
+           if ((UseFlatEddy .eqv. .True.) .and. (UseMahieuxEddy .eqv. .True.)) then
+             write(*,*) "Only one of UseFlatEddy/UseMahieuxEddy can be 'T' at one time" 
              iError = 1
-           else if (UseFlatEddy .eqv. .True. .and. UseMarsEddy .eqv. .True.) then
-              write(*,*) "Only one of UseFlatEddy/UseMahieuxEddy/UseMarsEddy can be 'T' at one time"
+           else if ((UseFlatEddy .eqv. .True.) .and. (UseMarsEddy .eqv. .True.)) then
+              write(*,*) "Only one of UseFlatEddy/UseMarsEddy can be 'T' at one time"
               iError = 1
-           else if (UseMahieuxEddy .eqv. .True. .and. UseMarsEddy .eqv. .True.) then
-              write(*,*) "Only one of UseFlatEddy/UseMahieuxEddy/UseMarsEddy can be 'T' at one time"
+           else if ((UseMahieuxEddy .eqv. .True.) .and. (UseMarsEddy .eqv. .True.)) then
+              write(*,*) "Only one of UseMahieuxEddy/UseMarsEddy can be 'T' at one time"
               iError = 1
            endif
 
