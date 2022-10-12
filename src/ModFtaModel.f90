@@ -65,6 +65,14 @@ contains
     call get_ae(GitmCurrentTime+TimeDelayHighLat, ae, iError)
     call get_au(GitmCurrentTime+TimeDelayHighLat, au, iError)
     call get_al(GitmCurrentTime+TimeDelayHighLat, al, iError)
+    
+    ! Limiters to restrict larger AE values (By Atishnal)
+    
+    if (al < -1500) al = -1500
+    if (al > 0.0) al = -1.0
+    if (au > 500) au = 500
+    if (au < 0.0) au = 1.0
+    ae = au - al
 
     emis_type = 'lbhl'
     call calc_emission_pattern(au, al, emis_type, mlats0_l, efs0_l)
