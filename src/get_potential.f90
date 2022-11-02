@@ -513,7 +513,7 @@ subroutine get_potential(iBlock)
            ! Set latitude boundary between region of high lat convection
            ! and region of neutral wind dyanmo based on if SWMF potential
            ! is being used:
-           if IsFramework then
+           if (IsFramework) then
               LatBoundNow = 45.
            else
               LatBoundNow = DynamoHighLatBoundary
