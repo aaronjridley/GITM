@@ -452,7 +452,7 @@ contains
      call EIE_FillLats(90.0-(Grid_C(IE_) % Coord1_I)*180.0/cPi,iError)
      call EIE_FillMltsOffset((Grid_C(IE_) % Coord2_I)*180.0/cPi,iError)
      IsInitialized = .true.
-
+     
      ! Initial values for coupling:
      EIEr3_HavePotential = 0.0
      EIEr3_HaveAveE      = 0.0

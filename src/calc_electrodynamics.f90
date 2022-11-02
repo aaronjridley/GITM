@@ -305,7 +305,7 @@ subroutine UA_calc_electrodynamics(UAi_nMLTs, UAi_nLats)
      
   endif
 
-  if(UseApex .and. IsEarth) then
+  if((UseApex .and. IsEarth) .or. IsFramework) then
 
      do i=1,nMagLons+1
         do j=1,nMagLats
