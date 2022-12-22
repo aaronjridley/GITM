@@ -66,6 +66,12 @@ contains
     call get_au(GitmCurrentTime+TimeDelayHighLat, au, iError)
     call get_al(GitmCurrentTime+TimeDelayHighLat, al, iError)
 
+    if (au < 0.0) au = 1.0
+    if (al > 0.0) al = -1.0
+    if (au > 500) au = 500.0
+    if (al < -1500.0) al = -1500.0
+    ae = au - al
+
     emis_type = 'lbhl'
     call calc_emission_pattern(au, al, emis_type, mlats0_l, efs0_l)
   
