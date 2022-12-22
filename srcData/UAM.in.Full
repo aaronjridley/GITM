@@ -1,0 +1,290 @@
+
+#DEBUG
+0		debug level (0 = no info, 10 = max info)
+0		cpu to watch
+60.0		dt between normal code output to stdout
+F		usebarriers - forces the code to stop and wait more often
+
+--------------------------------------------------------------------------
+Gitm can stop and start again:
+  - Writes files to UA/restartOUT
+  - Reads files from UA/restartIN
+  - Can mv out and link to that directory
+
+#RESTART
+F		Restart Code
+
+--------------------------------------------------------------------------
+start and end times:
+  - don't change start time on restart (code will set correct time!)
+
+#TIMESTART
+2002		year
+12		month
+21		day
+00		hour
+00		minute
+00		second
+
+#TIMEEND
+2002		year
+12		month
+21		day
+00		hour
+05		minute
+00		second
+
+--------------------------------------------------------------------------
+Set blocks in lon and lat. 
+  - total cells in a direction = nBlocks x nCells (set in ModSize)
+  - res = (max - min) / num cells
+
+#GRID
+2		number of blocks in longitude
+2		number of blocks in latitude
+-90.0		minimum latitude to model
+90.0		maximum latitude to model
+0.0		longitude start to model (set to 0.0 for whole Earth)
+0.0             longitude end to model (set to 0.0 for whole Earth)
+
+--------------------------------------------------------------------------
+Output file stuff
+
+#LOGFILE
+1.0		dt for output to a log file
+
+#SAVEPLOTS
+7200.0		dt for writing restart files
+1		how many output files do you want
+3DALL		second output style
+300.0		dt for output (1 every 5 min)
+
+
+--------------------------------------------------------------------------
+Specify Drivers:
+
+------------ Solar Drivers ------------
+
+#F107
+150.0		f10.7
+150.0		f10.7 averaged over 81 days
+
+or
+
+NGDC_INDICES
+UA/DataIn/f107.txt
+
+(All false below is new model of EUV!)
+EUVMODEL
+F			UseEUVAC
+F			UseTobiska
+F			UseAboveHigh
+F			UseBelowLow
+
+or
+
+#EUV_DATA
+F						Use FISM solar flux data
+srcData/FISM/fismflux_daily_2002.dat		Filename
+
+------------ Auroral Drivers ------------
+
+Used by Fuller-Rowell and Evans model:
+#HPI
+1.0		hemispheric power
+
+or
+
+# the hemispheric power is not really available after 2013
+NOAAHPI_INDICES
+power file
+
+New auroral model from Wu and Ridley, which is driven by AU/AL/AE
+#FTAMODEL
+T                 Use FTA model of the aurora
+
+Can download AU/AL/AE indices from SuperMAG and use them here:
+SME_INDICES
+sme_2010.txt      SME Filename
+none              onset time delay file
+
+This is for OVATION-PRIME:
+#NEWELLAURORA
+F                 Use Newell Ovation model of the aurora
+
+#FANGENERGY
+T		Use Fang 2010 and 2013 energy deposition
+
+Can add a cusp:
+#USECUSP
+F		Add a cusp to the electron precipitation
+0.2             Average Energy
+2.0             Energy Flux
+
+This will modify the auroral inputs, experimental:
+#AURORAMODS
+F		normalize to hemispheric power
+1.0		avee factor (1 is no mod)
+F		iskappa
+4.0		kappa (3 min; higher is maxwellian)
+
+#IONPRECIPITATION
+F		If ions are included in the AMIE file, use them. FangEnergy=T!
+
+------------ E-Field Drivers ------------
+
+#SOLARWIND
+0.0		IMF Bx
+0.0		IMF By
+-2.0		IMF Bz
+400.0		Solar wind Vx
+
+or
+
+This is the most common thing - specify an IMF file:
+MHD_INDICES
+imf/solarwind file
+
+This is for SWPC inputs for close to real-time:
+SWPC_INDICES
+imf file
+solar wind file
+
+This is for amie-like inputs:
+#AMIEFILES
+none		northern hemisphere amie file
+none		southern hemisphere amie file
+
+Low-latitude dynamo (only run with higher res). Turn on for higher res sims:
+#DYNAMO
+F		UseDynamo
+45.0		DynamoHighLatBoundary
+500		nItersMax
+1.0		MaxResidual
+F		IncludeCowling
+20.0		LongitudinalAveraging
+F               UseNewTrace
+
+-----------------------------------------------------------------
+Some new features:
+
+#MSISOBC
+T		Shift the [O] density at the lower boundary by 6 months 
+0.0		change the obateness of the Earth by this percent (0 = none)
+
+--------------------------------------------------------------------------
+These set the thermal balance of the code:
+
+#NEUTRALHEATING
+0.05       Efficiency of photoelectron heating
+
+#PHOTOELECTRON
+0.00       Efficiency of photoelectron heating
+
+#DIFFUSION
+T
+50.0		Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
+0.010		Eddy Diffusion applied at alts below this pressures level
+0.005		No Eddy Diffusion at altitudes above this pressure level
+
+#THERMALCONDUCTION
+5.6e-4     Thermal conductivity (o2)
+7.6e-4     Thermal conductivity (o)
+0.72       Thermal conductivity (^s)
+
+--------------------------------------------------------------------------
+Can set max wall time for the code to run (default = 10 days)
+
+#CPUTIMEMAX
+860000.0	Maximum amount of cputime to use before stopping code
+
+--------------------------------------------------------------------------
+Solver stuff:
+
+#AUSMSOLVER
+T       	Use AUSM+-up Solvers
+
+#CFL
+0.80		percentage of maximum allowable time-step to take
+
+#LIMITER
+mc		only limiter available
+2.0
+
+#STATISTICALMODELSONLY
+F		if you want to run with msis and iri only (i.e. not GITM)
+1800.0		time step to take if you run with msis and iri
+
+#ELECTRODYNAMICS
+60.0		how often to update potential
+60.0		how often to update aurora and euv
+
+--------------------------------------------------------------------------
+This stuff is standard for Earth
+
+#ALTITUDE
+100.0		minimum altitude to use
+600.0		maximum altitude to use (ignored unless the following is F)
+T		use stretched grid
+
+#INITIAL
+T		initialize thermosphere using MSIS
+T		initialize ionosphere using IRI
+
+#TIDES
+F		UseMSISFlat
+T		UseMSISTides
+F		UseGSWMTides
+F		UseWACCMTides
+
+#GSWMCOMP
+F		Diurnal Migrating
+F		Diurnal NonMigrating
+F		Semidiurnal Migrating
+F		Semidiurnal NonMigrating
+
+#APEX
+T		Use apex magnetic coordinate system
+
+--------------------------------------------------------------------------
+Turn on/off various source terms:
+
+#THERMO
+T		 UseSolarHeating
+T		 UseJouleHeating
+T		 UseAuroralHeating
+T		 UseNOCooling
+T		 UseOCooling
+T		 UseConduction
+T		 UseTurbulentConduction
+F		 UseIRHeating - not for Earth!
+
+#FORCING
+T		UsePressureGradient
+T		UseIonDrag
+T		UseNeutralDrag
+T		UseViscosity
+T		UseCoriolis
+T		UseGravity
+
+#IONFORCING
+T               UseExB
+T               UseIonPressureGradient
+T               UseIonGravity
+T               UseNeutralDrag
+
+#CHEMISTRY
+T		UseIonChemistry
+T		UseIonAdvection
+T		UseNeutralChemistry
+
+
+#USEIMPROVEDIONADVECTION
+T   		UseImprovedIonAdvection
+T               UseNighttimeIonBCs
+2.0
+
+#USEIMPLICITIONMOMENTUM
+T
+
+#END
