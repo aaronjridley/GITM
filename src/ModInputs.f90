@@ -33,7 +33,7 @@ module ModInputs
   integer                   :: iLogFileUnit_ = 92
   integer                   :: iCodeInfoFileUnit_ = 93
   logical                   :: IsOpenLogFile = .false.
-  real                      :: DtLogFile = 60.0
+  real                      :: DtLogFile = 1.0
 
   integer, parameter        :: nInputMaxLines = 10000
   integer                   :: nInputLines
@@ -81,7 +81,7 @@ module ModInputs
   logical :: UseAeModel = .false.
   logical :: UseFtaModel = .false.
 
-  logical :: UseFangEnergyDeposition = .false.
+  logical :: UseFangEnergyDeposition = .true.
   
   logical :: IsKappaAurora = .false.
   real :: AuroraKappa = 3
@@ -100,7 +100,8 @@ module ModInputs
   logical :: DoOverwriteWithSami   = .false.
   character (len=iCharLen_) :: SamiInFile
 
-  character (len=iCharLen_) :: TypeLimiter = "minmod"
+  character (len=iCharLen_) :: TypeLimiter = "mc"
+  real :: BetaLimiter = 2.0
 
   integer, dimension(7) :: iStartTime
 
@@ -119,7 +120,7 @@ module ModInputs
 
   logical :: UsePerturbation = .false., DuringPerturb = .false.
 
-  real :: CFL = 0.25
+  real :: CFL = 0.75
   real :: FixedDt = 1.0e32
   
   integer :: nOutputTypes = 0
@@ -151,10 +152,8 @@ module ModInputs
   real :: f107a = 150.0
   integer :: iModelSolar = 0
 
-  real :: AltMin =  95.0 * 1000.0
+  real :: AltMin = 100.0 * 1000.0
   real :: AltMax = 500.0 * 1000.0
-
-  real :: BetaLimiter = 2.0
 
   real :: ConcentrationLatitude = 45.0
   real :: StretchingPercentage = 0.0
@@ -293,16 +292,16 @@ module ModInputs
   real :: NeutralHeatingEfficiency = 0.05
 
   real :: KappaTemp0 = 5.6e-4
-  real :: ThermalConduction_AO2 = 3.6e-4
-  real :: ThermalConduction_AO  = 5.6e-4
-  real :: ThermalConduction_s   = 0.726
+  real :: ThermalConduction_AO2 = 5.6e-4
+  real :: ThermalConduction_AO  = 7.6e-4
+  real :: ThermalConduction_s   = 0.72
   !! Pawlowski says AO2 = 3.6e-4 - 5.6e-4
   !!                AO  = 5.6e-4 - 7.6e-4
   !!                s   = 0.69 - 0.75
 
-  real :: EddyDiffusionCoef = 0.0
-  real :: EddyDiffusionPressure0 = 0.0
-  real :: EddyDiffusionPressure1 = 0.0
+  real :: EddyDiffusionCoef = 50.0
+  real :: EddyDiffusionPressure0 = 0.01
+  real :: EddyDiffusionPressure1 = 0.005
   real :: Kappa1DCorrectionFactor = 45.0
   real :: Kappa1DCorrectionPower  = 1.75
   logical :: UseKappa1DCorrection = .false.
