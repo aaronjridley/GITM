@@ -10,27 +10,45 @@ from swmf_imf import *
 from read_ae import *
 
 #------------------------------------------------------------------------------
+# Get closest day boundary
+#------------------------------------------------------------------------------
+
+def get_day_boundary(time):
+
+    year = time.year
+    month = time.month
+    day = time.day
+    tBoundary = dt.datetime(year, month, day)
+    diff = (tBoundary - time).total_seconds()/3600.0
+    if (diff < -12.0):
+        tBoundary = tBoundary + dt.timedelta(days = 1)
+        
+    return tBoundary
+
+#------------------------------------------------------------------------------
 # 
 #------------------------------------------------------------------------------
 
 def plot_day_boundaries(ax, times):
 
-    year = times[0].year
-    month = times[0].month
-    day = times[0].day
-    nDays = int((times[-1] - times[0]).total_seconds()/86400.0) + 1
+    tStart = get_day_boundary(times[0])
+    tEnd = get_day_boundary(times[-1])
+
+    nDays = int((tEnd - tStart).total_seconds()/86400.0)
 
     for iDay in range(nDays):
-        d = dt.datetime(year, month, day) + dt.timedelta(days=iDay)
+        d = tStart + dt.timedelta(days=iDay)
         ax.axvline(d, color = 'k', ls = '--')
 
-    ax.set_xlim(times[0], times[-1])
-    ax.xaxis.set_major_formatter(dates.DateFormatter('%m-%d'))
-        
+    ax.set_xlim(tStart, tEnd)
+    if (nDays > 2):
+        ax.xaxis.set_major_formatter(dates.DateFormatter('%m-%d'))
+    else:
+        ax.xaxis.set_major_formatter(dates.DateFormatter('%d-%H'))
     return
 
 imfFile = 'imf.dat'
-aeFile = 'ae_20180624.txt'
+aeFile = 'ae_20110610.txt'
 
 imf = read_swmf_file(imfFile)
 ae = read_ae(aeFile)
@@ -83,6 +101,8 @@ yStart = yEnd - ySize * iY - yGap * (iY-1)
 ax[-1].set_position([xStart, yStart, xSize, ySize])
 ax[-1].plot(ae["time"], ae["ae"])
 ax[-1].set_ylabel('(d) AE (nT)')
+ax[-1].set_ylim(0.0, np.max(ae["ae"])*1.05)
+
 plot_day_boundaries(ax[-1], imf["times"])
 
 mint = np.min(imf["times"])
