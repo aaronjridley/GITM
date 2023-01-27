@@ -21,16 +21,20 @@ def calculate_hp_from_ae(ae):
     hp = 0.102*ae + 8.953
     return hp
 
-def write_derived_hp(time_array, hp):
+def write_derived_hp(time_array, hp, output_filename = "empty"):
+
+    if (output_filename == "empty"):
     
-    savedir = './hp_from_ae'
-    
-    if not os.path.exists(savedir):
-        os.mkdir(savedir)
-    
+        savedir = './hp_from_ae'
+        if not os.path.exists(savedir):
+            os.mkdir(savedir)
+        output_filename = savedir + \
+            'power_from_ae_{0:%Y%m%d}'.format(time_array[0]) + \
+            '_to_{0:%Y%m%d}.txt'.format(time_array[-1])
+
+    output_file = open(output_filename, 'w')
+
     fmt_line = '{0:%Y-%m-%d} {0:%H:%M:%S} NOAA-17 (N)  6{1:7.2f}   0.75\n'
-    output_filename = 'power_from_ae_{0:%Y%m%d}'.format(time_array[0])+'_to_{0:%Y%m%d}.txt'.format(time_array[-1])
-    output_file = open(savedir+'/'+output_filename, 'w')
     ntimes = len(time_array)
     
     output_file.write(':Data_list: '+output_filename+'\n'.format(time_array[0]))
@@ -60,17 +64,19 @@ def write_derived_hp(time_array, hp):
 #__________________________________________________________________________#
 #    To use the code and generate a fake HPI file modify the dates below.  #
 #__________________________________________________________________________#
+if __name__ == '__main__':
 
-t_start = dt.datetime(2018,8,1)
-t_end = dt.datetime(2018,9,1)
+    t_start = dt.datetime(2018,8,1)
+    t_end = dt.datetime(2018,9,1)
 
-try:
-    ae_data = kyoto.aefetch(t_start, t_end)
-except AttributeError:
-    print('Spacepy Kyoto library not found. For SME derived fake HPI, use standalone functions in this file.')
+    try:
+        ae_data = kyoto.aefetch(t_start, t_end)
+        ae = kyoto.KyotoAe(ae_data)
+        hp = calculate_hp_from_ae(ae['ae'])
+        write_derived_hp(ae['time'], hp)
+        
+    except AttributeError:
+        print('Spacepy Kyoto library not found. For SME derived fake HPI, use standalone functions in this file.')
 
-ae = kyoto.KyotoAe(ae_data)
-hp = calculate_hp_from_ae(ae['ae'])
-write_derived_hp(ae['time'], hp)
 
 
