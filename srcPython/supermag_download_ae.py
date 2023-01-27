@@ -9,7 +9,7 @@ from datetime import timedelta
 # Function to parse input arguments
 # ----------------------------------------------------------------------
 
-def parse_args():
+def parse_args_sm():
 
     parser = argparse.ArgumentParser(description = 'Download SuperMAG AE file')
 
@@ -21,6 +21,43 @@ def parse_args():
     args = parser.parse_args()
 
     return args
+
+# ----------------------------------------------------------------------
+#
+# ----------------------------------------------------------------------
+
+def write_sme_file(data, message = "none"):
+
+    ymd = data['times'][0].strftime('%Y%m%d')
+    fileout = 'ae_' + ymd + '.txt'
+    print('  --> Writing file ' + fileout)
+        
+    l0 = 'File created by python code using write_sme_file\n'
+    l1 = '============================================================\n'
+    l2 = '<year>  <month>  <day>  <hour>  <min>  <sec>  '
+    l2 = l2 + '<SME (nT)>  <SML (nT)>  <SMU (nT)>\n'
+
+    fp = open(fileout, 'wb')
+    fp.write(l0.encode())
+    fp.write("\n".encode())
+    if (message != "none"):
+        m = message + "\n"
+        fp.write(m.encode())
+    fp.write(l1.encode())
+    fp.write(l2.encode())
+
+    for i, t in enumerate(data['times']):
+        ae = data['ae'][i]
+        al = data['al'][i]
+        au = data['au'][i]
+        out = " %8.2f %8.2f %8.2f" % (ae, al, au)
+        ymdhms = t.strftime('%Y  %m  %d  %H  %M  %S')
+        line = ymdhms + out + "\n"
+        fp.write(line.encode())
+
+    fp.close()
+
+    return fileout
 
 # ----------------------------------------------------------------------
 #
@@ -92,44 +129,46 @@ def download_sme_data(start, end):
 # main code:
 #------------------------------------------------------------------------------
 
-args = parse_args()
+if __name__ == '__main__':
+    
+    args = parse_args_sm()
 
-# ----------------------------------------
-# Set Times:
+    # ----------------------------------------
+    # Set Times:
 
-start = args.start
-end = args.end
+    start = args.start
+    end = args.end
 
-yStart = start[0:4]
-mo = start[4:6]
-da = start[6:8]
+    yStart = start[0:4]
+    mo = start[4:6]
+    da = start[6:8]
 
-if (len(start) >= 11):
-    hr = start[9:11]
-    if (len(start) >= 13):
-        mi = start[11:13]
+    if (len(start) >= 11):
+        hr = start[9:11]
+        if (len(start) >= 13):
+            mi = start[11:13]
+        else:
+            mi = '00'
     else:
+        hr = '00'
         mi = '00'
-else:
-    hr = '00'
-    mi = '00'
 
-start = datetime(int(yStart), int(mo), int(da), int(hr), int(mi), 0)
+    start = datetime(int(yStart), int(mo), int(da), int(hr), int(mi), 0)
 
-yr = end[0:4]
-mo = end[4:6]
-da = end[6:8]
+    yr = end[0:4]
+    mo = end[4:6]
+    da = end[6:8]
 
-if (len(end) >= 11):
-    hr = end[9:11]
-    if (len(end) >= 13):
-        mi = end[11:13]
+    if (len(end) >= 11):
+        hr = end[9:11]
+        if (len(end) >= 13):
+            mi = end[11:13]
+        else:
+            mi = '00'
     else:
+        hr = '00'
         mi = '00'
-else:
-    hr = '00'
-    mi = '00'
 
-end = datetime(int(yr), int(mo), int(da), int(hr), int(mi), 0)
+    end = datetime(int(yr), int(mo), int(da), int(hr), int(mi), 0)
 
-smeFile = download_sme_data(start, end)
+    smeFile = download_sme_data(start, end)
