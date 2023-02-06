@@ -10,11 +10,23 @@ on linux and mac osx as well as ifort on NASA's Pleiades computer.
 
 ## Quick Start:
 
-1. git clone https://github.com/aaronjridley/GITM
+1\. Clone the repository and cd into the repo folder
 
-2. cd GITM
+```shell
+git clone https://github.com/aaronjridley/GITM
+```
 
-3. ./Config.pl -install -earth -compiler=gfortran10
+2\. Go into the repo directory
+
+```shell
+cd GITM
+```
+
+3\. Configure the Fortran compiler (version 10)
+
+```shell
+./Config.pl -install -earth -compiler=gfortran10
+```
 
 The biggest issue with the above command is that it assumes that you
 have the gfortran (version 10) compiler and things like mpif90 work
@@ -22,7 +34,11 @@ ok.  If you don't have gfortran and mpif90, then you need to get these
 things for your computer.  If you have version 9 or before for gfortran,
 you can do:
 
-3b. ./Config.pl -install -earth -compiler=gfortran
+3b\. Configure the Fortran compiler (version 9 or below)
+
+```shell
+./Config.pl -install -earth -compiler=gfortran
+```
 
 In theory, Mars, Venus, Titan, and LV-426 should work.  These are in
 various states of completion, so I wouldn't count on them being
@@ -31,29 +47,42 @@ perfect.
 If running on Pleiades (as of March 3, 2022), you need to have these
 in your start-up script (.cshrc, .bashrc, etc):
 
+```
 module load comp-intel/2016.2.181
-
 module load mpi-hpe/mpt
+```
 
-And you can use this to configure the code:
+And you can use 3c below to configure the code.
 
-3c. ./Config.pl -install -earth -compiler=ifort
+3c\. Configure for Pleiades 
 
-4. Make the binary:
+```shell
+./Config.pl -install -earth -compiler=ifort
+```
 
+4\. Make the binary:
+
+```shell
 make
+```
 
-5. Creates a run directory that has all of the input files:
+5\. Creates a run directory that has all of the input files:
 
+```shell
 make rundir
+```
 
-6. Go into the run directory:
+6\. Go into the run directory:
 
+```shell
 cd run
+```
 
-7. Run the code:
+7\. Run the code:
 
+```shell
 mpirun -np 4 ./GITM.exe
+```
 
 GITM reads in a file called UAM.in, which sets the configuration of
 the simulation. The default UAM.in file has 2 lat blocks and 2 lon
@@ -61,52 +90,62 @@ blocks with 9 x 9 cells each, so the default resolution is 180 (deg
 lat) / (2 * 9) = 10 deg lat, by 360 (deg lon) / (2 * 9) = 20 deg
 lon. See below for how to set the resolution.
 
-8. Go into the directory which contains many of the outputs:
+8\. Go into the directory which contains many of the outputs:
 
+```shell
 cd UA
+```
 
-9. Post process the output files by running:
+9\. Post process the output files by running:
 
+```shell
 pGITM
+```
 
-10. Go into the output directory:
+10\. Go into the output directory:
 
+```shell
 cd data
+```
 
-11. Make some plots with an old plotter:
+11\. Make some plots with an old plotter:
 
+```shell
 ../../../srcPython/plot_model_results.py -var=3 -alt=120 3DALL_t021221_000500.bin
+```
 
 Then look at the png file that is created.  You can use a -h to see
 how to run this code.
 
-11b. A more advanced plotter is available through aetherpy. This is a bit more
+11b\. A more advanced plotter is available through aetherpy. This is a bit more
 complicated, since you need to install aetherpy. If you don't use python
 much, this is harder. Here is how to do this:
 
+```shell
 cd <directory where you started from>
-  
 git clone https://github.com/AetherModel/aetherpy
-
 ls
+```
 
 (you should see 2 directories: GITM and aetherpy)
 
+```shell
 cd aetherpy
-  
 git checkout develop
-
+```
 (install the aetherpy libraries)
 
+```shell
 python setup.py develop --user
+```
 
-11c. Test out the new plotter:
-  
+11c\. Test out the new plotter:
+
+```shell
 cd <directory where you started from>
-
 cd GITM/run/UA/data
-
 ../../../srcPython/run_plot_model_results.py -var=34 -alt=300 3DALL_t021221_000500.bin
+```
 
 (look at the beautiful plot)
 
