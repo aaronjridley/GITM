@@ -13,7 +13,7 @@ on linux and mac osx as well as ifort on NASA's Pleiades computer.
 1\. Clone the repository and cd into the repo folder
 
 ```shell
-git clone https://github.com/aaronjridley/GITM
+git clone https://github.com/GITMCode/GITM
 ```
 
 2\. Go into the repo directory
