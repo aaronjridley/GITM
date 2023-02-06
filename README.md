@@ -1,5 +1,5 @@
 # GITM
-This is the home of the Global Ionosphere/Thermosphere Model (GITM).
+This is the home of the Global Ionosphere/Thermosphere Model (GITM). Regular releases will start in 2023, with this first release.
 
 GITM has been developed in fortran-90. It has been tested with gfortran
 on linux and mac osx as well as ifort on NASA's Pleiades computer.
@@ -151,7 +151,7 @@ cd GITM/run/UA/data
 
 ## Contributing:
 
-1. Please feel free to e-mail the development team to suggest ideas.
+1. Please feel free to e-mail the development team to suggest ideas. 
 
 2. Please feel free to open an issue on github.  The development team
 gets these issues and will review them.  We can then reach out to you

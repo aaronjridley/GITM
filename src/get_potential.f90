@@ -60,6 +60,7 @@ subroutine init_get_potential
 
      UseHPI = .true.
      if (UseNewellAurora .or. UseOvationSME .or. UseAeModel) UseHPI = .false.
+     if (UseFTAModel) UseHPI = .false.
 
      call get_IMF_Bz(CurrentTime+TimeDelayHighLat, bz, iError)
      

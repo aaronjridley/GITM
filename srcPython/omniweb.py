@@ -39,6 +39,7 @@ def parse_omni_data(results):
              'Vz Velocity, km/s' : 'vz',
              'Proton Density, n/cc' : 'n',
              'Temperature, K' : 't',
+             'Proton Temperature, K' : 't',
              'AE-index, nT' : 'ae',
              'AL-index, nT' : 'al',
              'AU-index, nT' : 'au'}
