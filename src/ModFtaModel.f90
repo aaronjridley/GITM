@@ -74,6 +74,10 @@ contains
     if (au < 0.0) au = 1.0
     ae = au - al
 
+    if (au < 25.0) au = 25.0
+    if (abs(au/al) < 0.12) al = -au / 0.12
+    ae = au - al
+
     emis_type = 'lbhl'
     call calc_emission_pattern(au, al, emis_type, mlats0_l, efs0_l)
   
