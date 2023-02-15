@@ -365,8 +365,8 @@ subroutine get_potential(iBlock)
         TempPotential(:,:,1) = TempPotential2d
         
         if (iError /= 0) then
-           write(*,*) "Error in get_potential (UA_GetPotential):"
-           write(*,*) iError
+           !write(*,*) "Error in get_potential (UA_GetPotential):"
+           !write(*,*) iError
            TempPotential = 0.0
 !           call stop_gitm("Stopping in get_potential")
         endif
