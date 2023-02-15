@@ -255,12 +255,16 @@ contains
 
     type(TimeType) :: TimeSwmfEnd
     logical :: IsFirstTime = .true.
-
+    
     ! Debug variables:
+    integer, dimension(7) :: iTimeDebug
     logical :: DoTest, DoTestMe
     character(len=*), parameter :: NameSub = 'UA_init_session'
     !-------------------------------------------------------------------------
     call CON_set_do_test(NameSub,DoTest,DoTestMe)
+
+    if(DoTestMe) write(*,*) &
+         NameSub//' called; IsFirstTime = ', IsFirstTime
     
     if (IsFirstTime) then
 
@@ -274,10 +278,17 @@ contains
        call time_real_to_int(StartTime, iTimeArray) ! get time as integers
 
        if(DoTestMe) then
-          write(*,*) NameSub//' Timing for UA:'
+          write(*,*) NameSub//' Timing for UA (floating point):'
           write(*,*) NameSub//' Start time   = ', StartTime
           write(*,*) NameSub//' End time     = ', EndTime
           write(*,*) NameSub//' Current time = ', CurrentTime
+
+          write(*,*) NameSub//' Timing for UA (integer datetime):'
+          write(*,'(a, 7i5)') NameSub//' Start time   = ', iTimeArray
+          call time_real_to_int(EndTime, iTimeDebug)
+          write(*,'(a, 7i5)') NameSub//' End time     = ', iTimeDebug
+          call time_real_to_int(CurrentTime, iTimeDebug)
+          write(*,'(a, 7i5)') NameSub//' Current time = ', iTimeDebug
        end if
        
        call fix_vernal_time
