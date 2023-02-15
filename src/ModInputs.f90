@@ -37,7 +37,7 @@ module ModInputs
 
   integer, parameter        :: nInputMaxLines = 10000
   integer                   :: nInputLines
-  character (len=iCharLen_) :: cInputText(nInputMaxLines)
+  character (len=iCharLen_) :: cInputText(nInputMaxLines) = ''
 
   character (len=iCharLen_) :: cInputFile = "UAM.in"
 
