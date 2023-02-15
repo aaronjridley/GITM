@@ -63,7 +63,8 @@ subroutine set_inputs
      cLine = cInputText(iLine)
 
      ! If in framework, echo lines to stdout:
-     if(IsFramework .and. iProc==0) write(*,'(a)') "UA: "//trim(cline)
+     if(IsFramework .and. iProc==0 .and. len(trim(cLine))>0) &
+          write(*,'(a)') "UA: "//trim(cline)
      
      if (cLine(1:1) == "#") then
 
