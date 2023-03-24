@@ -232,9 +232,10 @@ def rebin_fism(fism_waves, fism_vals, wavelengths):
         if (long == short):
             d = np.abs(fism_waves - short)
             i = np.argmin(d)
-            new_irr[iWave] = fism_vals[i]
+            new_irr[iWave] = fism_vals[i] * \
+                    ((fism_waves[i+1] - fism_waves[i])/10.0)
             # zero out bin so we don't double count it.
-            fism_vals[i] = 0.0
+            # fism_vals[i] = 0.0
 
     # then go through the ranges
     for iWave, short in enumerate(shorts):
@@ -245,9 +246,14 @@ def rebin_fism(fism_waves, fism_vals, wavelengths):
             iStart = np.argmin(d)
             d = np.abs(fism_waves - long)
             iEnd = np.argmin(d)
+            #print('short : ', short, fism_waves[iStart])
+            #print('long : ', long, fism_waves[iEnd])
+            wave_int = 0.0
             for i in range(iStart+1, iEnd+1):
-                new_irr[iWave] += fism_vals[i]
-                
+                new_irr[iWave] += fism_vals[i] * \
+                    ((fism_waves[i+1] - fism_waves[i])/10.0)
+                wave_int += (fism_waves[i+1] - fism_waves[i])/10.0
+            #print(wave_int)
     return new_irr, ave_wav
 
 #------------------------------------------------------------------------------
