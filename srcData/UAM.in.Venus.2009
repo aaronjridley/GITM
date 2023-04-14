@@ -23,9 +23,9 @@ T               UseDiffusion
 T		UseFlatEddy (UseFlat, UseMahieux, and UseMars cannot be used simultaneously)
 F		UseMahieuxEddy (ignores the pressure bounds and EDC)
 F		UseMarsEddy (if all false, defaults to Earth case)
-900.0		Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
-0.0058		Total Eddy Diffusion applied at alts below this pressures level
-0.0030		No Eddy Diffusion at altitudes above this pressure level
+300.0		Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
+1.0		Total Eddy Diffusion applied at alts below this pressures level
+1.0		No Eddy Diffusion at altitudes above this pressure level
 
 #THERMALDIFFUSION
 2.22e-4		Thermal conductivity (code use kappa = number * T**0.75)
@@ -67,9 +67,9 @@ F		if you want to run with msis and iri only (i.e. not GITM)
 3600.0		dt for writing restart files
 2		how many output files do you want
 3DALL
-3600.0		dt for output
+14400.0		dt for output
 3DTHM
-3600.0
+14400.0
 
 
 #ELECTRODYNAMICS
@@ -136,6 +136,7 @@ T		 UseTurbulentConduction
 T		UseIRHeating
 F		UseGilli
 F		UseRoldan
+T		UseIRHeatingEfficiency
 1985		p_0
 0.1		p_1 
 1.362		b 
@@ -199,7 +200,7 @@ T
 
 #USENIGHTSIDEIONS
 T	! For Venus. Use nightside OP_ at top boundary
-1.0e9   ! nightsideNe (in m^-3)
+1.0e8   ! nightsideNe (in m^-3)
 
 #RADCOOLING
 T		UseRadCooling

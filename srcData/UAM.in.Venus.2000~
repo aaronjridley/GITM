@@ -23,9 +23,9 @@ T               UseDiffusion
 T		UseFlatEddy (UseFlat, UseMahieux, and UseMars cannot be used simultaneously)
 F		UseMahieuxEddy (ignores the pressure bounds and EDC)
 F		UseMarsEddy (if all false, defaults to Earth case)
-900.0		Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
-0.0058		Total Eddy Diffusion applied at alts below this pressures level
-0.0030		No Eddy Diffusion at altitudes above this pressure level
+300.0		Eddy Diffusion Coefficient (Should be about 37.5 for 1-D runs)
+1.0		Total Eddy Diffusion applied at alts below this pressures level
+1.0		No Eddy Diffusion at altitudes above this pressure level
 
 #THERMALDIFFUSION
 2.22e-4		Thermal conductivity (code use kappa = number * T**0.75)
@@ -34,17 +34,17 @@ F		UseMarsEddy (if all false, defaults to Earth case)
 574000.0	Maximum amount of cputime to use before stopping the code
 
 #TIMESTART
-2009	        year
+2000	        year
 03		month
-01		day
+21		day
 00		hour
 00		minute
 00		second
 
 #TIMEEND
-2009	        year
+2000	        year
 03		month
-10		day
+31		day
 00		hour
 00		minute
 00		second
@@ -67,9 +67,9 @@ F		if you want to run with msis and iri only (i.e. not GITM)
 3600.0		dt for writing restart files
 2		how many output files do you want
 3DALL
-3600.0		dt for output
+14400.0		dt for output
 3DTHM
-3600.0
+14400.0
 
 
 #ELECTRODYNAMICS
@@ -107,9 +107,6 @@ F		Use apex magnetic coordinate system
 none		northern hemisphere amie file
 none		southern hemisphere amie file
 
-#F107
-70.0		f10.7
-70.0		f10.7 averaged over 81 days
 
 #HPI
 1.0		hemispheric power
@@ -150,7 +147,7 @@ F               UseStressHeating
 #EUV_DATA
 T		UseEUVData
 UA/DataIn/fismdaily.dat
-UA/DataIn/fism_extraBins_20090301.txt
+UA/DataIn/fism_extraBins_20000321.txt
 T		UseChemicalHeating
 F		UseRidleyEUV
 
@@ -199,7 +196,8 @@ T
 
 #USENIGHTSIDEIONS
 T	! For Venus. Use nightside OP_ at top boundary
-1.0e9   ! nightsideNe (in m^-3)
+8.0e2	!nigthsideNe (in m^-3)
+
 
 #RADCOOLING
 T		UseRadCooling
