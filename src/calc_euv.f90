@@ -45,9 +45,9 @@ subroutine euv_ionization_heat(iBlock)
   use ModConstants
   use ModInputs
   use ModSources
-  use ModTime, only : tSimulation, CurrentTime, iTimeArray
+  use ModTime, only : tSimulation, CurrentTime, iTimeArray, iStep
   use ModIndicesInterfaces
-
+  
   implicit none
 
   integer, intent(in) :: iBlock
@@ -84,6 +84,10 @@ subroutine euv_ionization_heat(iBlock)
      !  write(*,*) energyRequired/1.602e-19
      !
      !endif
+     !Manually hack in the CO2 dissociation threshold, because it's a bit smaller
+     !Shaw et al., 1995
+     energyRequired(iCO2_) = 5.453*1.602e-19 !eV -> correct units
+ 
   else
      if (floor((tSimulation - dT)/dTAurora) == &
           floor(tSimulation/dTAurora)) return
@@ -101,6 +105,7 @@ subroutine euv_ionization_heat(iBlock)
   eEuvHeating(:,:,:,iBlock) = 0.0
   EuvIonRateS(:,:,:,:,iBlock) = 0.0
   EuvDissRateS(:,:,:,:,iBlock) = 0.0
+  EuvDissRateCO2_at_wave(:,:,:,:,iBlock) = 0.0
   nEuvHeating(:,:,:) = 0.0
   neEuvHeating(:,:,:) = 0.0
   DissociationHeatingRate(:,:,:,iBlock) = 0.0
@@ -125,53 +130,13 @@ subroutine euv_ionization_heat(iBlock)
            Tau = Tau + &
                 PhotoabsorptionCrossSection(iWave, iSpecies) * &
                 ChapmanLittle(:,:,iSpecies)
-           !if (iSpecies .eq. 1) then
-           !  TauS(iWave,iAlt) = TauS(iWave,iAlt) + &
-           !                     PhotoabsorptionCrossSection(iWave, iSpecies) * &
-           !                     ChapmanLittle(8,1,iSpecies)
-           !endif 
-
-           !if (iSpecies == 1 .and. iTimeArray(5) == 5 .and. iWave == nWavelengths) then
-           !  do iLon = 1, nLons
-           !    do iLat = 1,nLats
-           !      if (longitude(iLon,iBlock)*180.0/pi > 80.0 .and. &
-           !          longitude(iLon,iBlock)*180.0/pi < 83.0 .and. &
-           !          latitude(iLat,iBlock)*180.0/pi > 0.0 .and. &
-           !          latitude(iLat,iBlock)*180.0/pi < 1.5) then
-                   !write(*,*) "iLon:", iLon, "iLat:", iLat !this is 8,1
-                   !write(*,*) "Wavelength bins to write out:", &
-                   !           shortWavelengths(nWavelengths-7:nWavelengths)
-                   !write(*,*) "TOA Fluxes", Flux_of_EUV(nWavelengths-7:nWavelengths)
-                   
-           !        inquire(file="taus.txt", exist=exist)
-           !        if (exist) then
-           !          open(84, file="taus.txt", status="old", position="append", action="write")
-           !        else
-           !          open(84, file="taus.txt", status="new", action="write")
-           !        end if
-
-           !        write(84, "(F5.1,1X,"// &
-           !                  "ES8.2,1X,"// &
-           !                  "ES8.2,1X"// &
-           !                  "ES8.2,1X,"// &
-           !                  "ES8.2,1X"// &
-           !                  "ES8.2,1X,"// &
-           !                  "ES8.2,1X"// &
-           !                  "ES8.2,1X,"// &
-           !                  "ES8.2)") &
-           !            Altitude_GB(8,1,iAlt,1)/1000.0, TauS(nWavelengths-7:nWavelengths,iAlt)
-                   !Every line should be a new altitude, the different columns
-                   !are all the species
-           !      endif
-           !    enddo
-           !  enddo
-           !endif
         enddo
 
         
         
         Intensity = Flux_of_EUV(iWave) * exp(-1.0*Tau)
         Intensity_bp = photonFlux_bp(iWave)*exp(-1.0*Tau)
+
 
         do iIon = 1, nIons-1
            iNeutral = PhotoIonFrom(iIon)
@@ -192,14 +157,28 @@ subroutine euv_ionization_heat(iBlock)
                 Intensity*photoDissociationCrossSection(iWave,iSpecies) * &
                 NeutralDensity(:,:,iSpecies) * &
                 (1.0 + PhotoElecDiss(iWave,iSpecies))
-           !I wonder if this needs to be looped through AFTER EuvDiss
-           !is complete.           
-           if (PhotonEnergy(iWave) - energyRequired(iSpecies) > 0.0) then
-              DissociationHeatingRate(1:nLons,1:nLats,iAlt,iBlock) = &
-                  DissociationHeatingRate(1:nLons,1:nLats,iAlt,iBlock) + &
-                  2.0/3.0 * &
-                  (PhotonEnergy(iWave) - energyRequired(iSpecies)) * &
-                  EuvDissRateS(1:nLons,1:nLats,iAlt,iSpecies,iBlock)
+           
+           !Excess dissociation heating
+           !Only applicable for CO2 for now
+           !Starts when the energy > dissociation threshold, stops when
+           !energies start entering into ionization-size levels
+           !I believe EuvDissRateS does not work for this and 
+           !a specific dissociation production rate AT A SPECIFIC wavelength
+           !is needed instead. Hence the different variable.
+           !Rho*cp adjustment below...           
+           if (PhotonEnergy(iWave) - energyRequired(iSpecies) > 0.0 &
+               .and. iSpecies == iCO2_ .and. useDissociationHeating) then
+              if (photoionizationCrossSection(iWave,iCO2P_) .eq. 0.0) then
+                 EuvDissRateCO2_at_wave(1:nLons,1:nLats,iAlt,iSpecies,iBlock) = &
+                      Intensity*photoDissociationCrossSection(iWave,iSpecies) * &
+                      NeutralDensity(:,:,iSpecies)
+                 
+                 DissociationHeatingRate(1:nLons,1:nLats,iAlt,iBlock) = &
+                   DissociationHeatingRate(1:nLons,1:nLats,iAlt,iBlock) + &
+                   2.0/3.0 * &
+                   (PhotonEnergy(iWave) - energyRequired(iSpecies)) * &
+                   EuvDissRateCO2_at_wave(1:nLons,1:nLats,iAlt,iSpecies,iBlock)
+              endif
            endif
         enddo
 
@@ -225,7 +204,7 @@ subroutine euv_ionization_heat(iBlock)
      eEuvHeating(:,:,iAlt,iBlock) = EHeat*eHeatingEfficiency_CB(:,:,iAlt,iBlock)
      
      if (useIRHeating) then
-       QnirTOT(:,:,iAlt,iBlock) = IHeat
+       QnirTOT(:,:,iAlt,iBlock) = IHeat*HeatingEfficiency_IR(:,:,iAlt,iBlock)
      else
        QnirTOT(:,:,iAlt,iBlock) = 0.0     
      endif
@@ -241,6 +220,29 @@ subroutine euv_ionization_heat(iBlock)
      enddo
   enddo
   
+
+  !debugging
+  !if (iStep > 500) then
+  !  do iLon = 1,nLons
+  !    do iLat = 1,nLats
+  !      !write(*,*)                                                                                   
+  !      if (sza(iLon,iLat,iBlock)*180.0/pi > 89.0 .and. &
+  !          sza(iLon,iLat,iBlock)*180.0/pi < 95.0 .and. &
+  !          latitude(iLat,iBlock) * 180.0/pi > 0.0 .and. &
+  !          latitude(iLat,iBlock) * 180.0/pi < 1.5) then
+  !         write(*,*) "SZA:", SZA(iLon,iLat,iBlock)*180.0/pi
+  !         write(*,*) "Longitude:", longitude(iLon,iBlock)*180.0/pi
+  !         write(*,*) "QnirTOT", QnirTOT(iLon,iLat,30:60,iBlock)*86400.0
+  !         write(*,*) "EUV", EuvHeating(iLon,iLat,90,iBlock)*86400.0 / &
+  !                           Rho(iLon,iLat,90,iBlock) / &
+  !                           cp(iLon,iLat,90,iBlock)
+  !       endif
+  !    enddo
+  !  enddo
+  !  call stop_gitm("Debugging in calc_euv.f90")
+  !endif
+
+
   if (IncludeEclipse) call calc_eclipse_effects
   if (IsEarth) call night_euv_ionization
 
@@ -270,6 +272,7 @@ subroutine euv_ionization_heat(iBlock)
              cp(1:nLons,1:nLats,iAlt,iBlock) / &
              TempUnit(1:nLons,1:nLats,iAlt)
 
+
         EuvHeating_bp(1:nLons,1:nLats,iAlt,iBlock) = &
              EuvHeating_bp(1:nLons,1:nLats,iAlt,iBlock) / &
              Rho(1:nLons,1:nLats,iAlt,iBlock) / &
@@ -285,6 +288,11 @@ subroutine euv_ionization_heat(iBlock)
         EuvTotal(:,:,iAlt,iBlock) = EuvHeating(:,:,iAlt,iBlock) * &
              TempUnit(1:nLons,1:nLats,iAlt) / &
              HeatingEfficiency_CB(:,:,iAlt,iBlock)
+
+        QnirTOT(1:nLons,1:nLats,iAlt,iBlock) = QnirTOT(1:nLons,1:nLats,iAlt,iBlock) / &
+             Rho(1:nLons,1:nLats,iAlt,iBlock) / &
+             cp(1:nLons,1:nLats,iAlt,iBlock) / &
+             TempUnit(1:nLons,1:nLats,iAlt)
 
      enddo
   else
@@ -304,7 +312,6 @@ subroutine euv_ionization_heat(iBlock)
       end do
     enddo
   enddo
-
 
   call end_timing("euv_ionization_heat")
 
@@ -648,6 +655,7 @@ subroutine calc_scaled_euv
   ! regression coefficients which reduce to solar min. spectrum:
   ! for Hinteregger_Contrast_Ratio model:
 
+  integer :: newN
   real, dimension(1:3) :: B1, B2
   !real, dimension(Num_WaveLengths_High) :: Timed_Flux
   real, dimension(nWavelengths) :: Timed_Flux
@@ -658,18 +666,20 @@ subroutine calc_scaled_euv
   !     DATA B1/1.31, 0.01106, 0.00492/, B2/-6.618, 0.66159, 0.38319/
 
   iError = 0
-  call get_f107(CurrentTime, f107, iError)
-  if (iError /= 0) then
-     write(*,*) "Error in getting F107 value.  Is this set?"
-     write(*,*) "Code : ",iError
-     call stop_gitm("Stopping in euv_ionization_heat")
-  endif
+  if (useRidleyEUV) then
+    call get_f107(CurrentTime, f107, iError)
+    if (iError /= 0) then
+      write(*,*) "Error in getting F107 value.  Is this set?"
+      write(*,*) "Code : ",iError
+      call stop_gitm("Stopping in euv_ionization_heat")
+   endif
 
-  call get_f107a(CurrentTime, f107a, iError)
-  if (iError /= 0) then
-     write(*,*) "Error in getting F107a value.  Is this set?"
-     write(*,*) "Code : ",iError
-     call stop_gitm("Stopping in euv_ionization_heat")
+    call get_f107a(CurrentTime, f107a, iError)
+    if (iError /= 0) then
+       write(*,*) "Error in getting F107a value.  Is this set?"
+       write(*,*) "Code : ",iError
+       call stop_gitm("Stopping in euv_ionization_heat")
+    endif
   endif
 
   if (UseEUVData) then
@@ -751,9 +761,15 @@ subroutine calc_scaled_euv
      !IR wavelength: previously 80% and we were too hot by ~50 K at 105 km. 
      !               trying 64% to see how this goes. 4.3 micron
 
-     if (UseIRHeating .and. .not. UseGilli .and. .not. UseRoldan) then
-       Timed_Flux(2) = 26530*0.64 !2.7 micron
-       Timed_Flux(1) = 26530*0.4 !temporary adjust to reduce peak heating, 4.3 micron     
+     if (UseIRHeating .and. (.not. UseGilli) .and. (.not. UseRoldan)) then
+       !V-GITM I values:
+       !Timed_Flux(2) = 26530*0.64 !2.7 micron
+       !Timed_Flux(1) = 26530*0.4 !temporary adjust to reduce peak heating, 4.3 micron     
+ 
+       !Debugging values:
+       Timed_Flux(2) = 0.18
+       Timed_Flux(1) = 4.4 
+
      else
        Timed_Flux(1) = 0.0
        Timed_Flux(2) = 0.0
@@ -799,17 +815,43 @@ subroutine calc_scaled_euv
 
   else
      if (UseRidleyEUV) then
+        !what's the size of Solar_Flux
+        !RidleyPowers???? data and size?
+        !RidleySlopes same 
+        !RidleyIntercepts same
+        do N=nWavelengths,1,-1
+          !the bins are backwards in FISM                                                        
+          wvavg(N)=(shortWavelengths(N) + longWavelengths(N))/2.
+          !write(*,*) N, shortWavelengths(N), longWavelengths(N), wvavg(N)                       
+        enddo
 
-        do N = 1, Num_WaveLengths_High
+        !N = 1 handles wvavg of 0.1 - 0.2 nm
+        do N = 1, Num_Wavelengths_High
            Solar_Flux(N) = &
                 RidleySlopes(1,N) * (f107**RidleyPowers(1,N)) + &
                 RidleySlopes(2,N) * (f107a**RidleyPowers(2,N)) + &
                 RidleySlopes(3,N) * (f107a-f107) + &
                 RidleyIntercepts(N)
-           wvavg(N)=(longWavelengths(N)+shortWavelengths(N))/2.
-           Flux_of_EUV(N) = Solar_Flux(N)*wvavg(N)/(6.626e-34*2.998e8) &
+
+           !flux_of_euv is forward...
+           Flux_of_EUV(N) = Solar_Flux(nWavelengths - (N-1))*wvavg(N)/(6.626e-34*2.998e8) &
                 /(SunPlanetDistance**2)
+
         enddo
+        
+        !To occupy IR and 175-190 wavelength bins
+        Flux_of_EUV(3:5) = 0.0
+
+        if (UseIRHeating .and. (.not. UseGilli) .and. (.not. UseRoldan)) then
+          Flux_of_EUV(nWavelengths-1) = 26530*0.64 * 2.7e-6/(6.626e-34*2.998e8)/(SunPlanetDistance**2)
+          !2.7 micron                                                   
+          Flux_of_EUV(nWavelengths) = 26530*0.4 * 4.3e-6/(6.626e-34*2.998e8)/(SunPlanetDistance**2)
+          !temporary adjust to reduce peak heating, 4.3 micron        
+        else
+          Flux_of_EUV(nWavelengths-1:nWavelengths) = 0.0
+        endif
+
+        !what order is the waves.dat data? does it need to be reversed?
 
      else
 
@@ -1145,50 +1187,50 @@ subroutine Set_Euv(iError, StartTime, EndTime)
   if (nSeeTimes .gt. 3) iError = 0
 
   !Read another file with FISM data for bins 175-190nm.
-  open(unit = iInputUnit_, file=cFISM2File, IOSTAT = iError)
-  if (iError /= 0) then
-     write(*,*) "Error in opening fism_extraBins_YYYYmmdd.txt file  Is this set?"
-     write(*,*) "Code : ",iError,cFISM2File
-     call stop_gitm("Stopping in calc_euv -> set_euv")
-  endif
+  !open(unit = iInputUnit_, file=cFISM2File, IOSTAT = iError)
+  !if (iError /= 0) then
+  !   write(*,*) "Error in opening fism_extraBins_YYYYmmdd.txt file  Is this set?"
+  !   write(*,*) "Code : ",iError,cFISM2File
+  !   call stop_gitm("Stopping in calc_euv -> set_euv")
+  !endif
 
   !four lines of header info
-  read(iInputUnit_, *)
-  read(iInputUnit_, *)
-  read(iInputUnit_, *)
-  read(iInputUnit_, *)
+  !read(iInputUnit_, *)
+  !read(iInputUnit_, *)
+  !read(iInputUnit_, *)
+  !read(iInputUnit_, *)
   
   !This is only if the run is 10 days. Needs to be 
   !re-written in a correct fashion.
-  do iline = 1,10
-    read(iInputUnit_,*) date(iline), fism175180array(iLine), &
-                        fism180185array(iLine), &
-                        fism185190array(iLine)
+  !do iline = 1,10
+  !  read(iInputUnit_,*) date(iline), fism175180array(iLine), &
+  !                      fism180185array(iLine), &
+  !                      fism185190array(iLine)
+  !
+  !
+  !  read(date(iLine)(1:4), '(i4)') fismYear(iLine)
+  !  read(date(iLine)(6:7), '(i2)') fismMonth(iLine)
+  !  read(date(iLine)(9:10), '(i2)') fismDay(iLine)
+  !enddo
 
+  !close(iInputUnit_)
 
-    read(date(iLine)(1:4), '(i4)') fismYear(iLine)
-    read(date(iLine)(6:7), '(i2)') fismMonth(iLine)
-    read(date(iLine)(9:10), '(i2)') fismDay(iLine)
-  enddo
+  !timesMatch = .False. 
+  !do i = 1,size(fismYear)
+  !  if (iTimeArray(1) .eq. fismYear(i) .and. &
+  !      iTimeArray(2) .eq. fismMonth(i) .and. &
+  !      iTimeArray(3) .eq. fismDay(i)) then
+  !    timesMatch = .True.
+  !    
+  !    fism185190 = fism185190array(i)
+  !    fism180185 = fism180185array(i)
+  !    fism175180 = fism175180array(i)
+  !
+  !    exit
+  !  endif
+  !enddo
 
-  close(iInputUnit_)
-
-  timesMatch = .False. 
-  do i = 1,size(fismYear)
-    if (iTimeArray(1) .eq. fismYear(i) .and. &
-        iTimeArray(2) .eq. fismMonth(i) .and. &
-        iTimeArray(3) .eq. fismDay(i)) then
-      timesMatch = .True.
-      
-      fism185190 = fism185190array(i)
-      fism180185 = fism180185array(i)
-      fism175180 = fism175180array(i)
-
-      exit
-    endif
-  enddo
-
-  if (.not. timesMatch) call stop_gitm("Check UA/DataIn/fism_extraBins_????????.txt.")
+  !if (.not. timesMatch) call stop_gitm("Check UA/DataIn/fism_extraBins_????????.txt.")
 
 end subroutine Set_Euv
 

@@ -359,7 +359,7 @@ trouble = .false.
 !    ViscCoef(:,:,iAlt) =  kmmix(1:nLons,1:nLats,iAlt)*10.0
 !   * No scaling of molecular vciscosity
      ViscCoef(1:nLons,1:nLats,iAlt) =  kmmix(1:nLons,1:nLats,iAlt) 
-     ViscCoef(1:nLons,1:nLats,iAlt)  =  ViscCoef(1:nLons,1:nLats,iAlt)  + 10.0* &   
+     ViscCoef(1:nLons,1:nLats,iAlt)  =  ViscCoef(1:nLons,1:nLats,iAlt)  + 1.0* &   
                  Rho(1:nLons,1:nLats,iAlt,iBlock)* &
                  KappaEddyDiffusion(1:nLons,1:nLats,iAlt,iBlock)
 

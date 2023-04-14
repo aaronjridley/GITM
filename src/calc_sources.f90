@@ -494,7 +494,7 @@ subroutine calc_GITM_sources(iBlock)
      !Outputs:  Q_IR (iLon, iLat, iAlt, iProc)                             
      !QnirTOT(:,:,:,:) = 0.0
 
-     if (UseIRHeating .and. isVenus) then
+     if (UseIRHeating .and. isVenus .and. useGilli) then
        call start_timing("IR Heating")
        do iAlt = 1, nAlts
          do iLon = 1, nLons
@@ -509,6 +509,7 @@ subroutine calc_GITM_sources(iBlock)
                  sza(iLon,iLat,iBlock) < 0.0 .or. &
                  sza(iLon,iLat,iBlock) .ge. 89.0*pi/180.0) then
                QnirTOT(iLon,iLat,iAlt,iBlock) = 0.0
+
              else
                if (useGilli) then
                  !BP: 
@@ -528,10 +529,11 @@ subroutine calc_GITM_sources(iBlock)
                
                else if (useRoldan) then
                  call readVenusIRTable
+ 
                  do iSza = 1, 11
                    if (sza(iLon, iLat, iBlock) .le. sza_table(iSza+1) .and. &
                      sza(iLon, iLat, iBlock) .ge. sza_table(iSza)) then
-                   exit
+                     exit
                    endif
                  enddo
                

@@ -182,7 +182,7 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
   !If using O+ nightside Venus ions in ghost cells...
   if (useNightSideIons .and. isVenus) then
     if (abs(sza(iLon1d, iLat1d, iBlock1d))*180.0/pi > 90.0) then
-      LogINS(nAlts+1:nAlts+2,iOP_) = alog(1.0e9)
+      LogINS(nAlts+1:nAlts+2,iOP_) = alog(nightSideNe)
     endif 
   endif
 

@@ -653,7 +653,7 @@ contains
        write(iOutputUnit_,"(I7,A1,a)")  12, " ", "ChemicalHeatingRate"
        write(iOutputUnit_,"(I7,A1,a)")  13, " ", "DissociationHeatingRate"
        write(iOutputUnit_,"(I7,A1,a)")  14, " ", "Pressure"
-       write(iOutputUnit_,"(I7,A1,a)")  15, " ", "CO2P + O -> O2P + CO"
+       write(iOutputUnit_,"(I7,A1,a)")  15, " ", "CO2 + hv -> CO + O"
        write(iOutputUnit_,"(I7,A1,a)")  16, " ", "CO2 + O+ -> O2P + CO"
        write(iOutputUnit_,"(I7,A1,a)")  17, " ", "O2P + e -> 2O"
        write(iOutputUnit_,"(I7,A1,a)")  18, " ", "Neutral CO Losses"
@@ -1382,21 +1382,6 @@ subroutine output_3dthm(iBlock)
           SZA(iiLon,iiLat,iBlock)*180.0/pi, &
           HorizontalAdvectionTemperature(iiLon,iiLat,iiAlt,iBlock)* &
           TempUnit(iiLon,iiLat,iiAlt)*86400.0
-
-          if (Longitude(iiLon,iBlock)*180.0/pi > 81 + 90.0 .and. &
-              Longitude(iiLon,iBlock)*180.0/pi < 83 + 90.0 .and. &
-              latitude(iiLat,iBlock)*180.0/pi > 0.0 .and. &
-              latitude(iiLat,iBlock)*180.0/pi < 2.0 .and. &
-              Altitude_GB(iiLon,iiLat,iiAlt,iBlock)/1000.0 < 135. .and. &
-              Altitude_GB(iiLon,iiLat,iiAlt,iBlock)/1000.0 > 125. .and.&
-              iTimeArray(5) .eq. 30) then
-            write(*,*) "z, dt", Altitude_GB(iiLon,iiLat,iiAlt,iBlock)/1000.0, dt
-            write(*,*) "Viscosity", Viscosity(iiLon,iiLat,iiAlt, iEast_), Viscosity(iiLon,iiLat,iiAlt,iEast_)/(1.0e-3 + dt)*86400.0
-            write(*,*) "Velocity", Velocity(iiLon,iiLon,iiAlt,iEast_,iBlock)
-            write(*,*) "ViscCoef", ViscCoef(iiLat, iiLat, iiAlt)
-            write(*,*) "KappaEddyDiffusion", KappaEddyDiffusion(iiLon,iiLat,iiAlt,iBlock)
-            write(*,*) "Rho", Rho(iiLon,iiLat,iiAlt,iBlock)
-          endif
        enddo
     enddo
  enddo

@@ -29,14 +29,14 @@ module ModPlanet
 
 ! Major Ions (5):  Most Important to MWACM code
 ! Modified (05/21/08) : SWB :   Add N2+ to major ions list
-  integer, parameter  :: iOP_  = 1
-  integer, parameter  :: iO2P_  = 2
+  integer, parameter  :: iO2P_  = 1
+  integer, parameter  :: iOP_   = 2
   integer, parameter  :: iCO2P_ = 3
   integer, parameter  :: iN2P_  = 4
   integer, parameter  :: iNOP_  = 5
   integer, parameter  :: ie_    = 6
   integer, parameter  :: nIons  = ie_
-  integer, parameter  :: nIonsAdvect = 2
+  integer, parameter  :: nIonsAdvect = 1
   integer, parameter  :: nSpeciesAll = 16 !Ions plus neutrals
 
   character (len=20) :: cSpecies(nSpeciesTotal)
@@ -74,7 +74,7 @@ module ModPlanet
   real, parameter :: RBody                  = R_Venus
   real, parameter :: DipoleStrength         = DP_Venus
 
-  real, parameter :: OMEGABody              = 2.00*pi/Rotation_Period  ! rad/s
+  real, parameter :: OMEGABody              = -2.00*pi/Rotation_Period  ! rad/s
 
   real, parameter :: HoursPerDay = Rotation_Period / 3600.0
   real, parameter :: Tilt = 0
@@ -907,7 +907,7 @@ contains
     InNDensityS(:,:) = 1.0
     InIDensityS(:,:) = 1.0e-24
     
-    do iiAlt = 1,54
+    do iiAlt = 1,nInAlts
 
        read(UnitTmp_,*) &
             newalt(iiAlt), &
@@ -922,6 +922,7 @@ contains
                                 !
             InNDensityS(iiAlt,iO_), &
             InNDensityS(iiAlt,iAr_), &
+            InNDensityS(iiAlt,iHe_), &
 
             InIDensityS(iiAlt,ie_)
 

@@ -112,8 +112,15 @@ subroutine calc_physics(iBlock)
   ! Updated to work at all Planets
   ! We need the equivalent number of "hours" per planet rotation,
   ! assuming that there are 24.0 LT hours per planet day
-  LocalTime = mod((UTime/(RotationPeriodInput/24.0) + &
+
+  if (.NOT. isVenus) then
+    LocalTime = mod((UTime/(RotationPeriodInput/24.0) + &
        Longitude(:,iBlock) * 24.0/TwoPi), 24.0)
+  else
+    LocalTime = mod(-(UTime/(RotationPeriodInput/24.0) + &
+       Longitude(:,iBlock) * 24.0/TwoPi), 24.0)
+  endif
+
 
   if (UseApex) &
        call SUBSOLR(iTimeArray(1),iJulianDay,iTimeArray(4),&

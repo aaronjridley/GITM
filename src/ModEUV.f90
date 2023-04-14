@@ -61,11 +61,14 @@ module ModEUV
 
   real, allocatable :: HeatingEfficiency_CB(:,:,:,:)
   real, allocatable :: eHeatingEfficiency_CB(:,:,:,:)
+  real, allocatable :: HeatingEfficiency_IR(:,:,:,:) !Adding for IR
+
   real, allocatable :: EuvIonRate(:,:,:,:)
   real, allocatable :: EuvTotal(:,:,:,:)
 
   real, allocatable :: EuvIonRateS(:,:,:,:,:)
   real, allocatable :: EuvDissRateS(:,:,:,:,:)
+  real, allocatable :: EuvDissRateCO2_at_wave(:,:,:,:,:)
 
   real, allocatable :: Chapman(:,:,:,:,:)
 
@@ -1629,10 +1632,12 @@ contains
     if(allocated(HeatingEfficiency_CB)) RETURN
     allocate(HeatingEfficiency_CB(nLons, nLats, nAlts, nBlocks))
     allocate(eHeatingEfficiency_CB(nLons, nLats, nAlts, nBlocks))
+    allocate(HeatingEfficiency_IR(nLons, nLats, nAlts, nBlocks))
     allocate(EuvIonRate(nLons, nLats, nAlts, nBlocks))
     allocate(EuvTotal(nLons, nLats, nAlts, nBlocks))
     allocate(EuvIonRateS(nLons, nLats, nAlts, nIons,nBlocks))
     allocate(EuvDissRateS(nLons, nLats, nAlts, nSpeciesTotal,nBlocks))
+    allocate(EuvDissRateCO2_at_wave(nLons, nLats, nAlts, nSpeciesTotal,nBlocks))
     allocate(Chapman(nLons, nLats, nAlts, nSpecies,nBlocks))
     allocate(CO2_Abs_Fac(nLons,nLats,nAlts,Num_Wavelengths_High,nBlocks))
     allocate(nEuvIonRateS(nLons,nLats,nAlts,nIons,nBlocks))
@@ -1675,10 +1680,12 @@ contains
     if(.not.allocated(HeatingEfficiency_CB)) RETURN
     deallocate(HeatingEfficiency_CB)
     deallocate(eHeatingEfficiency_CB)
+    deallocate(HeatingEfficiency_IR)
     deallocate(EuvIonRate)
     deallocate(EuvTotal)
     deallocate(EuvIonRateS)
     deallocate(EuvDissRateS)
+    deallocate(EuvDissRateCO2_at_wave)
     deallocate(Chapman)
     deallocate(CO2_Abs_Fac)
     deallocate(nEuvIonRateS)

@@ -163,9 +163,10 @@ subroutine init_msis
 
 
      !Initial Winds are -100 m/s (westward) unless otherwise specificed by the HorizontalBC
-     do iLon = 1,nLons
+     do iLat = 1,nLats
        !write(*,*) "Latitude:", latitude(iLon,iBlock)
-       Velocity(:,:,:,iEast_,iBlock)= HorizontalVelocityBC * cos(Latitude(iLon,iBlock))
+       Velocity(:,iLat,:,iEast_,iBlock)= HorizontalVelocityBC * cos(Latitude(iLat,iBlock))
+       IVelocity(:,iLat,:,iEast_,iBlock)= HorizontalVelocityBC * cos(Latitude(iLat,iBlock))
      enddo
      !\
      ! Altitude Ghost Cells

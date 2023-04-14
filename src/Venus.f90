@@ -110,7 +110,7 @@ subroutine readVenusIRTable
   !Skip first line of table headings
   read(UnitTmp_, *)
 
-  do iiAlt = 1,40
+  do iiAlt = 1,size(qAlts)
      read(UnitTmp_,*) qAlts(iiAlt), qIR_NLTE_table(iiAlt, :)
   enddo
   close(Unit = UnitTmp_)
@@ -285,16 +285,49 @@ end subroutine fill_photo
 
 subroutine init_heating_efficiency
 
-  use ModEUV, only: HeatingEfficiency_CB, eHeatingEfficiency_CB
-
+  use ModEUV, only: HeatingEfficiency_CB, eHeatingEfficiency_CB, HeatingEfficiency_IR
+  use ModInputs, only: NeutralHeatingEfficiency, useIRHeatingEfficiency
+  use ModSizeGITM, only: nAlts
+  use ModConstants, only: pi
+  use ModGITM, only: Altitude_GB
   implicit none
+  
+  integer :: iAlt
+  real :: w
 
+  
   ! HeatingEfficiency_CB  = 0.18
   ! HeatingEfficiency_CB  = 0.19
-  !HeatingEfficiency_CB  = 0.20
-  HeatingEfficiency_CB = 0.01  !1% direct heating + chemical heating
-  !this cannot be zero or it will segmentation fault
+  ! HeatingEfficiency_CB  = 0.20
+
+  HeatingEfficiency_CB = NeutralHeatingEfficiency  !(set in UAM.in)
+  if (NeutralHeatingEfficiency == 0.0) then
+    call stop_gitm("NeutralHeatingEfficiency cannot be zero. Please check UAM.in #NEUTRALHEATINGEFFICIENCY")
+  endif
+
   eHeatingEfficiency_CB = 0.0
+
+  HeatingEfficiency_IR = 1.0 
+
+
+  !BP: 12/17/2022
+  !The IR Heating Efficiency implements a cos(z) function from 135 km to the model top
+  !Everywhere below, the heating efficiency is 100%. 
+  if (useIRHeatingEfficiency) then
+    !w is the periodicity of the cosine function. It relates altitudes to 
+    !make the cosine shape match the shape between 0, pi between 135 km -> 170 km. 
+    w = PI / (170.0 - 135.0)
+
+    do iAlt = 1,nAlts
+      if (Altitude_GB(1,1,iAlt,1)/1000.0 .ge. 135.0) then
+        HeatingEfficiency_IR(:,:,iAlt,:) = &
+           0.5 * cos(w * (Altitude_GB(1,1,iAlt,1)/1000.0 - 135.0)) + 0.5
+        if (HeatingEfficiency_IR(1,1,iAlt,1) < 0.0) then
+          HeatingEfficiency_IR(:,:,iAlt,:) = 0.0 
+        endif
+      endif
+    enddo
+  endif
 
   !  call init_radcool
   call init_nlte_setup
@@ -980,16 +1013,7 @@ subroutine nlte_tcool(iBlock)
   endwhere
 
  
-
-  !do iAlt = 1, nAlts
-  !  if (Altitude_GB(1,1,iAlt,iBlock)/1000.0 < 85.0) then
-  !    RadCoolingRate(1:nLons,1:nLats,iAlt,iBlock) = 0.0
-  !  endif
-  !enddo
-
   !Before the loop, convert to energy units. After the loop, convert back...
-
-
   !need to loop through whole grid, but with altitude on the innermost loop
   if (useExtrapolation) then
      do iLat = 1,nLats
@@ -998,7 +1022,7 @@ subroutine nlte_tcool(iBlock)
            do iAlt = 1,nAlts
               !(1) Find first non-zero cooling because that we want to extrapolate
               !    from this location two scale heights above it
-              !(2) Linear extrapolate to 0 K/day at 70 km
+              !(2) Linear extrapolate to Qcool_lowerBC K/day at 70 km
 
               !Finding first non-zero entry
               if (RadCoolingRate(iLon,iLat,iAlt,iBlock) .ne. 0 .and. notAlreadyFound) then
@@ -1009,37 +1033,25 @@ subroutine nlte_tcool(iBlock)
            enddo
         
            x1 = RadCoolingRate(iLon,iLat,nIndexFound,iBlock)
-           !x1 = x1 * rho(iLon,iLat,nIndexFound,iBlock) * cp(iLon,iLat,nIndexFound,iBlock)
 
-           !x2 = x2 * rho(iLon,iLat,1,iBlock) * cp(iLon,iLat,1,iBlock)
-           !write(*,*) "Cooling at x1", x1
-           !write(*,*) "Altitude at y1", Altitude_GB(iLon,iLat,nIndexFound,iBlock)/1000.0
-           !bIntercept = 70.0 - &
-           !             (Altitude_GB(iLon,iLat,nIndexFound,iBlock) - 70.0)/(x1 - x2)*x2
-       
-           !A = (Altitude_GB(iLon,iLat,nIndexFound,iBlock) - 70.0)/(x1 - x2) 
 
-           do iExtrapolate = 1, nIndexFound
-              !RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &
-              !     -(x1-x2)*(Altitude_GB(iLon,iLat,iExtrapolate,iBlock)/1000.0 - 70.0) / &
-              !     (70.0 - Altitude_GB(iLon,iLat,nIndexFound,iBlock)/1000.0)
-
-              !RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &                              ! 
-!                   -(x1-x2)*(Altitude_GB(iLon,iLat,iExtrapolate,iBlock)/1000.0 - bIntercept) !/ (Altitude_GB(iLon,iLat,nIndexFound,iBlock)/1000.0 - 70.0)  
-
-              !RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &
-              !     -10**((Altitude_gb(iLon,iLat,iExtrapolate,iBlock)/1000.0 - 70.0)/A)/ & 
-              !     altitude_gb(iLon,iLat,iExtrapolate,iBlock)/1000.0/3.3333
-              RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &
-                x1 / (1 + ABS(altitude_gb(iLon,iLat,iExtrapolate,iBlock)/1000.0 - &
-                              altitude_gb(iLon,iLat,nIndexFound,iBlock)/1000.0)) + &
-                35.0/86400.0
-              
-              !RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &
-              !  RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) / &
-              !  rho(iLon,iLat,iExtrapolate,iBlock) / &
-              !  cp(iLon,iAlt,iExtrapolate,iBlock)
-           enddo
+           if (useLinear) then
+             do iExtrapolate = 1, nIndexFound
+                RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &
+                  x1 / (1 + ABS(altitude_gb(iLon,iLat,iExtrapolate,iBlock)/1000.0 - &
+                  altitude_gb(iLon,iLat,nIndexFound,iBlock)/1000.0)) + &
+                  Qcool_lowerBC/86400.0
+             enddo
+           
+           else if (useLogarithmic) then
+             do iExtrapolate = 1, nIndexFound
+               if (x1 > 1) then
+                 RadCoolingRate(iLon,iLat,iExtrapolate,iBlock) = &
+                   exp(log(x1) + (log(Altitude_GB(iLon,iLat,iExtrapolate,iBlock)/Altitude_GB(iLon,iLat,nIndexFound,iBlock)) * &
+                       log(Qcool_lowerBC/x1) / log(Altitude_GB(iLon,iLat,1,iBlock)/Altitude_GB(iLon,iLat,nIndexFound,iBlock))))
+               endif
+             enddo
+           endif
 
            !Blending one point.
            RadCoolingRate(iLon,iLat,nIndexFound + 1, iBlock) = &
@@ -1163,8 +1175,10 @@ end subroutine init_isochem
 
 ! KModerate
 !     KMax = 1500.0
-      KMax = 2000.0
-      KMin = 500.0
+     
+
+      KMax = 900.0
+      KMin = 200.0
 
 ! KLow
 !    KMax = 1200.0
@@ -1285,6 +1299,8 @@ end subroutine init_isochem
          enddo
        enddo
      endif
+
+
    end subroutine calc_eddy_diffusion_coefficient
 
 

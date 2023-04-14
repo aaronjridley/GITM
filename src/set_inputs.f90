@@ -516,6 +516,7 @@ subroutine set_inputs
 
         case ("#USENIGHTSIDEIONS")
          call read_in_logical(useNightsideIons, iError)
+         call read_in_real(nightSideNe, iError)
          if (iError /= 0) then
               write(*,*) 'Incorrect format for #USENIGHTSIDEIONS:'
               write(*,*) 'If you are running for anything except Venus. Remove this '
@@ -523,6 +524,7 @@ subroutine set_inputs
               write(*,*) 'the top of the model on the nightside. '
               write(*,*) '#USENIGHTSIDEIONS'
               write(*,*) 'useNightsideIons  (logical)'
+              write(*,*) 'nigthsideNe       (real)   '
               IsDone = .true.
          endif
 
@@ -829,7 +831,6 @@ subroutine set_inputs
            call read_in_logical(UseOCooling, iError)
            call read_in_logical(UseConduction, iError)
            call read_in_logical(UseTurbulentCond, iError)
-           call read_in_logical(UseRadCooling, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #THERMO:'
               write(*,*) ''
@@ -841,7 +842,6 @@ subroutine set_inputs
               write(*,*) "UseOCooling       (logical)"
               write(*,*) "UseConduction     (logical)"
               write(*,*) "UseTurbulentCond  (logical)"
-              write(*,*) "UseRadCooling     (logical)"
               IsDone = .true.
            endif
 
@@ -850,6 +850,7 @@ subroutine set_inputs
           call read_in_logical(UseIRHeating, iError)
           call read_in_logical(UseGilli, iError)
           call read_in_logical(UseRoldan, iError)
+          call read_in_logical(useIRHeatingEfficiency, iError)
           if (iError /= 0) then
             write(*,*) 'Incorrect format for #IRHEATING:'
             write(*,*) ''
@@ -857,6 +858,7 @@ subroutine set_inputs
             write(*,*) "UseIRHeating   (logical)"
             write(*,*) "UseGilli       (logical)"
             write(*,*) "UseRoldan      (logical)"
+            write(*,*) "useIRHeatingEfficiency (logical)"
             IsDone = .true.
           endif
 
@@ -874,6 +876,27 @@ subroutine set_inputs
             endif
           endif
 
+        case ("#RADCOOLING")
+          call read_in_logical(UseRadCooling, iError)
+          call read_in_logical(UseLinear, iError)
+          call read_in_logical(UseLogarithmic, iError)
+          if (UseLinear .and. UseLogarithmic) then
+            iError = 1
+            write(*,*) "Error - please only make UseLinear or UseLogarithmic = T"
+            write(*,*) "Not both." 
+          endif
+          call read_in_real(Qcool_lowerBC, iError)
+          if (iError /= 0) then
+              write(*,*) "Error reading #RADCOOLING in UAM.in"
+              write(*,*) "Format is:"
+              write(*,*) "Logical           UseRadCooling"
+              write(*,*) "Logical           UseLinearInterpolation"
+              write(*,*) "Logical           UseLogarithmicInterpolation"
+              write(*,*) "Real (positive)   Qcool_lowerBC"
+              IsDone = .true.
+           endif
+
+
         case ("#THERMALDIFFUSION")
            call read_in_real(KappaTemp0, iError)
            if (iError /= 0) then
@@ -883,15 +906,26 @@ subroutine set_inputs
               write(*,*) "KappaTemp0    (thermal conductivity, real)"
            endif
 
+        case("#MAXIONVERTICALVELOCITY")
+          call read_in_logical(limitIonVerticalVelocity, iError)
+          call read_in_real(MaxIonVerticalVelocity,iError)
+          if (iError /= 0) then
+              write(*,*) 'Incorrect format for #MAXIONVERTICALVELOCITY:'
+              write(*,*) ''
+              write(*,*) '#MAXIONVERTICALVELOCITY'
+              write(*,*) "limitIonVerticalVelocitiy    (logical)"
+              write(*,*) "maxIonVerticalVelocity       (real)"
+           endif
+
         case ("#THERMALCONDUCTION")
-           call read_in_real(ThermalConduction_AO2, iError)
+           call read_in_real(ThermalConduction_ACO2, iError)
            call read_in_real(ThermalConduction_AO,  iError)
            call read_in_real(ThermalConduction_s,   iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #THERMALCONDUCTION:'
               write(*,*) ''
               write(*,*) '#THERMALCONDUCTION'
-              write(*,*) "ThermalConduction_AO2 (Conduction A(O2): 3.6e-4, real)"
+              write(*,*) "ThermalConduction_AO2 (Conduction A(CO2): 0.9e-5, real)"
               write(*,*) "ThermalConduction_AO  (Conduction A(O): 5.6e-4, real)"
               write(*,*) "ThermalConduction_s   (Conduction s: 0.75, real)"
            endif
@@ -1632,7 +1666,11 @@ subroutine set_inputs
         case ("#EUV_DATA")
            call read_in_logical(UseEUVData, iError)
            call read_in_string(cEUVFile, iError)
-           call read_in_string(cFISM2File, iError)
+           !call read_in_string(cFISM2File, iError) 
+           call read_in_logical(useChemicalHeating, iError)
+           call read_in_logical(UseDissociationHeating, iError)
+           call read_in_logical(UseRidleyEUV, iError)
+
            if (UseEUVData) call Set_Euv(iError, CurrentTime, EndTime)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #EUV_DATA'
@@ -1640,7 +1678,9 @@ subroutine set_inputs
               write(*,*) '#EUV_DATA'
               write(*,*) 'UseEUVData            (logical)'
               write(*,*) 'cEUVFile              (string)'
-              write(*,*) 'cFISM2File            (string)'
+              !write(*,*) 'cFISM2File            (string)'
+              write(*,*) 'UseChemicalHeating    (logical)' 
+              write(*,*) 'UseRidleyEUV          (logical)'
            endif
  
         case ("#ECLIPSE")

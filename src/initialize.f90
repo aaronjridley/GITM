@@ -320,9 +320,15 @@ subroutine initialize_gitm(TimeIn)
   if (.not. DoRestart) then
 
      Potential = 0.0
-     Velocity = 0.0
-     IVelocity = 0.0
-     VerticalVelocity = 0.0
+     
+     if (isVenus) then
+       !Eastward direction is initialized in init_msis.Venus.f90
+       IVelocity(:,:,:,iNorth_,:) = 0.0
+       IVelocity(:,:,:,iUp_,:) = 0.0
+       VerticalVelocity = 0.0
+     else
+       IVelocity = 0.0
+     endif 
 
      if (UseMsis) then
         call init_msis

@@ -14,6 +14,10 @@ module ModInputs
   real :: p_0 = 2100 !testing new parameters
   real :: p_1 = 0.1
   real :: b_exponent =  1.362 !this one is actually in Gilli et al., 2016         
+  
+
+  real :: nightSideNe = 1.0e9
+
 
   !real :: QnirTOT_0 = 15.92/86400.0 !K/day -> K/sec   
 !  real :: QnirTOT_0 = 17.0/86400.0 !testing new parameters
@@ -68,7 +72,16 @@ module ModInputs
   logical :: UseRoldan         = .false.
   logical :: UseGilli          = .false.
   logical :: UseRadCooling     = .false.
- 
+  logical :: useLinear         = .false.
+  logical :: useLogarithmic    = .false.
+  logical :: useIRHeatingEfficiency = .false.
+  real    :: Qcool_lowerBC     = 1.0 
+  logical :: UseChemicalHeating = .true. !default True
+  logical :: UseDissociationHeating = .true.
+
+  logical :: limitIonVerticalVelocity = .false.
+  real    :: MaxIonVerticalVelocity = 500.0
+
   !!! Xing Meng Nov 2018 to use ISR E field in a local region + Weimer elsewhere
   logical :: UseRegionalAMIE = .false.
   logical :: UseTwoAMIEPotentials = .false.
@@ -305,12 +318,12 @@ module ModInputs
   real :: NeutralHeatingEfficiency = 0.05
 
   real :: KappaTemp0 = 5.6e-4
-  real :: ThermalConduction_ACO2 = 0.82e-5
-  real :: ThermalConduction_AO   = 5.4e-4
-  real :: ThermalConduction_AN2  = 3.6e-4
+  real :: ThermalConduction_ACO2 = 0.9e-5
+  real :: ThermalConduction_AO   = 5.6e-4
+  real :: ThermalConduction_AN2  = 4.6e-4
   real :: ThermalConduction_sCO2 = 1.28 
   real :: ThermalConduction_s    = 0.75
-  real :: ThermalConduction_AO2  = 3.6e-4
+  real :: ThermalConduction_AO2  = 4.6e-4
   
   !! Pawlowski says AO2 = 3.6e-4 - 5.6e-4
   !!                AO  = 5.6e-4 - 7.6e-4

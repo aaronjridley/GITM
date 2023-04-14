@@ -32,8 +32,11 @@ subroutine calc_ion_v(iBlock)
   call report("Ion Forcing Terms",1)
   call start_timing("Ion Forcing")
 
-  IVelocity(:,:,:,:,iBlock) = 0.0
-
+  !BP 3/3/2023
+  !This is only useful for steady state calculations
+  !Venus needs the prior state for updating.
+  if (.not. isVenus) IVelocity(:,:,:,:,iBlock) = 0.0
+ 
   if (iDebugLevel > 4) write(*,*) "=====> pressure gradient", iproc
 
   ! Pressure is the sum of ion and electron pressure
@@ -145,6 +148,14 @@ subroutine calc_ion_v(iBlock)
           dt*(-LocalPressureGradient(:,:,:,iUp_)/iRho + &
           LocalGravity(:,:,:) + &
           nu_in*LocalNeutralWinds(:,:,:,iUp_)))
+     
+     !IVelocity(:,:,:,iUp_,iBlock) = &
+     !     (1 - nu_in*dt) * &
+     !     IVelocity(:,:,:,iUp_,iBlock) + &
+     !     dt*(-LocalPressureGradient(:,:,:,iUp_)/iRho + &
+     !     LocalGravity(:,:,:) + &
+     !     nu_in*LocalNeutralWinds(:,:,:,iUp_))
+
 
      !Gravity not needed
      IVelocity(:,:,:,iEast_,iBlock) = &
@@ -160,6 +171,18 @@ subroutine calc_ion_v(iBlock)
           dt*(-LocalPressureGradient(:,:,:,iNorth_)/iRho + &
           nu_in*LocalNeutralWinds(:,:,:,iNorth_)))
 
+     if (limitIonVerticalVelocity) then
+       do iAlt = -1,nAlts+2
+         do iLon = -1,nLons+2
+           do iLat = -1,nLats+2
+             IVelocity(iLon,iLat,iAlt,iUp_,iBlock) = max(-MaxIonVerticalVelocity, &
+               IVelocity(iLon,iLat,iAlt,iUp_,iBlock))
+             IVelocity(iLon,iLat,iAlt,iUp_,iBlock) = min(MaxIonVerticalVelocity, &
+               IVelocity(iLon,iLat,iAlt,iUp_,iBlock))
+           enddo
+         enddo
+       enddo
+     endif
      
   else
 
@@ -273,8 +296,8 @@ subroutine calc_ion_v(iBlock)
 
   endif
 
-  IVelocity(:,:,:,:,iBlock) = min( 100.0, IVelocity(:,:,:,:,iBlock))
-  IVelocity(:,:,:,:,iBlock) = max(-100.0, IVelocity(:,:,:,:,iBlock))
+  IVelocity(:,:,:,:,iBlock) = min( 500.0, IVelocity(:,:,:,:,iBlock))
+  IVelocity(:,:,:,:,iBlock) = max(-500.0, IVelocity(:,:,:,:,iBlock))
 
   call end_timing("Ion Forcing")
 

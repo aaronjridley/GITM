@@ -62,6 +62,7 @@ subroutine add_sources
      !  enddo
      !enddo 
 
+
      Temperature(1:nLons, 1:nLats, 1:nAlts, iBlock) = &
           Temperature(1:nLons, 1:nLats, 1:nAlts, iBlock) + Dt * ( &
           !LowAtmosRadRate(1:nLons, 1:nLats, 1:nAlts, iBlock) &
@@ -74,7 +75,8 @@ subroutine add_sources
           !+ ElectronHeating &
           + QnirTOT(1:nLons, 1:nLats, 1:nAlts, iBlock) &
           ) &
-          + ChemicalHeatingRate 
+          + ChemicalHeatingRate &
+          + DissociationHeatingRate(1:nLons,1:nLats,1:nAlts,iBlock) 
           !+ UserHeatingRate(1:nLons, 1:nLats, 1:nAlts, iBlock)
       
      Temperature(1:nLons, 1:nLats, 0:nAlts, iBlock) = &
