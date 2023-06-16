@@ -17,6 +17,7 @@ include Makefile.RULES
 MODULES = \
 	apexsh.o\
 	ModAeAuroralModel.o\
+	ModApex.o\
 	ModChemistry.o\
 	ModConstants.o\
 	ModEUV.o\
@@ -52,6 +53,7 @@ OBJECTS = \
 	advance.o\
 	advance_horizontal.o\
 	advance_vertical.o\
+	apex_more.o\
 	apex_routines.o\
 	aurora.o\
 	calc_avesza.o\
