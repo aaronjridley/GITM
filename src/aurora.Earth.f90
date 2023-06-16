@@ -214,7 +214,6 @@ subroutine aurora(iBlock)
      HemisphericPowerSouth = 0.0
   endif
 
-  AveEFactor = 1.0
   if (iProc == 0 .and. AveEFactor /= 1.0) then
      write(*,*) "Auroral Experiments!!!!"
      write(*,*) "AveEFactor : ", AveEFactor
@@ -230,7 +229,7 @@ subroutine aurora(iBlock)
         UserData2d(j,i,1,2:nUserOutputs,iBlock) = 0.0
 
         eflx_ergs = ElectronEnergyFlux(j,i)
-        av_kev    = ElectronAverageEnergy(j,i)
+        av_kev    = ElectronAverageEnergy(j,i) * AveEFactor
 
         if (UseIonPrecipitation) then
            ion_eflx_ergs = IonEnergyFlux(j,i)
