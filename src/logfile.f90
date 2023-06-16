@@ -127,7 +127,7 @@ subroutine logfile(dir)
 
      write(iLogFileUnit_,'(a)') "GITM2 log file"
      write(iLogFileUnit_,'(a,L2)') "## Inputs from UAM.in" 
-      write(iLogFileUnit_,'(a,L2)') "# Resart=", dorestart
+     write(iLogFileUnit_,'(a,L2)') "# Resart=", dorestart
      write(iLogFileUnit_,'(4(a,f9.3))') "# Eddy coef: ", EddyDiffusionCoef, &
           " Eddy P0: ",EddyDiffusionPressure0,&
           " Eddy P1: ",EddyDiffusionPressure1
