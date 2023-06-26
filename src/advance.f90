@@ -31,6 +31,7 @@ subroutine advance
   if (UseWACCMTides) call update_waccm_tides
   if (UseBcPerturbation) call get_mean_bcs
   if (UsePerturbation) call user_perturbation
+  if (UseHmeTides) call update_hme_tides
 
   if (.not. UseStatisticalModelsOnly) then
 
