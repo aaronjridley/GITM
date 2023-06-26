@@ -193,6 +193,7 @@ module ModInputs
   logical :: UseMSISTides  = .true.
   logical :: UseMSISOnly   = .false.
   logical :: UseGSWMTides  = .false.
+  logical :: UseHmeTides = .false.
   logical :: UseWACCMTides = .false.
   logical :: UseMSISDiurnal = .true.
   logical :: UseMSISSemidiurnal = .true.
