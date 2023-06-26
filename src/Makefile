@@ -45,7 +45,8 @@ MODULES = \
 	ModTime.o\
 	ModTimingGITM.o\
 	ModUser.o \
-	ModVertical.o
+	ModVertical.o\
+	ModHmeModel.o
 
 
 OBJECTS = \
