@@ -28,7 +28,7 @@ Module ModTides
 
   real, dimension(-1:nLons+2, -1:nLats+2, 2, nBlocksMax) :: &
        TidesNorth, TidesEast, TidesTemp, TidesOmega, &
-       TidesVertical, TidesN, rAlt_waccm
+       TidesVertical, TidesN, rAlt_waccm, TidesRhoRat
 
   integer, dimension(-1:nLons+2, -1:nLats+2, 2, nBlocksMax) :: iAlt_waccm
 
