@@ -33,7 +33,7 @@ subroutine set_inputs
 
   integer, dimension(7) :: iEndTime
 
-  logical :: IsDone, IsStartFound
+  logical :: IsDone, IsStartFound, doUseAeForHp
   integer :: iDebugProc=0
   character (len=iCharLen_) :: cLine
   integer :: iLine, iSpecies, iSat
@@ -318,6 +318,7 @@ subroutine set_inputs
            call read_in_logical(UseMSISTides, iError)
            call read_in_logical(UseGSWMTides, iError)
            call read_in_logical(UseWACCMTides, iError)
+           call read_in_logical(UseHmeTides, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #TIDES:'
               write(*,*) 'This says how to use tides.  The first one is using'
@@ -330,9 +331,17 @@ subroutine set_inputs
               write(*,*) 'UseMSISTides       (logical)'
               write(*,*) 'UseGSWMTides       (logical)'
               write(*,*) 'UseWACCMTides      (logical)'
+              write(*,*) 'UseHmeTides        (logical)'
            else
               if (UseGSWMTides)  UseMSISOnly = .true.
               if (UseWACCMTides) UseMSISOnly = .true.
+
+              if (UseHmeTides) then
+                 UseMSISOnly = .true.
+                 UseMSISDiurnal = .false.
+                 UseMSISSemidiurnal = .false.
+                 UseMSISTerdiurnal = .false.
+              endif
            endif
 
         case ("#MSISTIDES")
@@ -1786,19 +1795,35 @@ subroutine set_inputs
            call read_in_string(cTempLine, iError)
            cTempLines(3) = cTempLine
 
+           doUseAeForHp = .false.
+           call read_in_logical(doUseAeForHp, iError)
+           if ((iError /= 0) .and. (iDebugProc == iProc)) then
+              write(*,*) "----------------------------------------------"
+              write(*,*) "GITM now allows you to use AE to set the HP"
+              write(*,*) "just put a T after the two SME_INDICES files"
+              write(*,*) "or put a F if you don't."
+              write(*,*) "----------------------------------------------"
+              iError = 0
+           endif
            cTempLines(4) = " "
            cTempLines(5) = "#END"
 
            call IO_set_inputs(cTempLines)
-           call read_sme(iError,CurrentTime+TimeDelayHighLat,EndTime+TimeDelayHighLat)
+           call read_sme(iError, &
+                CurrentTime+TimeDelayHighLat, &
+                EndTime+TimeDelayHighLat, doUseAeForHp)
 
            if (iError /= 0) then
               write(*,*) "read indices was NOT successful (SME file)"
               IsDone = .true.
            endif
 
-           ! If the onset file is called "none", then it will automatically ignore this:
-           call read_al_onset_list(iError,CurrentTime+TimeDelayHighLat,EndTime+TimeDelayHighLat)
+           ! If the onset file is called "none", then it will
+           ! automatically ignore this:
+           
+           call read_al_onset_list(iError, &
+                CurrentTime+TimeDelayHighLat, &
+                EndTime+TimeDelayHighLat)
 
            if (iError /= 0) then
               write(*,*) "read indices was NOT successful (onset file)"
