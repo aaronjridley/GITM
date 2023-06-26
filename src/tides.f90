@@ -358,6 +358,187 @@ subroutine update_waccm_tides
 
 end subroutine update_waccm_tides
 
+!-----------------------------------------------------------------------
+! Hough Mode Extension Tides
+!-----------------------------------------------------------------------
+
+subroutine init_hme
+
+  use ModHmeModel
+  use ModGITM, only: Longitude, Altitude_GB, Latitude
+
+  implicit none
+
+  character (len=iCharLenFile_) :: NameOfInputFile
+
+  integer :: iAlt, iLat, iLatH
+  real :: galt, glat, tLat
+
+  real, dimension(nLatsHme) :: u_a, u_p, v_a, v_p, &
+       geopt_a, geopt_p, temp_a, temp_p, dr_rho_a, dr_rho_p
+
+  character (len=iCharLenFile_) :: hmeFile
+  
+  call set_hme_longitudes(Longitude(:,1))
+
+  ! NameOfInputFile = 'UA/DataIn/Hme/tidi_hme_arr_DW1.txt'
+  NameOfInputFile = 'UA/DataIn/Hme/tidi_hme_arr.txt'
+  call read_HmeInputs(NameOfInputFile)
+
+  hmeAlts(1) = 95.0
+  hmeAlts(2) = 97.5
+  hmeAlts(3) = 100.0
+  altn = (/'0950','0975','1000'/)
+
+  ! HWM Tides are prescribed at 95.0, 97.5, and 100.0 km altitude.
+  ! Calculate interpolation coefficients for GITM grid:
+
+  ! assume 1 block per processor
+  ! first two altitudes, assuming a uniform grid in lat/lon:
+  
+  do iAlt = -1, 0
+     galt = Altitude_GB(1,1,iAlt,1)/1000.0
+
+     if (galt < hmeAlts(1)) then
+        write(*,*) "Well, shoot.  One of the GITM Alts is below HME!!!"
+        call stop_gitm("I am unsure of what to do now! Stopping!")
+     endif
+     if (galt > hmeAlts(3)) then
+        write(*,*) "Well, shoot.  One of the GITM Alts is above HME!!!"
+        call stop_gitm("I am unsure of what to do now! Stopping!")
+     endif
+
+     if ((galt >= hmeAlts(1)) .and. (galt < hmeAlts(2))) then
+        iAlt_Hme(iAlt) = 1
+     else
+        iAlt_Hme(iAlt) = 2
+     endif
+     rAlt_Hme(iAlt) = &
+          (gAlt - hmeAlts(iAlt_Hme(iAlt))) / &
+          (hmeAlts(iAlt_Hme(iAlt + 1)) - hmeAlts(iAlt_Hme(iAlt)))
+     
+  enddo
+
+  ! We need to get the latitudes, which is in each of the HME files. So,
+  ! let's just read in one of the files and store the latitudes:
+
+  hmeFile = (trim(hmeDir) // 'HME_3alt/'// &
+       'HME_D0_1_'// trim(altn(1)) // trim('00m-F75.txt'))
+  call read_hme_file(hmeFile, &
+       u_a, u_p, v_a, v_p, geopt_a, geopt_p, &
+       temp_a, temp_p, dr_rho_a, dr_rho_p)
+  
+  do iLat = -1, nLats + 2
+
+     glat = Latitude(iLat, 1) * 180.0 / pi
+
+     if (glat >  90) glat =  180 - glat
+     if (glat < -90) glat = -180 - glat
+
+     if (glat < hmeLats(1)) then
+        iLat_Hme(iLat) = 1
+        rLat_Hme(iLat) = 0.0
+     elseif (glat >= hmeLats(nLatsHme)) then
+        iLat_Hme(iLat) = nLatsHme - 1
+        rLat_Hme(iLat) = 1.0
+     else
+        do iLatH = 1, nLatsHme-1
+           if (hmeLats(iLatH) <= glat) iLat_Hme(iLat) = iLatH
+        enddo
+        rLat_Hme(iLat) = &
+             (glat - hmeLats(iLat_Hme(iLat))) / &
+             (hmeLats(iLat_Hme(iLat)+1) - hmeLats(iLat_Hme(iLat)))
+     endif
+
+  enddo
+
+end subroutine init_hme
+
+
+! flow:
+! calc_1tide
+!   -> read_coef_file, files are every 10 days
+!   -> calc_1tide_1day
+!        -> get_ns - sets n and s (not sure what they are)
+!        -> hme_3alt -> read in files for the different tides and altitudes
+!   -> interpolates to the day
+
+
+subroutine update_hme_tides
+
+  use ModHmeModel
+  use ModTime, only: utime, iJulianDay
+  use ModTides
+  use ModGITM, only: iProc
+
+  implicit none
+
+  logical, dimension(nDayHme)  :: lp_day
+
+  integer, allocatable :: tmp1(:), tmp2(:)
+
+  integer :: iLon, iLat, iAlt, j, k, iBlock
+  real :: rj, rk
+  
+  if (iJulianDay > iDay) then
+     iDay = iJulianDay
+     ReadFiles = .true.
+  else
+     ReadFiles = .false.
+  endif
+
+  lp_day = daysTidi == iday
+  if (count(lp_day) == 1) then   ! no intepolation needed
+     call calc_1tide_iday()
+  else if (iday > 361) then
+     stop 'Day larger than 361, stop'
+  else                           ! two days are found for interpolation
+     tmp1 = pack(daysTidi,daysTidi<iday)
+     tmp2 = pack(daysTidi,daysTidi>iday)
+     call calc_1tide(tmp1(size(tmp1)),tmp2(1))
+  endif
+
+  iBlock = 1
+  do iLon = -1, nLons+2
+     ! The longitudes are directly on the GITM longitude grid! Yeah!
+     do iLat = -1, nLats+2
+        j  = iLat_Hme(iLat)
+        rj = rLat_Hme(iLat)
+        do iAlt = -1, 0
+           k  = iAlt_Hme(iAlt)
+           rk = rAlt_Hme(iAlt)
+           TidesEast(iLon,iLat,iAlt+2,iBlock) = &
+                (1-rj)*(1-rk)*u_3d(iLon, j  , k  ) + &
+                (  rj)*(1-rk)*u_3d(iLon, j+1, k  ) + &
+                (1-rj)*(  rk)*u_3d(iLon, j  , k+1) + &
+                (  rj)*(  rk)*u_3d(iLon, j+1, k+1)
+           TidesNorth(iLon,iLat,iAlt+2,iBlock) = &
+                (1-rj)*(1-rk)*v_3d(iLon, j  , k  ) + &
+                (  rj)*(1-rk)*v_3d(iLon, j+1, k  ) + &
+                (1-rj)*(  rk)*v_3d(iLon, j  , k+1) + &
+                (  rj)*(  rk)*v_3d(iLon, j+1, k+1)
+           TidesTemp(iLon,iLat,iAlt+2,iBlock) = &
+                (1-rj)*(1-rk)*temp_3d(iLon, j  , k  ) + &
+                (  rj)*(1-rk)*temp_3d(iLon, j+1, k  ) + &
+                (1-rj)*(  rk)*temp_3d(iLon, j  , k+1) + &
+                (  rj)*(  rk)*temp_3d(iLon, j+1, k+1)
+           ! turn this into a multiplicative ratio, so 1 + r
+           TidesRhoRat(iLon,iLat,iAlt+2,iBlock) = 1.0 + &
+                (1-rj)*(1-rk)*dr_rho_3d(iLon, j  , k  ) + &
+                (  rj)*(1-rk)*dr_rho_3d(iLon, j+1, k  ) + &
+                (1-rj)*(  rk)*dr_rho_3d(iLon, j  , k+1) + &
+                (  rj)*(  rk)*dr_rho_3d(iLon, j+1, k+1)
+        enddo
+     enddo
+  enddo
+
+end subroutine update_hme_tides
+
+
+!-----------------------------------------------------------------------
+! GSWM Tides
+!-----------------------------------------------------------------------
+
 subroutine read_tides
 
   use ModGitm
