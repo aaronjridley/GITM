@@ -128,7 +128,7 @@ end subroutine read_al_onset_list
 
 !==============================================================================
 
-subroutine read_sme(iOutputError, StartTime, EndTime)
+subroutine read_sme(iOutputError, StartTime, EndTime, doUseAeForHp)
 
   use ModKind
   use ModIndices
@@ -136,7 +136,8 @@ subroutine read_sme(iOutputError, StartTime, EndTime)
 
   integer, intent(out)     :: iOutputError
   real(Real8_), intent(in) :: EndTime, StartTime
-
+  logical, intent(in) :: doUseAeForHp
+  
   integer :: ierror, iAE, j, npts
   logical :: IsDone
 
@@ -145,6 +146,8 @@ subroutine read_sme(iOutputError, StartTime, EndTime)
 
   real (Real8_) :: TimeDelay, BufferTime = 180.0
 
+  real :: hp
+  
   integer, dimension(7) :: itime
   !------------------------------------------------------------------------
   iOutputError = 0
@@ -226,6 +229,18 @@ subroutine read_sme(iOutputError, StartTime, EndTime)
              IndexTimes_TV(iAE,ae_) <= EndTime+BufferTime .and. &
              iAE < MaxIndicesEntries) then
 
+           ! Can now use AE to specify the hemispheric power:
+           ! Formula taken from Wu et al, 2021.
+           !     https://doi.org/10.1029/2020SW002629
+           
+           if (doUseAeForHp) then
+              hp = 0.102 * Indices_TV(iAE, ae_) + 8.953
+              Indices_TV(iAE, hpi_) = hp
+              if (hp > 0) Indices_TV(iAE, hpi_norm_) =  2.09 * ALOG(hp) * 1.0475
+              IndexTimes_TV(iAE, hpi_norm_) = IndexTimes_TV(iAE, ae_)
+              IndexTimes_TV(iAE, hpi_) = IndexTimes_TV(iAE, ae_)
+           endif
+           
            IndexTimes_TV(iAE,al_) = IndexTimes_TV(iAE,ae_)
            IndexTimes_TV(iAE,au_) = IndexTimes_TV(iAE,ae_)
            iAE = iAE + 1
