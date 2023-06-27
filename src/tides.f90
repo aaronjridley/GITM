@@ -1,6 +1,38 @@
 ! Copyright 2021, the GITM Development Team (see srcDoc/dev_team.md for members)
 ! Full license can be found in LICENSE
 
+subroutine modify_initial_after_tides
+
+  use ModGitm
+  use ModTides
+
+  implicit none
+
+  integer :: iBlock, iAlt, iSpecies
+
+  do iBlock = 1, nBlocks
+     do iAlt = -1, 0 
+  
+        ! Eastward Wind:
+        Velocity(:, :, iAlt, 1, iBlock) = TidesEast(:, :, iAlt+2, iBlock)
+        ! Northward Wind:
+        Velocity(:, :, iAlt, 2, iBlock) = TidesNorth(:, :, iAlt+2, iBlock)
+        ! Temperature:
+        Temperature(:, :, iAlt, iBlock) = &
+             Temperature(:, :, iAlt, iBlock) + &
+             TidesTemp(:, :, iAlt+2, iBlock) / TempUnit(:, :, iAlt)
+        ! Species
+        do iSpecies=1,nSpecies
+           NDensityS(:, :, iAlt, iSpecies, iBlock) =  &
+                NDensityS(:, :, iAlt, iSpecies, iBlock) * &
+                TidesRhoRat(:, :, iAlt+2, iBlock)
+        enddo
+     enddo
+  enddo
+  
+end subroutine modify_initial_after_tides
+
+
 subroutine read_waccm_tides
 
   use ModGitm
@@ -487,6 +519,9 @@ subroutine update_hme_tides
      ReadFiles = .false.
   endif
 
+  ut = utime / 3600.0
+
+  
   lp_day = daysTidi == iday
   if (count(lp_day) == 1) then   ! no intepolation needed
      call calc_1tide_iday()
