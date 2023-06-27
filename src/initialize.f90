@@ -423,6 +423,8 @@ subroutine initialize_gitm(TimeIn)
 
   if (UseHmeTides) then
      call init_hme
+     call update_hme_tides
+     call modify_initial_after_tides
   endif
 
   call init_b0
