@@ -412,7 +412,7 @@ contains
           enddo
        enddo
     enddo       
-   
+
   end subroutine calc_1tide
    
   ! -----------------------------------------------------------------
@@ -436,6 +436,13 @@ contains
     integer :: i,j,k,ipt,ilon
         
     ipt = 1
+
+    u_all = 0.0
+    v_all = 0.0
+    geopt_all = 0.0
+    temp_all = 0.0
+    dr_rho_all = 0.0
+    
     do i = 1,size(hmes_slt)
        hme_tmp = hmes_slt(i)
        call get_ns(hme_tmp(5:7),n,s)
