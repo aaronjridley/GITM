@@ -7,10 +7,10 @@ module UA_wrapper
   ! Wrapper for GITM Upper Atmosphere (UA) component
 
   use ModUtilities, ONLY: CON_stop, CON_set_do_test
-  
+
   implicit none
   save
-  
+
   private ! except
 
   public:: UA_set_param
@@ -24,9 +24,14 @@ module UA_wrapper
   public :: UA_get_for_ie
   public :: UA_put_from_ie
 
+  ! GM Coupler (not implemented in this version of GITM):
+  public :: UA_get_for_gm
+  public :: UA_get_grid_info
+  public :: UA_find_points
+
   ! Variables for UA-IE coupling:
   integer, save :: iSizeIeHemi, jSizeIeHemi ! Size of IE grid for 1 hemisphere.
-  
+
   ! CON_coupler_points
   ! These are not called anywhere, should not be public.
   !public:: UA_find_points
@@ -255,7 +260,7 @@ contains
 
     type(TimeType) :: TimeSwmfEnd
     logical :: IsFirstTime = .true.
-    
+
     ! Debug variables:
     integer, dimension(7) :: iTimeDebug
     logical :: DoTest, DoTestMe
@@ -265,7 +270,7 @@ contains
 
     if(DoTestMe) write(*,*) &
          NameSub//' called; IsFirstTime = ', IsFirstTime
-    
+
     if (IsFirstTime) then
 
        ! Set time related variables for UA
@@ -290,7 +295,7 @@ contains
           call time_real_to_int(CurrentTime, iTimeDebug)
           write(*,'(a, 7i5)') NameSub//' Current time = ', iTimeDebug
        end if
-       
+
        call fix_vernal_time
 
        call initialize_gitm(CurrentTime)
@@ -383,11 +388,11 @@ contains
     ! IE will use this info to fill buffers appropriately.
 
     use ModElectrodynamics, ONLY: MagLatRes, MagLonRes
-    
+
     integer, intent(out) :: nVar
     integer, intent(out), optional :: nMagLat, nMagLon
     character(len=*), intent(out), optional :: NameVar_V(:)
-    
+
     logical :: DoTest, DoTestMe
     character(len=*), parameter :: NameSub='UA_get_info_for_ie'
     !-------------------------------------------------------------------------
@@ -409,14 +414,14 @@ contains
     ! Lines ~101-102 and 341-342 (approx.; see source for more details).
     if(present(nMagLat)) nMagLat =  88.0/MagLatRes ! 1 hemi ONLY, no equator.
     if(present(nMagLon)) nMagLon = 360.0/MagLonRes+1
-    
+
     if(DoTestMe)then
        write(*,*) NameSub//': nVar=', nVar
        if(present(NameVar_V)) write(*,*) NameSub//': NameVar_V=',NameVar_V
     end if
-    
+
   end subroutine UA_get_info_for_ie
-  
+
   !============================================================================
   subroutine UA_put_from_ie(Buffer_IIV, iSizeIn, jSizeIn, nVarIn, &
        NameVarIn_V, iBlock)
@@ -425,7 +430,7 @@ contains
     use CON_coupler, ONLY: Grid_C, IE_, ncell_id
     use ModGITM, ONLY: iProcGITM=>iProc
     use ModEIE_Interface
-    
+
   ! This gets called for each variable- external loop over all variable names.
   ! Namevar = Pot, Ave, and Tot.
   ! iBlock = 1:North, 2:South.
@@ -442,7 +447,7 @@ contains
   integer,intent(in)            :: iBlock
 
   logical :: IsInitialized = .false.
-  
+
   integer :: i,j,ii, iVar, iError, nCells_D(2)
 
   logical :: DoTest, DoTestMe
@@ -463,7 +468,7 @@ contains
      call EIE_FillLats(90.0-(Grid_C(IE_) % Coord1_I)*180.0/cPi,iError)
      call EIE_FillMltsOffset((Grid_C(IE_) % Coord2_I)*180.0/cPi,iError)
      IsInitialized = .true.
-     
+
      ! Initial values for coupling:
      EIEr3_HavePotential = 0.0
      EIEr3_HaveAveE      = 0.0
@@ -482,11 +487,11 @@ contains
      write(*,*)'ncell_id(IE_) = ', ncell_id(IE_)
      write(*,*)'iSizeIeHemi, jSizeIeHemi = ', iSizeIeHemi, jSizeIeHemi
   end if
-  
+
   ! Debug statement: print max/mins of transferred variables.
   if(DoTest .and. (iProcGITM==0)) write(*,*) &
        'UA WRAPPER: Max/min of received variables (iBlock=',iBlock,'):'
-  
+
   ! Put each variable where it belongs based on the name.x
   do iVar=1, nVarIn
      select case(NameVarIn_V(iVar))
@@ -503,7 +508,7 @@ contains
         if(DoTest .and. (iProcGITM==0)) write(*,'(a, 2(e12.5,1x))') 'UA pot: ', &
              maxval(EIEr3_HavePotential(:,:,iBlock)),   &
              minval(EIEr3_HavePotential(:,:,iBlock))
-        
+
      ! Precipitation/average energy:
      case('ave')
         do i = 1, EIEi_HavenLats
@@ -516,7 +521,7 @@ contains
         if(DoTest .and. (iProcGITM==0)) write(*,'(a, 2(e12.5,1x))') 'UA ave: ', &
              maxval(EIEr3_HaveAveE(:,:,iBlock)),   &
              minval(EIEr3_HaveAveE(:,:,iBlock))
-        
+
      ! Precipitation/Total energy flux:
      case('tot')
         do i = 1, EIEi_HavenLats
@@ -532,7 +537,7 @@ contains
         if(DoTest .and. (iProcGITM==0)) write(*,'(a, 2(e12.5,1x))') 'UA tot: ', &
              maxval(EIEr3_HaveEFlux(:,:,iBlock)),   &
              minval(EIEr3_HaveEFlux(:,:,iBlock))
-        
+
      case default
         call CON_stop(NameSub//' invalid NameVarIn='//NameVarIn_V(iVar))
 
@@ -540,7 +545,7 @@ contains
   end do
 
   ! This bypasses some internal GITM issues.
-  UAl_UseGridBasedEIE = .true. 
+  UAl_UseGridBasedEIE = .true.
 
 end subroutine UA_put_from_ie
 
@@ -549,11 +554,11 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
 
   use ModTime, ONLY: CurrentTime
   use ModPlotFile, ONLY: save_plot_file
-  
+
   ! Input variables: size of grid/number and name of requested vars
   integer,          intent(in) :: nMltIn, nLatIn, nVarIn
   character(len=3), intent(in) :: NameVarIn_V(nVarIn)
-  
+
   ! Buffer for the variables on the 2D IE grid
   real, intent(out) :: BufferOut_IIBV(nMltIn, nLatIn, 2, nVarIn) ! to fill
 
@@ -566,6 +571,7 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
 
   ! Debug related variables:
   character(len=35) :: NameFile
+  character(len=3) :: NameVarSave_V(2+nVarIn)
   real :: BufferPlot_VII(nVarIn, nMltIn, nLatIn)
   integer :: time_array(7)
   logical :: DoTest, DoTestMe
@@ -574,7 +580,7 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
   call CON_set_do_test(NameSub,DoTest,DoTestMe)
   ! Do we need to do this?  Uncomment or delete when we figure that out.
   !call initialize_ie_ua_buffers(iError)
-  
+
   ! Calculate electrodynamics; get size of UA grid.
   call UA_calc_electrodynamics(UAi_nMlts, UAi_nLats)
 
@@ -592,7 +598,7 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
        UAr2_Hal(UAi_nMlts, UAi_nLats), &
        UAr2_Lats(UAi_nMlts, UAi_nLats), &
        UAr2_Mlts(UAi_nMlts, UAi_nLats), stat=iError)
-  
+
   call UA_fill_electrodynamics(UAr2_Fac,UAr2_Ped,UAr2_Hal,UAr2_Lats, UAr2_Mlts)
 
   if(DoTest)write(*,*)NameSub//' nMlts,nLats= ',UAi_nMlts, UAi_nLats
@@ -607,7 +613,7 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
   ! Southern Hemisphere:
   iStartS = 1
   iEndS   = UAi_nLats/2
-  
+
   ! Only collect variables requested:
   do iVar=1, nVarIn
      select case (NameVarIn_V(iVar))
@@ -630,7 +636,7 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
         call CON_stop(NameSub//' Unrecognized coupling variable: '// &
              NameVarIn_V(iVar))
      end select
-  
+
   end do
 
   ! Dump contents to file in debug mode:
@@ -645,13 +651,17 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
      do iVar=1, nVarIn
         BufferPlot_VII(iVar,:,:) = BufferOut_IIBV(:,:,1,iVar)
      end do
-     
+
+     ! Create list of var names that includes dimensions:
+     NameVarSave_V(1:2) = (/'lon', 'lat'/)
+     NameVarSave_v(3:nVarIn) = NameVarIn_V
+
      ! Write file:
-     call save_plot_file(NameFile, &
+     call save_plot_file('UA/data/' //NameFile, &
           TypeFileIn='ascii', &
           StringHeaderIn='UA_get_for_ie BufferOut contents', &
           TimeIn=CurrentTime, &
-          NameVarIn_I = NameVarIn_V, &
+          NameVarIn_I = NameVarSave_V, &
           nDimIn = 2, &
           CoordMinIn_D = [&
           minval(UAr2_Mlts(:,iStartN:iEndN)), &
@@ -661,11 +671,61 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
           maxval(UAr2_Lats(:,iStartN:iEndN))], &
           VarIn_VII = BufferPlot_VII)
   end if
-  
+
   ! Deallocate intermediate variables:
   deallocate(UAr2_Fac, UAr2_Ped, UAr2_Hal, UAr2_Lats, UAr2_Mlts)
-  
+
 end subroutine UA_get_for_ie
+
+!============================================================================
+subroutine UA_get_for_gm(IsNew, NameVar, nVarIn, nDimIn, nPoint, Xyz_DI, &
+  Data_VI)
+
+  ! This version of GITM does not support coupling directly to GM.
+
+  logical,          intent(in) :: IsNew   ! true for new point array
+  character(len=*), intent(in) :: NameVar ! List of variables
+  integer,          intent(in) :: nVarIn  ! Number of variables in Data_VI
+  integer,          intent(in) :: nDimIn  ! Dimensionality of positions
+  integer,          intent(in) :: nPoint  ! Number of points in Xyz_DI
+
+  real, intent(in) :: Xyz_DI(nDimIn, nPoint)  ! Position vectors
+  real, intent(out):: Data_VI(nVarIn, nPoint) ! Data array
+
+  character(len=*), parameter :: NameSub='UA_get_for_gm'
+
+  call CON_stop(NameSub// &
+    ': UA_ERROR: This version of GITM does not support coupling to GM.')
+
+end subroutine UA_get_for_gm
 !============================================================================
 
+subroutine UA_get_grid_info(nDimOut, iGridOut, iDecompOut)
+   ! Not implemented in this version of GITM.
+
+   integer, intent(out):: nDimOut    ! grid dimensionality
+   integer, intent(out):: iGridOut   ! grid index
+   integer, intent(out):: iDecompOut ! decomposition index
+
+   character(len=*), parameter :: NameSub = 'UA_get_grid_info'
+   call CON_stop(NameSub// &
+     ': UA_ERROR: This version of GITM does not support coupling to GM.')
+
+ end subroutine UA_get_grid_info
+ !============================================================================!============================================================================
+
+subroutine UA_find_points(nDimIn, nPoint, Xyz_DI, iProc_I)
+   ! Not implemented in this version of GITM.
+
+   integer, intent(in) :: nDimIn                ! dimension of positions
+   integer, intent(in) :: nPoint                ! number of positions
+   real,    intent(in) :: Xyz_DI(nDimIn,nPoint) ! positions
+   integer, intent(out):: iProc_I(nPoint)       ! processor owning position
+
+   character(len=*), parameter:: NameSub = 'UA_find_points'
+   call CON_stop(NameSub// &
+     ': UA_ERROR: This version of GITM does not support coupling to GM.')
+
+ end subroutine UA_find_points
+ !============================================================================
 end module UA_wrapper
