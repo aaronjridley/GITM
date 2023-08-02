@@ -571,7 +571,7 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
 
   ! Debug related variables:
   character(len=35) :: NameFile
-  character(len=3) :: NameVarSave_V(2+nVarIn)
+  character(len=3) :: NameVarSave_V(nVarIn)
   real :: BufferPlot_VII(nVarIn, nMltIn, nLatIn)
   integer :: time_array(7)
   logical :: DoTest, DoTestMe
@@ -653,8 +653,8 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
      end do
 
      ! Create list of var names that includes dimensions:
-     NameVarSave_V(1:2) = (/'lon', 'lat'/)
-     NameVarSave_v(3:nVarIn) = NameVarIn_V
+     NameVarSave_V(1:2) = (/'mlt', 'lat'/)
+     NameVarSave_V(3:nVarIn) = NameVarIn_V(3:nVarIn)
 
      ! Write file:
      call save_plot_file('UA/data/' //NameFile, &
@@ -662,14 +662,11 @@ subroutine UA_get_for_ie(BufferOut_IIBV, nMltIn, nLatIn, nVarIn, NameVarIn_V)
           StringHeaderIn='UA_get_for_ie BufferOut contents', &
           TimeIn=CurrentTime, &
           NameVarIn_I = NameVarSave_V, &
+          NameUnitsIn = 'hours degrees Seimens Seimens', &
           nDimIn = 2, &
-          CoordMinIn_D = [&
-          minval(UAr2_Mlts(:,iStartN:iEndN)), &
-          minval(UAr2_Lats(:,iStartN:iEndN))], &
-          CoordMaxIn_D = [&
-          maxval(UAr2_Mlts(:,iStartN:iEndN)), &
-          maxval(UAr2_Lats(:,iStartN:iEndN))], &
-          VarIn_VII = BufferPlot_VII)
+          Coord1In_I = BufferPlot_VII(1, :, 1), &
+          Coord2In_I = BufferPlot_VII(2, 1, :), &
+          VarIn_VII = BufferPlot_VII(3:nVarIn, :, :))
   end if
 
   ! Deallocate intermediate variables:
