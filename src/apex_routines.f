@@ -66,8 +66,6 @@ C gLon = Geographin Longitude
            stfcpa = ste*ctp*cos(ang)-cte*stp
            stfspa = sin(ang)*ste
 
-c        write(*,*) 'xlon:',lonStart,ang_save, alon, cte, STFCPA, STFSPA, ctp
-
            GeoAlt = rStart - Req
            GeoLon = lonStart
            GeoLat = 0.0
@@ -90,8 +88,6 @@ c        write(*,*) 'xlon:',lonStart,ang_save, alon, cte, STFCPA, STFSPA, ctp
               zzz = zzz + zmag * dr*sgn
 
               r = sqrt(xxx*xxx + yyy*yyy + zzz*zzz)
-
-c           write(*,*) xxx,yyy,zzz,r, xmag,ymag,zmag
 
            enddo
 
@@ -210,7 +206,6 @@ c           write(*,*) xxx,yyy,zzz,r, xmag,ymag,zmag
                     gLat = gLatGuess
                     if (gLat < -90.0) gLat = -180.0 - gLat
                     if (gLat >  90.0) gLat =  180.0 - gLat
-c                    write(*,*) aLat, aLatTest, aLon, aLonTest, gLat, gLon, dLat, dLon, diff
 
                  endif
 
@@ -230,7 +225,6 @@ c                    write(*,*) aLat, aLatTest, aLon, aLonTest, gLat, gLon, dLat
                     gLon = gLonGuess
                     if (gLon <   0.0) gLon = gLon + 360.0
                     if (gLon > 360.0) gLon = gLon - 360.0
-c                    write(*,*) aLat, aLatTest, aLon, aLonTest, gLat, gLon, dLat, dLon, diff
                  endif
 
               enddo
@@ -739,7 +733,8 @@ C          most recently fit location will reduce the interpolation span.
 	  GO TO 20
 	ELSE
 	  WRITE (0,'(''APEX: Imprecise fit of apex: |Bdown/B| ='',1PE7.1
-     +    )') ABDOB
+     +)') ABDOB
+          write(*,*) GDLT,GDLN,HTA, ALT,ZMAG,A,ALAT,ALON
 	ENDIF
       ENDIF
 
@@ -2340,42 +2335,42 @@ C 9200 FORMAT('COFRM:  DATE',F9.3,' is after the last recommended for ext
 C     +rapolation (',F6.1,')')
 C      END
  
-      SUBROUTINE DYPOL (COLAT,ELON,VP)
-C          Computes parameters for dipole component of geomagnetic field.
-C          COFRM must be called before calling DYPOL!
-C          940504 A. D. Richmond
-C
-C          INPUT from COFRM through COMMON /MAGCOF/ NMAX,GB(255),GV(225),ICHG
-C            NMAX = Maximum order of spherical harmonic coefficients used
-C            GB   = Coefficients for magnetic field calculation
-C            GV   = Coefficients for magnetic potential calculation
-C            ICHG = Flag indicating when GB,GV have been changed
-C
-C          RETURNS:
-C            COLAT = Geocentric colatitude of geomagnetic dipole north pole
-C                    (deg)
-C            ELON  = East longitude of geomagnetic dipole north pole (deg)
-C            VP    = Magnitude, in T.m, of dipole component of magnetic
-C                    potential at geomagnetic pole and geocentric radius
-C                    of 6371.2 km
- 
-      PARAMETER (RTOD = 57.2957795130823, RE = 6371.2)
-      COMMON /MAGCOF/ NMAX,GB(255),GV(225),ICHG
- 
-C          Compute geographic colatitude and longitude of the north pole of
-C          earth centered dipole
-      GPL   = SQRT (GB(2)**2 + GB(3)**2 + GB(4)**2)
-      CTP   = GB(2) / GPL
-      STP   = SQRT (1. - CTP*CTP)
-      COLAT = ACOS (CTP) * RTOD
-      ELON  = ATAN2 (GB(4),GB(3)) * RTOD
- 
-C          Compute magnitude of magnetic potential at pole, radius Re.
-      VP = .2*GPL*RE
-C          .2 = 2*(10**-4 T/gauss)*(1000 m/km) (2 comes through F0 in COFRM).
- 
-      RETURN
-      END
+C      SUBROUTINE DYPOL (COLAT,ELON,VP)
+CC          Computes parameters for dipole component of geomagnetic field.
+CC          COFRM must be called before calling DYPOL!
+CC          940504 A. D. Richmond
+CC
+CC          INPUT from COFRM through COMMON /MAGCOF/ NMAX,GB(255),GV(225),ICHG
+CC            NMAX = Maximum order of spherical harmonic coefficients used
+CC            GB   = Coefficients for magnetic field calculation
+CC            GV   = Coefficients for magnetic potential calculation
+CC            ICHG = Flag indicating when GB,GV have been changed
+CC
+CC          RETURNS:
+CC            COLAT = Geocentric colatitude of geomagnetic dipole north pole
+CC                    (deg)
+CC            ELON  = East longitude of geomagnetic dipole north pole (deg)
+CC            VP    = Magnitude, in T.m, of dipole component of magnetic
+CC                    potential at geomagnetic pole and geocentric radius
+CC                    of 6371.2 km
+C 
+C      PARAMETER (RTOD = 57.2957795130823, RE = 6371.2)
+C      COMMON /MAGCOF/ NMAX,GB(255),GV(225),ICHG
+C 
+CC          Compute geographic colatitude and longitude of the north pole of
+CC          earth centered dipole
+C      GPL   = SQRT (GB(2)**2 + GB(3)**2 + GB(4)**2)
+C      CTP   = GB(2) / GPL
+C      STP   = SQRT (1. - CTP*CTP)
+C      COLAT = ACOS (CTP) * RTOD
+C      ELON  = ATAN2 (GB(4),GB(3)) * RTOD
+C 
+CC          Compute magnitude of magnetic potential at pole, radius Re.
+C      VP = .2*GPL*RE
+CC          .2 = 2*(10**-4 T/gauss)*(1000 m/km) (2 comes through F0 in COFRM).
+C 
+C      RETURN
+C      END
  
 C      SUBROUTINE FELDG (IENTY,GLAT,GLON,ALT, BNRTH,BEAST,BDOWN,BABS)
 CC          Compute the DGRF/IGRF field components at the point GLAT,GLON,ALT.
