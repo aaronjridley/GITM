@@ -460,8 +460,8 @@ contains
      ! Note that this is built for Ridley Serial, which stores its grid
      ! using "iSize - 1".  The +1 here compensates for that.
      nCells_D = ncell_id(IE_)
-     iSizeIeHemi = nCells_D(1) + 1
-     jSizeIeHemi = nCells_D(2) + 1
+     iSizeIeHemi = nCells_D(1) + 1 ! Number of IE colats per hemisphere
+     jSizeIeHemi = nCells_D(2) + 1 ! Number of IE mlts
 
      ! Build IE grid within UA infrastructure:
      call EIE_InitGrid(iSizeIeHemi, jSizeIeHemi, 2, iError)
@@ -500,9 +500,10 @@ contains
      case('pot')
         do i = 1, EIEi_HavenLats
            ii = i
+           ! Flip southern hemisphere
+           if (iBlock == 2) ii = EIEi_HavenLats - i + 1
            do j = 1, EIEi_HavenMlts
-              !IEr3_HavePotential( j,i,iBlock) = Buffer_IIV(ii,j, iVar)
-              EIEr3_HavePotential(j,i,iBlock) = Buffer_IIV(ii,j, iVar)
+              EIEr3_HavePotential(j,i,iBlock) = Buffer_IIV(ii,j,iVar)
            enddo
         enddo
         if(DoTest .and. (iProcGITM==0)) write(*,'(a, 2(e12.5,1x))') 'UA pot: ', &
@@ -513,9 +514,10 @@ contains
      case('ave')
         do i = 1, EIEi_HavenLats
            ii = i
+           ! Flip southern hemisphere
+           if (iBlock == 2) ii = EIEi_HavenLats - i + 1
            do j = 1, EIEi_HavenMlts
-              !IEr3_HaveAveE(j,i,iBlock)  = Buffer_IIV(ii,j, iVar)
-              EIEr3_HaveAveE(j,i,iBlock) = Buffer_IIV(ii,j, iVar)
+              EIEr3_HaveAveE(j,i,iBlock)  = Buffer_IIV(ii,j, iVar)
            enddo
         enddo
         if(DoTest .and. (iProcGITM==0)) write(*,'(a, 2(e12.5,1x))') 'UA ave: ', &
@@ -526,10 +528,9 @@ contains
      case('tot')
         do i = 1, EIEi_HavenLats
            ii = i
-           !        if (iBlock == 2) ii = IEi_HavenLats - i + 1
+           ! Flip southern hemisphere
+           if (iBlock == 2) ii = EIEi_HavenLats - i + 1
            do j = 1, EIEi_HavenMlts
-              !IEr3_HaveEFlux(j,i,iBlock) = &
-              !     Buffer_IIV(ii,j,iVar) / (1.0e-7 * 100.0 * 100.0)
               EIEr3_HaveEFlux(j,i,iBlock) = &
                    Buffer_IIV(ii,j,iVar) / (1.0e-7 * 100.0 * 100.0)
            enddo
