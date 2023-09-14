@@ -844,3 +844,14 @@ subroutine feldg(iflag,glat,glon,alt,bnrth,beast,bdown,babs)
 
 end subroutine feldg
   
+subroutine dypol(COLATout, ELONout, VPout)
+
+  use ModApex
+
+  real,intent(out) :: COLATout, ELONout, VPout
+
+  COLATout = colat
+  ELONout = elon
+  VPout = vp
+  
+end subroutine dypol
