@@ -117,10 +117,6 @@ subroutine initialize_gitm(TimeIn)
                        Altitude_GB(iLon,iLat,iAlt,iBlock) = &
                             AltZero(iiLon,iiLat,iBlock) + ialt*dAlt
                     enddo
-!                  if (ilon ==1) then
-!                     write(93,*) ilat,altzero(iilon,iilat,iblock)
-!                     write(93,*)ilat, iblock,latitude(ilat,iblock)*180/pi,altitude_GB(1,ilat,0,iblock)
-!                  endif
                                                          
                  enddo
               enddo
@@ -423,6 +419,12 @@ subroutine initialize_gitm(TimeIn)
   if (UseGSWMTides) then
      call read_tides
      call update_tides
+  endif
+
+  if (UseHmeTides) then
+     call init_hme
+     call update_hme_tides
+     call modify_initial_after_tides
   endif
 
   call init_b0

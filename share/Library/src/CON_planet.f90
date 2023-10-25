@@ -18,6 +18,7 @@ module CON_planet
   ! via the {\bf CON\_physics} class.
 
   !USES:
+  use ModUtilities, ONLY: CON_stop
   use ModNumConst, ONLY: cTwoPi
   use ModPlanetConst
   use ModTimeConvert, ONLY: TimeType, time_int_to_real

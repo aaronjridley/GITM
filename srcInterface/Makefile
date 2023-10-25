@@ -36,6 +36,9 @@ ${MY_LIB}: ${GITM_LIB} ${OBJECTS}
 	cp -f ${GITM_LIB} ${MY_LIB}
 	${AR} ${MY_LIB} ${OBJECTS}
 
+clean:
+	rm -f *~ core *.o *.mod fort.* a.out *.exe *.a *.so *.protex
+
 distclean: clean
 	rm -f Makefile.DEPEND
 

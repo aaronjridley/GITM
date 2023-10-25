@@ -16,7 +16,8 @@ subroutine read_MHDIMF_Indices_new(iOutputError, StartTime, EndTime)
   logical :: done, done_inner, IsFirstLine = .true.
 
   ! One line of input
-  character (len=iCharLenIndices_) :: line
+  integer, parameter :: iCharLenGitm = 400
+  character (len=iCharLenGitm) :: line
 
   real (Real8_) :: TimeDelay, BufferTime = 1800.0, FirstTime, DeltaT = -1.0e32
 
@@ -55,9 +56,10 @@ subroutine read_MHDIMF_Indices_new(iOutputError, StartTime, EndTime)
   ! Assume that we can read the entire file
   ReReadIMFFile = .false.
 
-  if (nIndices_V(imf_bx_) == 0) NameOfIMFFile = NameOfIndexFile
-
-  open(LunIndices_, file=NameOfIMFFile, status="old", iostat = ierror)
+  if (nIndices_V(imf_bx_) == 0) &
+       NameOfIMFFile = NameOfIndexFile(:index(NameOfIndexFile, ' ')-1)
+  
+  open(LunIndices_, file=trim(NameOfIMFFile), status="old", iostat = ierror)
 
   if (ierror.ne.0) then
      iOutputError = 1

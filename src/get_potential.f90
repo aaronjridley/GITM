@@ -303,7 +303,7 @@ subroutine get_potential(iBlock)
   logical :: IsFirstPotential(nBlocksMax) = .true.
   logical :: IsFirstAurora(nBlocksMax) = .true.
   real    :: mP, dis, TempWeight
-  real    ::  LocalSumDiffPot, MeanDiffPot
+  real    ::  LocalSumDiffPot, MeanDiffPot, LatBoundNow
 
   real, dimension(-1:nLons+2, -1:nLats+2) :: TempPotential2d
   real, dimension(-1:nLons+2, -1:nLats+2, 2) :: TempPotential, AMIEPotential
@@ -344,7 +344,7 @@ subroutine get_potential(iBlock)
      Potential(:,:,:,iBlock) = 0.0
 
      do iAlt=-1,nAlts+2
-
+        
         call UA_SetGrid(                    &
              MLT(-1:nLons+2,-1:nLats+2,iAlt), &
              MLatitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock), iError)
@@ -363,10 +363,10 @@ subroutine get_potential(iBlock)
 
         call UA_GetPotential(TempPotential2d, iError)
         TempPotential(:,:,1) = TempPotential2d
-
+        
         if (iError /= 0) then
-           write(*,*) "Error in get_potential (UA_GetPotential):"
-           write(*,*) iError
+           !write(*,*) "Error in get_potential (UA_GetPotential):"
+           !write(*,*) iError
            TempPotential = 0.0
 !           call stop_gitm("Stopping in get_potential")
         endif
@@ -510,11 +510,20 @@ subroutine get_potential(iBlock)
                 MLongitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock), &
                  MLatitude(-1:nLons+2,-1:nLats+2,iAlt,iBlock), dynamo)
 
+           ! Set latitude boundary between region of high lat convection
+           ! and region of neutral wind dyanmo based on if SWMF potential
+           ! is being used:
+           if (IsFramework) then
+              LatBoundNow = 45.
+           else
+              LatBoundNow = DynamoHighLatBoundary
+           end if
+           
            do iDir = 1, nDir
               do iLon = -1,nLons+2
                  do iLat = -1,nLats+2
-                    if (abs(MLatitude(iLon, iLat, iAlt, iBlock)) < DynamoHighLatBoundary) then
-                       dis= (DynamoHighLatBoundary - &
+                    if (abs(MLatitude(iLon, iLat, iAlt, iBlock)) < LatBoundNow) then
+                       dis= (LatBoundNow - &
                             abs(MLatitude(iLon, iLat, iAlt, iBlock)))/20.0
                        if (dis > 1.0) then
                           TempPotential(iLon,iLat,iDir) = dynamo(iLon,iLat)

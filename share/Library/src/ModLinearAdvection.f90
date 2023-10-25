@@ -2,6 +2,8 @@
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 module ModLinearAdvection
 
+  use ModUtilities, ONLY: CON_stop
+  
   implicit none
   real:: BetaLim=2.0
   public :: test_linear_advection

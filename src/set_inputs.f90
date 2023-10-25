@@ -33,17 +33,17 @@ subroutine set_inputs
 
   integer, dimension(7) :: iEndTime
 
-  logical :: IsDone, IsStartFound
+  logical :: IsDone, IsStartFound, doUseAeForHp
   integer :: iDebugProc=0
-  character (len=iCharLen_) :: cLine
+  character (len=100) :: cLine
   integer :: iLine, iSpecies, iSat
   integer :: i, iError, iOutputTypes, iErrorFile, iFreq
   integer, dimension(7) :: iTimeEnd
   integer :: iUnitFile = UnitTmp_
 
-  character (len=iCharLen_)                 :: cTempLine
-  character (len=iCharLen_)                 :: sIonChemistry, sNeutralChemistry
-  character (len=iCharLen_), dimension(100) :: cTempLines
+  character (len=100)                 :: cTempLine
+  character (len=100)                 :: sIonChemistry, sNeutralChemistry
+  character (len=100), dimension(100) :: cTempLines
 
   real :: Vx, Bx, Bz, By, Kp, HemisphericPower, tsim_temp
   real :: EDC_est_tmp
@@ -62,14 +62,19 @@ subroutine set_inputs
 
      cLine = cInputText(iLine)
 
+     ! If in framework, echo lines to stdout:
+     if(IsFramework .and. iProc==0 .and. len(trim(cLine))>0) &
+          write(*,'(a)') "UA: "//trim(cline)
+     
      if (cLine(1:1) == "#") then
 
         ! Remove anything after a space or TAB
         i=index(cLine,' '); if(i>0)cLine(i:len(cLine))=' '
         i=index(cLine,char(9)); if(i>0)cLine(i:len(cLine))=' '
 
+        ! If debug level is high, echo lines to stdout:
         if (iDebugLevel > 3) write(*,*) "====> cLine : ",cLine(1:40)
-
+        
         select case (cLine)
 
         case ("#TIMESTART","#STARTTIME")
@@ -318,6 +323,7 @@ subroutine set_inputs
            call read_in_logical(UseMSISTides, iError)
            call read_in_logical(UseGSWMTides, iError)
            call read_in_logical(UseWACCMTides, iError)
+           call read_in_logical(UseHmeTides, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #TIDES:'
               write(*,*) 'This says how to use tides.  The first one is using'
@@ -330,9 +336,17 @@ subroutine set_inputs
               write(*,*) 'UseMSISTides       (logical)'
               write(*,*) 'UseGSWMTides       (logical)'
               write(*,*) 'UseWACCMTides      (logical)'
+              write(*,*) 'UseHmeTides        (logical)'
            else
               if (UseGSWMTides)  UseMSISOnly = .true.
               if (UseWACCMTides) UseMSISOnly = .true.
+
+              if (UseHmeTides) then
+                 UseMSISOnly = .true.
+                 UseMSISDiurnal = .false.
+                 UseMSISSemidiurnal = .false.
+                 UseMSISTerdiurnal = .false.
+              endif
            endif
 
         case ("#MSISTIDES")
@@ -1786,19 +1800,35 @@ subroutine set_inputs
            call read_in_string(cTempLine, iError)
            cTempLines(3) = cTempLine
 
+           doUseAeForHp = .false.
+           call read_in_logical(doUseAeForHp, iError)
+           if ((iError /= 0) .and. (iDebugProc == iProc)) then
+              write(*,*) "----------------------------------------------"
+              write(*,*) "GITM now allows you to use AE to set the HP"
+              write(*,*) "just put a T after the two SME_INDICES files"
+              write(*,*) "or put a F if you don't."
+              write(*,*) "----------------------------------------------"
+              iError = 0
+           endif
            cTempLines(4) = " "
            cTempLines(5) = "#END"
 
            call IO_set_inputs(cTempLines)
-           call read_sme(iError,CurrentTime+TimeDelayHighLat,EndTime+TimeDelayHighLat)
+           call read_sme(iError, &
+                CurrentTime+TimeDelayHighLat, &
+                EndTime+TimeDelayHighLat, doUseAeForHp)
 
            if (iError /= 0) then
               write(*,*) "read indices was NOT successful (SME file)"
               IsDone = .true.
            endif
 
-           ! If the onset file is called "none", then it will automatically ignore this:
-           call read_al_onset_list(iError,CurrentTime+TimeDelayHighLat,EndTime+TimeDelayHighLat)
+           ! If the onset file is called "none", then it will
+           ! automatically ignore this:
+           
+           call read_al_onset_list(iError, &
+                CurrentTime+TimeDelayHighLat, &
+                EndTime+TimeDelayHighLat)
 
            if (iError /= 0) then
               write(*,*) "read indices was NOT successful (onset file)"
@@ -1921,7 +1951,7 @@ contains
   end subroutine read_in_logical
 
   subroutine read_in_string(variable, iError)
-    character (len=iCharLen_), intent(out) :: variable
+    character (len=100), intent(out) :: variable
     integer :: iError
     if (iError == 0) then 
        iline = iline + 1

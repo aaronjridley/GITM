@@ -17,6 +17,7 @@ include Makefile.RULES
 MODULES = \
 	apexsh.o\
 	ModAeAuroralModel.o\
+	ModApex.o\
 	ModChemistry.o\
 	ModConstants.o\
 	ModEUV.o\
@@ -44,7 +45,8 @@ MODULES = \
 	ModTime.o\
 	ModTimingGITM.o\
 	ModUser.o \
-	ModVertical.o
+	ModVertical.o\
+	ModHmeModel.o
 
 
 OBJECTS = \
@@ -52,6 +54,7 @@ OBJECTS = \
 	advance.o\
 	advance_horizontal.o\
 	advance_vertical.o\
+	apex_more.o\
 	apex_routines.o\
 	aurora.o\
 	calc_avesza.o\
@@ -132,10 +135,10 @@ OBJECTS_EXE  = main.o ${OBJECTS} ${MODULES}
 OBJECTS_SAMI = ${OBJECTS} ${MODULES} ${SAMI_EXTRAS}
 
 DEPEND:
-	@${SCRIPTDIR}/depend.pl ${SEARCH} ${OBJECTS_EXE}
+	@perl ${SCRIPTDIR}/depend.pl ${SEARCH} ${OBJECTS_EXE}
 
 DEPENDSAMI:
-	@${SCRIPTDIR}/depend.pl ${SEARCH} ${OBJECTS_EXE}
+	@perl ${SCRIPTDIR}/depend.pl ${SEARCH} ${OBJECTS_EXE}
 
 EXE = ${BINDIR}/GITM.exe
 
@@ -196,6 +199,9 @@ ${MY_LIB}: ${LIBPREV} ${MF} ${MODULES} ${OBJECTS}
 	cp -f ${LIBPREV} ${MY_LIB}
 	${AR} ${MY_LIB} ${OBJECTS} ${MODULES}
 
+
+clean:
+	rm -f *~ core *.o *.mod fort.* a.out *.exe *.a *.so *.protex
 
 distclean: clean
 	rm -f 	ModSize.f90 \

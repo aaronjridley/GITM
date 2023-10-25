@@ -145,6 +145,7 @@ module CON_axes
   !USES:
 
   use ModKind
+  use ModUtilities, ONLY: CON_stop
   use ModCoordTransform, ONLY: rot_matrix_x, rot_matrix_y, rot_matrix_z, &
        show_rot_matrix, cross_product, dir_to_xyz, xyz_to_dir
   use ModTimeConvert, ONLY: time_int_to_real,time_real_to_int

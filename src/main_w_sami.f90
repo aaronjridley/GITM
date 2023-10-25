@@ -215,15 +215,6 @@ end program GITM
 ! Also some features available in SWMF mode only require empty subroutines
 ! for compilation of the stand alone code.
 !============================================================================
-
-subroutine CON_stop(StringError)
-
-  implicit none
-  character (len=*), intent(in) :: StringError
-  call stop_gitm(StringError)
-
-end subroutine CON_stop
-
 subroutine CON_set_do_test(String,DoTest,DoTestMe)
   implicit none
   character (len=*), intent(in)  :: String

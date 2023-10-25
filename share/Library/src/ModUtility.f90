@@ -40,6 +40,7 @@ module ModUtilities
   public:: check_allocate
   public:: greatest_common_divisor
   public:: test_mod_utility
+  public:: CON_stop
 
   logical, public :: DoFlush = .true.
 
@@ -53,7 +54,33 @@ module ModUtilities
 
 contains
 
+  !BOP ========================================================================
+  !ROUTINE: make_dir - Create a directory
+  !INTERFACE:
+  subroutine CON_stop(StringError)
+    ! This function is a stand-in for the SWMF CON_stop. It should NEVER
+    ! be called within stand-alone GITM.
+    ! GITM code should utilize stop_gitm in src/library.f90. If in component
+    ! mode (see IsFramework), it will forward the stop request to the
+    ! SWMF's CON_stop.  If in stand-alone mode, it will gracefully exit
+    ! the MPI processes.
 
+    ! If this does get called somehow, a brute-force MPI_abort is called.
+
+    use ModMpi, ONLY: MPI_COMM_WORLD
+    
+    implicit none
+    character (len=*), intent(in) :: StringError
+    integer :: nError, iError
+    
+    write(*,*) "CON_stop cannot be called in GITM stand-alone mode"
+    write(*,*) "Use stop_gitm"
+
+    call MPI_Abort(MPI_COMM_WORLD, nError, iError)
+    stop
+
+  end subroutine CON_stop
+  
   !BOP ========================================================================
   !ROUTINE: make_dir - Create a directory
   !INTERFACE:

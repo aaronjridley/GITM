@@ -2,7 +2,7 @@
 !  For more information, see http://csem.engin.umich.edu/tools/swmf
 !==============================================================================
 Module EEE_ModMain
-
+  use ModUtilities, ONLY: CON_stop
   use EEE_ModGetB0, ONLY: EEE_get_B0
 
   implicit none

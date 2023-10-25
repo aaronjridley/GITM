@@ -16,6 +16,7 @@ module CON_planet_field
   ! and the magnetic field can be given with string input arguments.
 
   !USES:
+  use ModUtilities, ONLY: CON_stop
   use CON_planet
   use CON_axes
 

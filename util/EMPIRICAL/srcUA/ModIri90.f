@@ -474,15 +474,15 @@ C          Read URSI coefficient set for chosen month....................
       GOTO 4291
 
  7796 WRITE (*,'(''IRI90: File not found:'',A)') CCIRNM
-      call CON_stop("died in iri90.f")
+      call stop_gitm("died in iri90.f")
  7797 WRITE (*,'(''IRI90: Trouble skipping to month'',I4,
      +               '' at rec'',I6,'' of '',A)')  MONTH, I, CCIRNM
-      call CON_stop("died in iri90.f")
+      call stop_gitm("died in iri90.f")
  7798 WRITE (*,'(''IRI90: File not found:'',A)') URSINM
-      call CON_stop("died in iri90.f")
+      call stop_gitm("died in iri90.f")
  7799 WRITE (*,'(''IRI90: Trouble skipping to month'',I4,
      +               '' at rec'',I6,'' of '',A)')  MONTH, I, URSINM
-      call CON_stop("died in iri90.f")
+      call stop_gitm("died in iri90.f")
 
 C
 C LINEAR INTERPOLATION IN SOLAR ACTIVITY

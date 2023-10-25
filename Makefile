@@ -17,7 +17,7 @@ src/ModSize.f90:
 	cp src/ModSize.f90.orig src/ModSize.f90
 
 INSTALLFILES =  src/Makefile.DEPEND \
-		src/Makefile.RULES \
+		src/Makefile.RULES  \
 		srcInterface/Makefile.DEPEND
 
 install: src/ModSize.f90
@@ -59,8 +59,9 @@ GITM = ${DIR}/UA/GITM
 LIB:
 	cd $(ABDIR)     ; make                                         LIB
 	cd $(GLDIR)     ; make LIBPREV=${GITM}/${ABDIR}/libSphere.a   LIBADD
-	cd $(MAINDIR)   ; make LIBPREV=${GITM}/${GLDIR}/libUPTOGL.a   libGITM.a
+	cd $(MAINDIR)   ; make LIBPREV=${GITM}/${GLDIR}/libUPTOGL.a   LIB
 	cd srcInterface ; make LIBPREV=${GITM}/${MAINDIR}/libUA.a     LIB
+	make POST
 
 nompirun:
 	make GITM
@@ -88,8 +89,8 @@ allclean:
 	rm -f *~ srcData/UAM.in
 	# If util and share were moved because of GITM being
 	# used in SWMF component mode, put them back.
-	if [ -d component_util]; then mv component_util util; fi
-	if [ -d component_share]; then mv component_share share; fi
+	if [ -d component_util ]; then mv component_util util; fi
+	if [ -d component_share ]; then mv component_share share; fi
 
 #
 #       Create run directories
@@ -113,6 +114,7 @@ rundir:
 		mkdir restartOUT data DataIn; \
 		ln -s restartOUT restartIN; \
 		ln -s ${UADIR}/src/pGITM .; \
+		ln -s ${UADIR}/srcPython/pGITM.py .; \
 		ln -s ${UADIR}/srcData/* DataIn; rm -f DataIn/CVS; \
 		ln -s ${UADIR}/data/* DataIn;    rm -f DataIn/CVS
 	cd ${RUNDIR} ;                                   \

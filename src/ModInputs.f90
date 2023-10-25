@@ -19,13 +19,15 @@ module ModInputs
 
   integer                   :: useDART = 0 !alexey, default is to not use DART
 
-  integer, parameter        :: iCharLen_     = 400
+  ! Max characters per line. In component mode, must match
+  ! share/Library/src/ModReadParam.f90 :: lStringLine
+  integer, parameter        :: iCharLen_     = 600
 
   character (len=iCharLen_) :: outputDir = "UA/data"
   character (len=iCharLen_) :: logDir = "UA/data"
   character (len=iCharLen_) :: restartOutDir = "UA/restartOUT"
   character (len=iCharLen_) :: restartInDir = "UA/restartIN"
-  
+
   integer                   :: iOutputUnit_  = UnitTmp_
   integer                   :: iInputUnit_   = UnitTmp_
   integer                   :: iRestartUnit_ = UnitTmp_
@@ -37,7 +39,7 @@ module ModInputs
 
   integer, parameter        :: nInputMaxLines = 10000
   integer                   :: nInputLines
-  character (len=iCharLen_) :: cInputText(nInputMaxLines)
+  character (len=iCharLen_) :: cInputText(nInputMaxLines) = ''
 
   character (len=iCharLen_) :: cInputFile = "UAM.in"
 
@@ -77,12 +79,12 @@ module ModInputs
   logical :: UseOvationSMEMono = .false.
   logical :: UseOvationSMEWave = .false.
   logical :: UseOvationSMEIon  = .false.
-  
+
   logical :: UseAeModel = .false.
   logical :: UseFtaModel = .false.
 
   logical :: UseFangEnergyDeposition = .true.
-  
+
   logical :: IsKappaAurora = .false.
   real :: AuroraKappa = 3
   real :: AveEFactor = 1.0
@@ -122,7 +124,7 @@ module ModInputs
 
   real :: CFL = 0.75
   real :: FixedDt = 1.0e32
-  
+
   integer :: nOutputTypes = 0
   integer, parameter :: nMaxOutputTypes = 50
   character (len=iCharLen_), dimension(nMaxOutputTypes) :: OutputType
@@ -193,6 +195,7 @@ module ModInputs
   logical :: UseMSISTides  = .true.
   logical :: UseMSISOnly   = .false.
   logical :: UseGSWMTides  = .false.
+  logical :: UseHmeTides = .false.
   logical :: UseWACCMTides = .false.
   logical :: UseMSISDiurnal = .true.
   logical :: UseMSISSemidiurnal = .true.
@@ -273,7 +276,7 @@ module ModInputs
   logical :: UseConduction     = .true.
   logical :: UseTurbulentCond = .true.
   logical :: UseIRHeating      = .false.
-  
+
   logical :: UseDiffusion      = .false.
   logical :: UseVerAdvectionT  = .true.
 
@@ -286,7 +289,7 @@ module ModInputs
   real :: HoursPerDayInput = Rotation_Period/3600.0
   real :: DaysPerYearInput = DaysPerYear
   real :: PlanetTiltInput = Tilt
-  
+
 
   real :: PhotoElectronHeatingEfficiency = 0.0
   real :: NeutralHeatingEfficiency = 0.05
@@ -313,7 +316,7 @@ module ModInputs
   logical :: DoCheckStopFile = .true.
 
   ! AGB: Setting physical limits for ionospheric dynamics
-  real :: MaxVParallel = 100.0         
+  real :: MaxVParallel = 100.0
   real :: MaxEField = 0.1
 
   !\
@@ -325,7 +328,7 @@ module ModInputs
   integer, parameter :: cSubCycleChemType_    = 3
   integer, parameter :: nChemTypes_       = 3
 
-  character (len=100), dimension(nChemTypes_) :: sChemType 
+  character (len=100), dimension(nChemTypes_) :: sChemType
 
   character (len=100)                         :: sInputIonChemType
   character (len=100)                         :: sInputNeutralChemType
@@ -339,7 +342,7 @@ module ModInputs
   logical                   :: UseBelowLow  = .true.
 
   logical                   :: UseRidleyEUV = .false.
-  
+
   logical                   :: UseEUVData =.false.
   character (len=iCharLen_) :: cEUVFile
 
@@ -353,7 +356,7 @@ module ModInputs
   real :: EclipseStartZ, EclipseEndZ
   real :: EclipsePeak, EclipseMaxDistance
   real :: EclipseExpAmp, EclipseExpWidth
-  
+
   ! These are Mars Specific, but ignored by other codes:
   ! Some are modified in Planet.f90 (set_planet_defaults)
   real :: DtLTERadiation = 100.0*Rotation_Period
@@ -390,7 +393,7 @@ module ModInputs
   real, dimension(7) :: Ls_a
   real, dimension(7) :: Ls_tau
   real, dimension(7) :: Ls_phi
-	  
+
   DATA Ls_a / 0.007, 0.006, 0.004, 0.004, 0.002, 0.002, 0.002 /
   DATA Ls_tau / 2.2353, 2.7543, 1.1177, 15.7866, 2.1354, 2.4694, 32.8493 /
   DATA Ls_phi / 49.409, 168.173, 191.837, 21.736, 15.704, 95.528, 49.095 /
@@ -398,21 +401,21 @@ module ModInputs
   !\
   ! Variables for Wave Perturbation (WP) model (in user.f90)
   ! to characterize surface motions during tsunamis or earthquakes
-  !/ 
+  !/
   logical :: UseBcPerturbation = .false.
   integer :: iTypeBcPerturb
   real    :: RefLon, RefLat, EpicenterLon, EpicenterLat
-  real    :: PerturbTimeDelay, PerturbDuration, SeisWaveTimeDelay   ! in sec 
+  real    :: PerturbTimeDelay, PerturbDuration, SeisWaveTimeDelay   ! in sec
   real    :: PerturbWaveDirection       ! in deg counter-clockwise to east
   real    :: PerturbWaveSpeed           ! in m/sec
   real    :: PerturbWaveHeight          ! in m
   real    :: PerturbWavePeriod          ! in sec
   real    :: EpiDistance                ! in m
-  character (len=iCharLen_) :: cSurfacePerturbFileName 
+  character (len=iCharLen_) :: cSurfacePerturbFileName
   integer, parameter :: nMaxPerturbFreq = 100
   real    :: FFTReal(nMaxPerturbFreq), FFTImag(nMaxPerturbFreq), &
        PerturbWaveFreq(nMaxPerturbFreq)
-  integer :: nPerturbFreq 
+  integer :: nPerturbFreq
 
 contains
 
@@ -450,8 +453,8 @@ contains
     AuroralModel = "ihp"
 
     dTAurora = 120.0
-    
-    if (IsEarth) then 
+
+    if (IsEarth) then
        PhotoElectronHeatingEfficiency = 0.06
     endif
 

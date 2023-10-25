@@ -32,6 +32,8 @@ end subroutine report
 
 subroutine stop_gitm(str)
 
+  use ModUtilities, ONLY: CON_stop
+  
   use ModGITM
   use ModInputs, only: IsFramework
   use ModMpi

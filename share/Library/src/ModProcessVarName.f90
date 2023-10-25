@@ -4,6 +4,8 @@
 ! ======================================================
 module ModProcessVarName
 
+  use ModUtilities, ONLY: CON_stop
+  
   implicit none
 
   private

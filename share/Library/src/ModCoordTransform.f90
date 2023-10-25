@@ -52,6 +52,7 @@
 
 module ModCoordTransform
 
+  use ModUtilities, ONLY: CON_stop
   use ModNumConst, ONLY: cTwoPi, cHalfPi, cUnit_DD
 
   implicit none

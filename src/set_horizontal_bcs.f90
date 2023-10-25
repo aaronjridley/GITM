@@ -35,17 +35,17 @@ subroutine set_horizontal_bcs(iBlock)
      call GitmSetDir(GitmBCsDir)
      call GetGitmFileList(iErr)
      if (iErr /= 0) then
-        call con_stop("Error in trying to read GITM 3D Filelist in horizontal bcs")
+        call stop_gitm("Error in trying to read GITM 3D Filelist in horizontal bcs")
      endif
 
      call GetGitmGeneralHeaderInfo(iErr)
      if (iErr /= 0) then
-        call con_stop("Error in reading gitm header information in horizontal bcs")
+        call stop_gitm("Error in reading gitm header information in horizontal bcs")
      endif
 
      call GitmGetnVars(nVars)
      if (iErr /= 0) then
-        call con_stop("Error in getting number of variables in horizontal bcs")
+        call stop_gitm("Error in getting number of variables in horizontal bcs")
      endif
     
      allocate(vars(nVars))
@@ -166,7 +166,7 @@ subroutine set_horizontal_bcs(iBlock)
         call GitmGetData(GitmFileData)
      else
         write(*,*) 'Error in getting GITM data in set_horizontal_BCs!'
-        call CON_stop('Must Stop!')
+        call stop_gitm('Must Stop!')
      endif
           
      iPoint = 1

@@ -14,7 +14,8 @@ module CON_line_extract
   !USES:
   use ModMpi
   use ModSort
-
+  use ModUtilities, ONLY: CON_stop
+  
   implicit none
 
   save    ! save all variables

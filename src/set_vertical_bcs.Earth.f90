@@ -22,7 +22,7 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
        Centrifugal, InvRadialDistance_C, Coriolis, &
        MLatVertical, SZAVertical
   use ModIndicesInterfaces, only: get_HPI
-  use ModTides, only: TidesNorth, TidesEast, TidesTemp
+  use ModTides, only: TidesNorth, TidesEast, TidesTemp, TidesRhoRat
 
   use EUA_ModMsis90, ONLY: meter6
 
@@ -156,6 +156,24 @@ subroutine set_vertical_bcs(LogRho,LogNS,Vel_GD,Temp, LogINS, iVel, VertVel)
      Vel_GD(-1:0,iEast_)  = TidesEast(iLon1D,iLat1D,1:2,iBlock1D)
      Vel_GD(-1:0,iNorth_) = TidesNorth(iLon1D,iLat1D,1:2,iBlock1D)
      Temp(-1:0)           = TidesTemp(iLon1D,iLat1D,1:2,iBlock1D)
+  endif
+  if (UseHmeTides) then
+     Vel_GD(-1:0,iEast_)  = TidesEast(iLon1D,iLat1D,1:2,iBlock1D)
+     Vel_GD(-1:0,iNorth_) = TidesNorth(iLon1D,iLat1D,1:2,iBlock1D)
+     Temp(-1:0)           = TidesTemp(iLon1D,iLat1D,1:2,iBlock1D) + Temp(-1:0)
+
+     ! HME provides the ratio of the mass density, make a simple
+     ! assumption that we can simply multiply each species independently:
+
+     ! Below we force the -1 cell to be in hydrostatic balance, so
+     ! we really only have to enforce the density at the 0th cell:
+     NS(0,1:nSpecies) = exp(LogNS(0,1:nSpecies))
+
+     ! Let's assume that MSIS is returning a zonal-average when it
+     ! is run.  So, we can then assume that we can simply perturb the
+     ! MSIS density.  I am not 100% sure of this, but let's try it out:
+     NS(0,1:nSpecies) = NS(0,1:nSpecies) * TidesRhoRat(iLon1D,iLat1D,2,iBlock1D)
+     
   endif
 
   ! In order to get a real hydrostatic solution at the bottom, we will

@@ -40,6 +40,8 @@ module ModInterpolate
   !                       (/ x, y, (z - z0)/DeltaZ /), x_I, y_I)
   !
 
+  use ModUtilities, ONLY: CON_stop
+  
   implicit none
 
   private ! except

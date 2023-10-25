@@ -1,6 +1,7 @@
 module ModSpice
   use ModKind, ONLY: Real8_
-
+  use ModUtilities, ONLY: CON_stop
+  
   ! Interface for the SPICE library that provides coordinate system
   ! transformation for various things. SPICE stands for:
   ! Spacecraft, Planets, Instruments, C-matrix (pointing), Events

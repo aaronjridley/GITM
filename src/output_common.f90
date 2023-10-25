@@ -24,48 +24,39 @@ integer function bad_outputtype()
 
   implicit none
 
-  integer :: iOutputType
+  integer, parameter :: nValidTypes = 25
+  integer :: j, iOutputType
   logical :: IsFound
 
+  character(len=5) :: NameValidTypes(nValidTypes)
+
+  ! Set up all possible/valid plot types:
+  NameValidTypes = (/'3DALL', '3DLST', '3DNEU', '3DION', '3DTHM', '3DCHM', &
+       '3DUSR', '3DGLO', '3DMAG', '3DHME', '2DGEL', '2DMEL', '2DUSR', &
+       '2DTEC', '2DANC', '2DHME', '1DALL', '0DALL', '1DGLO', '1DTHM', '1DNEW', &
+       '1DCHM', '1DCMS', '1DUSR', '0DUSR'/)
+
+  ! Loop over all requested output types:
   do iOutputType = 1, nOutputTypes
 
+     ! Ensure each is a valid type as listed in NameValid Types:
      IsFound = .false.
-
-     if (OutputType(iOutputType) == '3DALL')     IsFound = .true.
-     if (OutputType(iOutputType) == '3DLST')     IsFound = .true.
-     if (OutputType(iOutputType) == '3DNEU')     IsFound = .true.
-     if (OutputType(iOutputType) == '3DION')     IsFound = .true.
-     if (OutputType(iOutputType) == '3DTHM')     IsFound = .true.
-     if (OutputType(iOutputType) == '3DCHM')     IsFound = .true.
-     if (OutputType(iOutputType) == '3DUSR')     IsFound = .true.
-     if (OutputType(iOutputType) == '3DGLO')     IsFound = .true.
-     if (OutputType(iOutputType) == '3DMAG')     IsFound = .true.
-     if (OutputType(iOutputType) == '3DHME')    IsFound = .true.
-
-     if (OutputType(iOutputType) == '2DGEL')     IsFound = .true.
-     if (OutputType(iOutputType) == '2DMEL')     IsFound = .true.
-     if (OutputType(iOutputType) == '2DUSR')     IsFound = .true.
-     if (OutputType(iOutputType) == '2DTEC')     IsFound = .true.
-     if (OutputType(iOutputType) == '2DANC')     IsFound = .true.
-     if (OutputType(iOutputType) == '2DHME')    IsFound = .true.
-
-     if (OutputType(iOutputType) == '1DALL')     IsFound = .true.
-     if (OutputType(iOutputType) == '0DALL')     IsFound = .true.
-     if (OutputType(iOutputType) == '1DGLO')     IsFound = .true.
-     if (OutputType(iOutputType) == '1DTHM')     IsFound = .true.
-     if (OutputType(iOutputType) == '1DNEW')     IsFound = .true.
-     if (OutputType(iOutputType) == '1DCHM')     IsFound = .true.
-     if (OutputType(iOutputType) == '1DCMS')     IsFound = .true.
-     if (OutputType(iOutputType) == '1DUSR')     IsFound = .true.
-     if (OutputType(iOutputType) == '0DUSR')     IsFound = .true.
-
+     strloop: do j=1, nValidTypes
+        ! If found: IsFound is true and continue.
+        if (index(OutputType(iOutputType), NameValidTypes(j)) /=0) then
+           IsFound = .true.
+           exit strloop
+        end if
+     end do strloop
+     
+     ! If not found, set error code and return:
      if (.not. IsFound) then
         bad_outputtype = iOutputType
         return
-     endif
-
-  enddo
-
+     end if
+     
+  end do
+  
   bad_outputtype = 0
   return
 

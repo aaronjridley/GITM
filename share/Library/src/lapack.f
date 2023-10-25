@@ -44,7 +44,7 @@ C============================================================================
 *
       WRITE( *, FMT = 9999 )SRNAME, INFO
 *
-      call CON_STOP('LAPACK::XERBLA')
+      call STOP_GITM('LAPACK::XERBLA')
 *
  9999 FORMAT( ' ** On entry to ', A6, ' parameter number ', I2, ' had ',
      $      'an illegal value' )
@@ -1390,7 +1390,7 @@ C=============================================================================
         PRINT *,'LAPACK routine DGETRF:'
         PRINT *,'U(',INFO,INFO,') is exactly zero. The matrix'
         PRINT *,'is singular: the inverse cannot be computed.'
-        call CON_STOP('LAPACK::DGETRF')
+        call STOP_GITM('LAPACK::DGETRF')
       ENDIF
       RETURN
 *

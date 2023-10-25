@@ -44,6 +44,10 @@ def parse_args_post():
                         help = "don't remove any files",
                         action = 'store_true')
     
+    parser.add_argument('-tgz',
+                        help = "tar and zip raw GITM file instead of process",
+                        action = 'store_true')
+    
     args = parser.parse_args()
 
     return args
@@ -183,6 +187,54 @@ def transfer_log_files(user, server, dir):
     return DidWork
     
 # ----------------------------------------------------------------------
+# Determine base filenames from header file
+# ----------------------------------------------------------------------
+
+def determine_base(headerFile, dir):
+
+    start = len(dir)
+    end = len(headerFile) - len('.header')
+    
+    baseFile = headerFile[start:end]
+
+    return baseFile
+    
+# ----------------------------------------------------------------------
+# tar and zip raw GITM files
+# ----------------------------------------------------------------------
+
+def tar_and_zip_gitm():
+
+    print('-> Tar and Zipping files!')
+    data_here = 'UA/data'
+    
+    # get header file list:
+    headerFiles = sorted(glob(data_here + '/*.header'))
+
+    for headerFile in headerFiles:
+        baseFile = determine_base(headerFile, data_here + '/')
+        print('--> Processing header file : ', baseFile)
+
+        tarFile = baseFile + '.tgz'
+        command = 'cd ' + data_here + ' ; rm -f ' + tarFile + ' ; cd ../..'
+        DidWork = run_command(command)
+        
+        command = 'cd ' + data_here + ' ; tar -cvzf ' + tarFile + ' ' + baseFile + '.* ; cd ../..'
+        DidWork = run_command(command)
+
+        # Remove raw files:
+        command = 'cd ' + data_here + ' ; rm -f ' + baseFile + '.b[0-9][0-9][0-9][0-9] ; cd ../..'
+        DidWork = run_command(command)
+        command = 'cd ' + data_here + ' ; rm -f ' + baseFile + '.header ; cd ../..'
+        DidWork = run_command(command)
+        command = 'cd ' + data_here + ' ; rm -f ' + baseFile + '.sat ; cd ../..'
+        DidWork = run_command(command)
+
+    DidWork = True
+        
+    return DidWork
+
+# ----------------------------------------------------------------------
 # post process GITM files
 # ----------------------------------------------------------------------
 
@@ -286,14 +338,34 @@ def transfer_model_output_files(user, server, dir):
     filelist = sorted(glob(data_here + '/' + file))
     DidWork = transfer(filelist, user, server, dir, DoRemove)
 
+    # tar and zip - remove by default
+    DoRemove = True
+    file = '3D*.tgz'
+    filelist = sorted(glob(data_here + '/' + file))
+    DidWork = transfer(filelist, user, server, dir, DoRemove)
+
+    file = '2D*.tgz'
+    filelist = sorted(glob(data_here + '/' + file))
+    DidWork = transfer(filelist, user, server, dir, DoRemove)
+
+    file = '1D*.tgz'
+    filelist = sorted(glob(data_here + '/' + file))
+    DidWork = transfer(filelist, user, server, dir, DoRemove)
+
+    file = '0D*.tgz'
+    filelist = sorted(glob(data_here + '/' + file))
+    DidWork = transfer(filelist, user, server, dir, DoRemove)
+
     return DidWork
 
 # ----------------------------------------------------------------------
 # Post process and then transfer files once:
 # ----------------------------------------------------------------------
 
-def do_loop(user, server, dir, IsRemote):
+def do_loop(doTarZip, user, server, dir, IsRemote):
 
+    DidWork = True
+    
     if (IsRemote):
         DidWork = test_if_remote_exists(user, server, dir)
         if (not DidWork):
@@ -306,8 +378,11 @@ def do_loop(user, server, dir, IsRemote):
 
     # Post process GITM files:
     print('Post Processing GITM files...')
-    DidWork = post_process_gitm()
-
+    if (doTarZip):
+        DidWork = tar_and_zip_gitm()
+    else:
+        DidWork = post_process_gitm()
+        
     # Check if remote data directory exists, make it if it doesn't:
     data_remote = '/data'
     if (IsRemote and DidWork):
@@ -327,6 +402,8 @@ def do_loop(user, server, dir, IsRemote):
 if __name__ == '__main__':  # main code block
 
     args = parse_args_post()
+
+    doTarZip = args.tgz
 
     file = args.file
 
@@ -351,7 +428,7 @@ if __name__ == '__main__':  # main code block
     DidWork = True
     
     while DidWork:
-        DidWork = do_loop(user, server, dir, IsRemote)
+        DidWork = do_loop(doTarZip, user, server, dir, IsRemote)
         if (DidWork):
             print('Sleeping ... ', args.sleep, ' sec.')
             time.sleep(args.sleep)
