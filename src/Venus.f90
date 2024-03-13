@@ -451,8 +451,13 @@ subroutine calc_planet_sources(iBlock)
 
   endif
 
+  write(*,*) "CO2:", RadCooling(1,1,:,iBlock)
+  write(*,*) "O:", OCooling(1,1,:)
+  
+  
   RadCooling(1:nLons,1:nLats,1:nAlts,iBlock) = &
-         RadCooling(1:nLons,1:nLats,1:nAlts,iBlock) + OCooling
+       RadCooling(1:nLons,1:nLats,1:nAlts,iBlock) + OCooling
+
   !\
   ! ---------------------------------------------------------------
   ! This calls the lower atmosphere radiation code

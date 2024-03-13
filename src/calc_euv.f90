@@ -66,6 +66,7 @@ subroutine euv_ionization_heat(iBlock)
   real :: wavelength_ave
   logical :: exist
   real :: TauS(nWavelengths,nAlts)
+  !real :: TauTotal(nAlts)
 
   if (IsFirstTime(iBlock)) then
 
@@ -130,6 +131,15 @@ subroutine euv_ionization_heat(iBlock)
            Tau = Tau + &
                 PhotoabsorptionCrossSection(iWave, iSpecies) * &
                 ChapmanLittle(:,:,iSpecies)
+
+           !Save the noon taus
+           if (iSpecies .eq. nSpecies .and. iProc .eq. 2) then 
+              TauS(iWave,iAlt) = Tau(3,1)
+
+              !if (iWave .eq. nWavelengths) then
+              !   TauTotal(iAlt) = SUM(TauS(:,iAlt))
+              !endif
+           endif
         enddo
 
         
@@ -313,6 +323,68 @@ subroutine euv_ionization_heat(iBlock)
     enddo
   enddo
 
+  !Find 12 LST lon and lat
+  !do iLon = 1,nLons
+  !   do iLat = 1,nLats
+  !     !write(*,*) longitude(iLon,iBlock)*180.0/pi
+  !     if (longitude(iLon,iBlock)*180.0/pi > 70.0 .and. &
+  !       longitude(iLon,iBlock)*180.0/pi < 83.0 .and. &
+  !       latitude(iLat,iBlock)*180.0/pi < 11.0 .and. &
+  !       latitude(iLat,iBlock)*180.0/pi > -10.0) then
+  !        write(*,*) "iLon, iLat, iProc", iLon, iLat, iProc
+  !        write(*,*) longitude(iLon,iBlock)*180.0/pi, latitude(iLat,iBlock)*180.0/pi
+  !      endif
+  !    enddo
+  ! enddo
+  
+  
+  !call stop_gitm("Found noon in calc_euv.f90")
+  
+  !Write Tau to a file
+  exist = .false.
+  if (iProc == 2 .and. .True.) then  
+       inquire(file="taus.txt", exist=exist)
+       if (exist) then
+         open(84, file="taus.txt", status="old", position="append", action="write")
+       else
+         open(84, file="taus.txt", status="new", action="write")
+      end if
+
+      !Write a header with the columns
+      ! Alt (km) Wvlgth 1 Wvlgth 2 ... sum(wavelengths)
+      !wvavg(iWave)*1.0e10
+      
+      write(*,*) (shortWavelengths(1) + longWavelengths(1))*1.0e10/2
+      write(*,*) (shortWavelengths(10) + longWavelengths(10))*1.0e10/2
+      write(*,*) (shortWavelengths(20) + longWavelengths(20))*1.0e10/2
+      write(*,*) (shortWavelengths(30) + longWavelengths(30))*1.0e10/2
+      write(*,*) (shortWavelengths(41) + longWavelengths(41))*1.0e10/2
+      
+      
+      write(84, *) &
+           "Alt. (km), 1.5, 175.0, 425.0, 675.0, 975"
+           
+      
+       do iAlt = 1,nAlts
+         write(84, "(F5.1, 1X," // &
+              "ES9.3, 1X," // &
+              "ES9.3, 1X," // &
+              "ES9.3, 1X," // &
+              "ES9.3, 1X," // &
+              "ES9.3)") &
+         Altitude_GB(3,1,iAlt,iBlock)/1000.0, &
+         TauS(1,iAlt), &
+         TauS(10,iAlt), &
+         TauS(20,iAlt), &
+         TauS(30,iAlt), &
+         TauS(41,iAlt)
+         !TauTotal(iAlt)
+       enddo
+       close(84)
+       call stop_gitm("In Calc_euv.f90")
+   endif
+  
+  
   call end_timing("euv_ionization_heat")
 
 contains 
@@ -784,32 +856,6 @@ subroutine calc_scaled_euv
         Flux_of_EUV(N) = Timed_Flux(nWavelengths - (N-1))*wvavg(N)/(6.626e-34*2.998e8) &
              /(SunPlanetDistance**2)
      enddo
-
-     exist = .false.
-     if (iProc == 0 .and. .False.) then
-     !  write(*,*) "Flux_of_EUV(1)", Flux_of_Euv(1)
-     !  write(*,*) "Timed_flux(1)", Timed_flux(nWavelengths)
-     !  write(*,*) "wvavg(1)", wvavg(1)
-     !  write(*,*) "SunPlanetDistance**2", SunPlanetDistance**2
-     !  write(*,*) "Constants", 6.626e-34*2.998e8
-     !  
-       inquire(file="intensity.txt", exist=exist)
-       if (exist) then
-         open(84, file="intensity.txt", status="old", position="append", action="write")
-       else
-         open(84, file="intensity.txt", status="new", action="write")
-       end if
-       do iWave = 1,nWavelengths
-         write(84, "(ES9.3,1X,"// &
-                   "ES9.3,1X,"// &
-                   "ES9.3)") &
-         (wvavg(iWave))*1.0e10, &
-         Timed_Flux(nWavelengths - (iWave-1)), &
-         flux_of_euv(iWave)
-       enddo
-       close(84)
-       call stop_gitm("In Calc_euv.f90")
-     endif
 
      call end_timing("new_euv")
 
