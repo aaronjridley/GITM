@@ -136,6 +136,7 @@ T		 UseTurbulentConduction
 T		UseIRHeating
 F		UseGilli
 F		UseRoldan
+T		UseIRHeatingEfficiency
 1985		p_0
 0.1		p_1 
 1.362		b 
