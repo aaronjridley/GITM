@@ -45,3 +45,7 @@ correspondingly cp the 2009 fism file
 (srcData/FISM/fismdaily_2009.dat) in
 run/UA/DataIn/fismdaily.dat. I mention this, because if you want a
 different date, you need to grab the correct year yourself. 
+
+You should be able to run:
+cd run
+mpirun -np 4 GITM.exe
