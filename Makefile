@@ -119,7 +119,8 @@ rundir:
 	cd ${RUNDIR} ;                                   \
 		if [ -e ${BINDIR}/GITM.exe ]; then       \
 			ln -s ${BINDIR}/GITM.exe . ;     \
-			cp UA/DataIn/UAM.in . ;          \
+			cp UA/DataIn/UAM.in.Venus . ;    \
+			cp UA/DataIn/FISM/fismflux_daily_2009.dat ./UA/DataIn/fismdaily.dat \
 		fi
 	cd ${RUNDIR} ;                                   \
 		if [ -e ${BINDIR}/GITMSAMI.exe ]; then   \

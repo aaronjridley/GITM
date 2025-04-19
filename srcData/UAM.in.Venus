@@ -11,8 +11,8 @@ F
 F               Use AUSM+-up Solvers
 
 #GRID
-8		lons
-10		lats
+2		lons
+2		lats
 -90.0		minimum latitude to model
 90.0		maximum latitude to model
 0.0		longitude to model (ignored in everything but 1D)
