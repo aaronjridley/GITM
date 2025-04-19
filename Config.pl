@@ -284,6 +284,8 @@ sub print_help{
 
 -Mars       Configure GITM2 for Mars. This flag is case insensitive.
 
+-Venus      Configure GITM2 for Venus. This flag is case insensitive.
+
 -LV-426     Configure GITM2 for Testing. This flag is case insensitive.
 
 -Earth      Configure GITM2 for Earth. This flag is case insensitive.
@@ -299,6 +301,10 @@ Install for Titan:
 Install for Mars:
 
     Config.pl -install -Mars
+
+Install for Venus:
+
+    Config.pl -install -Venus
 
 Reconfigure GITM for Earth:
 
