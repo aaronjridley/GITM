@@ -13,7 +13,7 @@ subroutine get_temperature(lon, lat, alt, t, h)
   real    :: tAve, tDiff, n, r, g, m
   integer :: iSpecies
   !---------------------------------------------------------------------------
-  if (UseMsis) then
+  if (UseMsis .and. isEarth) then
 
      call get_msis_temperature(lon, lat, alt, t, h)
 
@@ -22,11 +22,13 @@ subroutine get_temperature(lon, lat, alt, t, h)
      tAve  = (TempMax+TempMin)/2
      tDiff = (TempMax-TempMin)/2
 
-     if (Alt/1000.0 <= TempHeight) then
-        t = tAve + tDiff*tanh((alt/1000.0 - TempHeight)/TempWidth)
+     if (Alt <= TempHeight) then
+        t = tAve + tDiff*tanh((alt - TempHeight)/TempWidth)
      else
-        t = tAve + tDiff*tanh((alt/1000.0 - TempHeight)/TempWidth)
+        t = tAve + tDiff*tanh((alt - TempHeight)/TempWidth)
      endif
+
+   !write(*,*) 'temps : ', t, tAve, tDiff, alt, TempHeight, TempWidth
 
      r = RBody + alt
      g = Gravitational_Constant * (RBody/r) ** 2
@@ -85,7 +87,7 @@ subroutine init_altitude
 
   IsDone = .false.
 
-  dHFactor = 0.3
+  dHFactor = 0.2
 
   do iAlt=1,nAlts
 
@@ -98,6 +100,10 @@ subroutine init_altitude
      geo_lon = geo_lon * pi / 180.0
 
      call get_temperature(geo_lon, geo_lat, geo_alt, t, h)
+
+      !write(*,*) 'geo alt : ', iAlt, geo_alt/1000.0, t, h
+
+
      ScaleHeights(iAlt) = h
 
   enddo
