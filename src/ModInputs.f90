@@ -345,6 +345,13 @@ module ModInputs
   ! AGB: Setting physical limits for ionospheric dynamics
   real :: MaxVParallel = 100.0         
   real :: MaxEField = 0.1
+  ! Lower limit on ion density                                                                  
+  real :: MinIonDensity = 100.0
+  real :: MinIonDensityAdvect = 1e5
+  !Lower limits on neutral density                                                              
+  real :: MinNeutralDensity = 200.0
+  real :: MinNeutralDensityAdvect = 1e5
+
   !\
   ! Methods for completing chemistry
   !/
