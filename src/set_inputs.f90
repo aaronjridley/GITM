@@ -790,16 +790,32 @@ subroutine set_inputs
         case ("#IONLIMITS")
            call read_in_real(MaxVParallel, iError)
            call read_in_real(MaxEField, iError)
+           call read_in_real(MinIonDensity, iError)
+	        call read_in_real(MinIonDensityAdvect, iError)
            if (iError /= 0) then
               write(*,*) 'Incorrect format for #IONLIMITS:'
               write(*,*) ''
               write(*,*) '#IONLIMITS'
               write(*,*) "MaxVParallel   (real, default=100 m/s)"
               write(*,*) "MaxEField      (real, default=0.1 V/m)"
+              write(*, *) "MinIonDensity    (real, default=100 m^-3)"
+              write(*, *) "MinIonDensityAdvect    (real, default=1e5 m^-3)"
               MaxVParallel = 100.0
               MaxEField    = 0.1
               IsDone       = .true.
            end if
+
+        case ("#NEUTRALLIMITS")
+            call read_in_real(MinNeutralDensity, iError)
+	         call read_in_real(MinNeutralDensityAdvect, iError)
+            if (iError /= 0) then
+               write(*, *) 'Incorrect format for #NEUTRALLIMITS:'
+               write(*, *) ''
+               write(*, *) '#IONLIMITS'
+               write(*, *) "MinNeutralDensity    (real, default=100 m^-3)"
+               write(*, *) "MinNeutralDensityAdvect    (real, default=1e5 m^-3)"
+               IsDone = .true.
+            endif
 
         case ("#PHOTOELECTRON")
            if(RCMROutType /= 'PHOTOELECTRON') then
