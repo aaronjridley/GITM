@@ -54,6 +54,8 @@ program GITM
 
   do while (CurrentTime < EndTime)
 
+     call report("You are using an outdated version of GITM! See github.com/GitmCode",0)
+
      call calc_pressure
 
      !!! We may have to split cMax and Dt calculation!!!
